@@ -7,8 +7,8 @@ export const EXPIRY_TIME = "expiryTime";
 export const USER_TYPE = "userType";
 export const CANDIDATE_ACCESS_TOKEN = "candidate_access_token"
 export const CANDIDATE_REFRESH_TOKEN = "candidate_refresh_token"
-export const AC_ACCESS_TOKEN = "candidate_access_token"
-export const AC_REFRESH_TOKEN = "candidate_refresh_token"
+export const AC_ACCESS_TOKEN = "am_access_token"
+export const AC_REFRESH_TOKEN = "am_refresh_token"
 
 export const AUTH_VERSION = "authVersion";
 export const USER_ROLE = "userRole";

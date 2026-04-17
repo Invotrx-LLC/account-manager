@@ -10,8 +10,9 @@ import {
 } from "@mui/material";
 import { Visibility, VisibilityOff } from "@mui/icons-material";
 import { useNavigate } from "react-router-dom";
-import { useLoginMutation } from "../../redux/services/auth";
+import { useLoginMutation } from "../../redux/services/auth/auth";
 import { toast } from "react-toastify";
+import { AC_ACCESS_TOKEN, AC_REFRESH_TOKEN, setItem } from "../../utils/constants";
 
 const AmLogin = () => {
   const navigate = useNavigate();
@@ -52,15 +53,16 @@ const AmLogin = () => {
 
     try {
       const res = await login({ email, password }).unwrap();
-
-      toast.success(res?.message || "Login successful ✅");
-      navigate("/account-manager/dashboard");
-
+      console.log("Login response:", res);
+      if (res.success) {
+        toast.success(res?.message || "Login successful ✅");
+        setItem(AC_ACCESS_TOKEN,res?.data?.access_token);
+        setItem(AC_REFRESH_TOKEN,res?.data?.refresh_token);
+        navigate("/account-manager/dashboard");
+      }
     } catch (err) {
       const message =
-        err?.data?.message ||
-        err?.data?.detail ||
-        "Invalid email or password";
+        err?.data?.message || err?.data?.detail || "Invalid email or password";
 
       // 🔥 show API error under password
       setPasswordError(message);
@@ -106,8 +108,8 @@ const AmLogin = () => {
             label="Email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            error={!!emailError}                 // 🔥
-            helperText={emailError}              // 🔥
+            error={!!emailError} // 🔥
+            helperText={emailError} // 🔥
             sx={{
               "& .MuiOutlinedInput-root": {
                 borderRadius: "14px",
@@ -124,8 +126,8 @@ const AmLogin = () => {
             type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            error={!!passwordError}              // 🔥
-            helperText={passwordError}           // 🔥
+            error={!!passwordError} // 🔥
+            helperText={passwordError} // 🔥
             sx={{
               "& .MuiOutlinedInput-root": {
                 borderRadius: "14px",

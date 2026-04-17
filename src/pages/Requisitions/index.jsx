@@ -10,6 +10,7 @@ import {
 } from "@mui/material";
 import CalendarMonthOutlined from "@mui/icons-material/CalendarMonthOutlined";
 import LayersIcon from "@mui/icons-material/Layers";
+import { useGetMyOrganisationsQuery } from "../../redux/services/requisition/requisition";
 
 /* ---------------- MOCK DATA ---------------- */
 const companies = [
@@ -27,6 +28,8 @@ const companies = [
 /* ================= MAIN COMPONENT ================= */
 
 export default function AmRequisitions() {
+  const { data, isLoading, error } = useGetMyOrganisationsQuery();
+  console.log("Organisations data:", data, "Loading:", isLoading, "Error:", error);
   return (
     <Box
       sx={{
@@ -36,10 +39,11 @@ export default function AmRequisitions() {
     >
       {/* ================= HEADER ================= */}
       <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={2}
+        sx={{
+          display:'flex',
+          justifyContent:"space-between",
+          mb:1
+        }}
       >
         <Box>
           <Typography fontSize={22} fontWeight={600}>
@@ -94,21 +98,29 @@ function CompanyCard({ company }) {
     <Card
       sx={{
         borderRadius: 3,
-        padding: 2.5,
+        p: 2.5,
         height: "100%",
         display: "flex",
         flexDirection: "column",
+        boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
       }}
     >
-      {/* Header */}
-      <Box display="flex" alignItems="center" gap={1.5} mb={1.5}>
+      {/* ================= HEADER ================= */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: 1.5,
+          mb: 2,
+        }}
+      >
         <Box
           sx={{
             width: 36,
             height: 36,
             borderRadius: 2,
             backgroundColor: "#E7F5FF",
-            display: "flex", // 🔥 center icon
+            display: "flex",
             alignItems: "center",
             justifyContent: "center",
             flexShrink: 0,
@@ -117,33 +129,54 @@ function CompanyCard({ company }) {
           <LayersIcon sx={{ color: "#0BB3E6", fontSize: 22 }} />
         </Box>
 
-        <Typography fontWeight={600}>{company}</Typography>
+        <Typography sx={{ fontWeight: 600, fontSize: 15 }}>
+          {company}
+        </Typography>
       </Box>
 
-      <Box sx={{ borderTop: "1px solid #E5E7EB", mb: 2 }} />
+      {/* Divider */}
+      <Box
+        sx={{
+          borderTop: "1px solid #E5E7EB",
+          mb: 2,
+        }}
+      />
 
-      {/* Core Company Profile */}
-      <Typography fontWeight={600} fontSize={14} mb={1}>
+      {/* ================= CORE PROFILE ================= */}
+      <Typography
+        sx={{
+          fontWeight: 600,
+          fontSize: 14,
+          mb: 1,
+        }}
+      >
         Core Company Profile
       </Typography>
 
       <InfoRow label="Company name" value="Calendly Pvt Ltd" />
       <InfoRow label="Location" value="Bangalore" />
-      <InfoRow label="Website" value="http://www.calendly.com" />
+      <InfoRow label="Website" value="calendly.com" isLink />
       <InfoRow label="Industry" value="IT Solutions" />
       <InfoRow label="Timezone" value="IST" />
 
-      {/* Metrics */}
-      <Typography fontWeight={600} fontSize={14} mt={2} mb={1}>
+      {/* ================= METRICS ================= */}
+      <Typography
+        sx={{
+          fontWeight: 600,
+          fontSize: 14,
+          mt: 2,
+          mb: 1,
+        }}
+      >
         Essential Hiring Metrics
       </Typography>
 
       <InfoRow label="Total hires made" value="87" />
-      <InfoRow label="Hiring success rate" value="87%" />
+      <InfoRow label="Hiring success rate" value="87%" highlight />
       <InfoRow label="Active employer companies" value="87" />
 
-      {/* Action */}
-      <Box mt="auto">
+      {/* ================= ACTION ================= */}
+      <Box sx={{ mt: "auto" }}>
         <Button
           fullWidth
           disableElevation
@@ -156,7 +189,7 @@ function CompanyCard({ company }) {
             fontWeight: 600,
             textTransform: "none",
             "&:hover": {
-              backgroundColor: "#FF6B35",
+              backgroundColor: "#e85a2a",
             },
           }}
         >
@@ -172,15 +205,12 @@ function CompanyCard({ company }) {
 function InfoRow({ label, value }) {
   return (
     <Box
-      display="flex"
-      justifyContent="space-between"
-      alignItems="center"
-      mb={0.6}
+      sx={{display:'flex',justifyContent:'space-between',alignItems:'center',mb:0.75}}
     >
-      <Typography fontSize={13} color="#6B7280">
+      <Typography sx={{fontSize:14,color:"#6B7280"}}>
         {label}
       </Typography>
-      <Typography fontSize={13} fontWeight={500}>
+      <Typography sx={{fontSize:14}}>
         {value}
       </Typography>
     </Box>

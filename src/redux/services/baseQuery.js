@@ -1,21 +1,22 @@
 import { fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 import {
-  CANDIDATE_ACCESS_TOKEN,
-  CANDIDATE_REFRESH_TOKEN,
+  AC_ACCESS_TOKEN,
+  AC_REFRESH_TOKEN,
   candidateClearLocalStorage,
   getItem,
-   setItem
+  setItem,
 } from "../../utils/constants";
 
 import { toast } from "react-toastify";
 
 const baseUrl = import.meta.env.VITE_BASE_URL;
-
+console.log(window.location.origin);
 // 🔥 base query
 const rawBaseQuery = fetchBaseQuery({
   baseUrl,
   prepareHeaders: (headers) => {
-    const token = getItem(CANDIDATE_ACCESS_TOKEN);
+    const token = getItem(AC_ACCESS_TOKEN); // ✅ FIXED
+    console.log("TOKEN:", token);
     if (token) {
       headers.set("authorization", `Bearer ${token}`);
     }
@@ -28,7 +29,7 @@ export const baseQueryWithReauth = async (args, api, extraOptions) => {
   let result = await rawBaseQuery(args, api, extraOptions);
 
   if (result?.error && [401, 403].includes(result.error.status)) {
-    const refresh_token = getItem(CANDIDATE_REFRESH_TOKEN);
+    const refresh_token = getItem(AC_REFRESH_TOKEN);
 
     if (!refresh_token) {
       toast.error("Session expired, please login");
@@ -37,11 +38,15 @@ export const baseQueryWithReauth = async (args, api, extraOptions) => {
       return result;
     }
 
+    // 🔥 refresh call
     const refreshResult = await rawBaseQuery(
       {
-        url: "/auth/candidate/refresh_token",
+        url: "/acc/account_manager_refresh-access-token",
         method: "POST",
         body: new URLSearchParams({ refresh_token }),
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
       },
       api,
       extraOptions
@@ -54,8 +59,10 @@ export const baseQueryWithReauth = async (args, api, extraOptions) => {
         refreshResult.data?.token;
 
       if (newAccessToken) {
-        setItem(CANDIDATE_ACCESS_TOKEN, newAccessToken);
+        // ✅ store new token
+        setItem(AC_ACCESS_TOKEN, newAccessToken);
 
+        // 🔥 retry original request
         result = await rawBaseQuery(args, api, extraOptions);
       } else {
         return refreshResult;
@@ -63,11 +70,10 @@ export const baseQueryWithReauth = async (args, api, extraOptions) => {
     } else {
       toast.error("Session expired, please login again");
       candidateClearLocalStorage();
-      window.location.href = "/for-candidate/login";
+      window.location.href = "/login";
       return refreshResult;
     }
   }
 
-  // ✅ THIS IS THE FIX
   return result;
 };
