@@ -1,12 +1,9 @@
 import { configureStore } from "@reduxjs/toolkit";
-import candidateReducer from "../slices/candidateSlice";
-import { api } from "../services/api";
-
+import { requisitionApi } from "../services/requisition/requisition";
 export const store = configureStore({
   reducer: {
-    candidate: candidateReducer,
-    [api.reducerPath]: api.reducer,
+    [requisitionApi.reducerPath]: requisitionApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(api.middleware),
+    getDefaultMiddleware().concat(requisitionApi.middleware),
 });

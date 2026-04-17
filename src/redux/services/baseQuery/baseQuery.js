@@ -5,17 +5,17 @@ import {
   candidateClearLocalStorage,
   getItem,
   setItem,
-} from "../../utils/constants";
+} from "../../../utils/constants";
 
 import { toast } from "react-toastify";
 
 const baseUrl = import.meta.env.VITE_BASE_URL;
 console.log(window.location.origin);
-// 🔥 base query
+// base query
 const rawBaseQuery = fetchBaseQuery({
   baseUrl,
   prepareHeaders: (headers) => {
-    const token = getItem(AC_ACCESS_TOKEN); // ✅ FIXED
+    const token = getItem(AC_ACCESS_TOKEN);
     console.log("TOKEN:", token);
     if (token) {
       headers.set("authorization", `Bearer ${token}`);
@@ -24,7 +24,7 @@ const rawBaseQuery = fetchBaseQuery({
   },
 });
 
-// 🔥 custom base query with refresh logic
+// custom base query with refresh logic
 export const baseQueryWithReauth = async (args, api, extraOptions) => {
   let result = await rawBaseQuery(args, api, extraOptions);
 
@@ -38,7 +38,7 @@ export const baseQueryWithReauth = async (args, api, extraOptions) => {
       return result;
     }
 
-    // 🔥 refresh call
+    // refresh call
     const refreshResult = await rawBaseQuery(
       {
         url: "/acc/account_manager_refresh-access-token",
@@ -49,9 +49,9 @@ export const baseQueryWithReauth = async (args, api, extraOptions) => {
         },
       },
       api,
-      extraOptions
+      extraOptions,
     );
-
+    console.log("Refresh result:", refreshResult);
     if (refreshResult?.data) {
       const newAccessToken =
         refreshResult.data?.data?.access_token ||
@@ -59,10 +59,10 @@ export const baseQueryWithReauth = async (args, api, extraOptions) => {
         refreshResult.data?.token;
 
       if (newAccessToken) {
-        // ✅ store new token
+        //  store new token
         setItem(AC_ACCESS_TOKEN, newAccessToken);
 
-        // 🔥 retry original request
+        //  retry original request
         result = await rawBaseQuery(args, api, extraOptions);
       } else {
         return refreshResult;

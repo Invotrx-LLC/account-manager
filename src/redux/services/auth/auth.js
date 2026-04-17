@@ -1,19 +1,14 @@
-import { createApi } from "@reduxjs/toolkit/query/react";
-import { baseQueryWithReauth } from "../baseQuery";
+import { api } from "../api/api";
 
-export const api = createApi({
-  reducerPath: "api",
-  baseQuery: baseQueryWithReauth,
-  tagTypes: [],
+export const authApi = api.injectEndpoints({
   endpoints: (builder) => ({
-    // ✅ FIXED LOGIN
     login: builder.mutation({
       query: (body) => ({
         url: "/acc/account_manager_login",
+        method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
         },
-        method: "POST",
         body: new URLSearchParams({
           email: body.email,
           password: body.password,
@@ -21,7 +16,6 @@ export const api = createApi({
       }),
     }),
 
-    // ✅ KEEP THIS (your signup is correct based on your backend)
     signup: builder.mutation({
       query: (body) => {
         const queryParams = new URLSearchParams({
@@ -40,4 +34,4 @@ export const api = createApi({
   }),
 });
 
-export const { useLoginMutation, useSignupMutation } = api;
+export const { useLoginMutation, useSignupMutation } = authApi;
