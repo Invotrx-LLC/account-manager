@@ -1,21 +1,36 @@
 import React, { useState } from "react";
-import AuthLayout from "../../layout/index";
 import EmailStep from "./EmailStep";
 import OtpStep from "./OtpStep";
 import ResetStep from "./ResetStep";
 import SuccessStep from "./SuccessStep";
- 
+import { Box } from "@mui/material";
+
 const AmForgotPassword = () => {
   const [step, setStep] = useState(1);
- 
+  const [email, setEmail] = useState(""); // ✅ store email
+
   return (
-    <AuthLayout>
-      {step === 1 && <EmailStep onNext={() => setStep(2)} />}
-      {step === 2 && <OtpStep onNext={() => setStep(3)} />}
+    <Box>
+      {step === 1 && (
+        <EmailStep
+          onNext={(emailValue) => {
+            setEmail(emailValue);  // ✅ save email
+            setStep(2);
+          }}
+        />
+      )}
+
+      {step === 2 && (
+        <OtpStep
+          email={email}           // ✅ pass email
+          onNext={() => setStep(3)}
+        />
+      )}
+
       {step === 3 && <ResetStep onNext={() => setStep(4)} />}
       {step === 4 && <SuccessStep />}
-    </AuthLayout>
+    </Box>
   );
 };
- 
+
 export default AmForgotPassword;

@@ -176,6 +176,7 @@ const AmLogin = () => {
                 cursor: "pointer",
                 fontWeight: 500,
               }}
+              onClick={() => navigate("/forgot-password")}
             >
               Forgot Password?
             </Typography>

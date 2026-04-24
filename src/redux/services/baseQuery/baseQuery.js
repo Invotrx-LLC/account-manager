@@ -14,12 +14,14 @@ console.log(window.location.origin);
 // base query
 const rawBaseQuery = fetchBaseQuery({
   baseUrl,
-  prepareHeaders: (headers) => {
+  prepareHeaders: (headers, { endpoint }) => {
     const token = getItem(AC_ACCESS_TOKEN);
-    console.log("TOKEN:", token);
-    if (token) {
-      headers.set("authorization", `Bearer ${token}`);
+    if (endpoint !== "login" && endpoint !== "signup") {
+      if (token) {
+        headers.set("Authorization", `Bearer ${token}`);
+      }
     }
+
     return headers;
   },
 });

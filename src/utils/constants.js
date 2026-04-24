@@ -61,8 +61,8 @@ export const clearLocalStorage = () => {
 //     localStorage.removeItem(AUTH_VERSION);
 // }
 export const candidateClearLocalStorage = () => {
-    localStorage.removeItem(CANDIDATE_ACCESS_TOKEN)
-    localStorage.removeItem(CANDIDATE_REFRESH_TOKEN);
+    localStorage.removeItem(AC_ACCESS_TOKEN);
+    localStorage.removeItem(AC_REFRESH_TOKEN);
     localStorage.removeItem(IS_AUTHENTICATED);
     localStorage.removeItem(USER_TYPE);
 }
