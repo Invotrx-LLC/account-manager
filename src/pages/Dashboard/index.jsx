@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Box, Grid } from "@mui/material";
 import Header from "./Header";
 import AlertBanner from "./AlertBanner";
@@ -10,7 +9,6 @@ import TalentQualityChart from "./TalentQualityChart";
 import HiringRisk from "./HiringRisk";
 import KpiCards from "./Kpi.jsx";
 
-
 export default function AmDashboard() {
   const stats = [
     { title: "Avg Time to Hire", value: "8888838", color: "#FB923C" },
@@ -18,7 +16,6 @@ export default function AmDashboard() {
     { title: "Total Hiring Cost (Org)", value: "82282828", color: "#059669" },
     { title: "Cost per Hire", value: "33333333", color: "#2563EB" },
   ];
-
   return (
     <Box p={1}>
       <Header />

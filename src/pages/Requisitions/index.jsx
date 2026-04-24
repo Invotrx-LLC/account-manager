@@ -1,218 +1,125 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
+import { useSelector, useDispatch } from "react-redux";
 import {
   Box,
   Typography,
   Card,
+  CardContent,
   Grid,
-  Button,
   Chip,
+  CircularProgress,
   Alert,
 } from "@mui/material";
-import CalendarMonthOutlined from "@mui/icons-material/CalendarMonthOutlined";
-import LayersIcon from "@mui/icons-material/Layers";
-import { useGetMyOrganisationsQuery } from "../../redux/services/requisition/requisition";
 
-/* ---------------- MOCK DATA ---------------- */
-const companies = [
-  "Calendly",
-  "Postman",
-  "SpaceX",
-  "Productboard",
-  "Canva",
-  "Spotify",
-  "Segment",
-  "Razorpay",
-  "Carta",
-];
+const Requisitions = () => {
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [requisitions, setRequisitions] = useState([]);
 
-/* ================= MAIN COMPONENT ================= */
+  // Optional: If you want to store in Redux (recommended for larger apps)
+  // const dispatch = useDispatch();
+  // const requisitions = useSelector((state) => state.requisitions.data);
 
-export default function AmRequisitions() {
-  const { data, isLoading, error } = useGetMyOrganisationsQuery();
-  console.log("Organisations data:", data, "Loading:", isLoading, "Error:", error);
-  return (
-    <Box
-      sx={{
-        minHeight: "100vh",
-        p: 1,
-      }}
-    >
-      {/* ================= HEADER ================= */}
-      <Box
-        sx={{
-          display:'flex',
-          justifyContent:"space-between",
-          mb:1
-        }}
-      >
-        <Box>
-          <Typography fontSize={22} fontWeight={600}>
-            Welcome, Shashikumar
-          </Typography>
-          <Typography fontSize={13} color="#9CA3AF">
-            Here's the latest on your team's hires, shifts, and top performers
-          </Typography>
-        </Box>
+  const token = "eyJraWQiOiJSWnVUcjMzVjY3ZXU3ZFl6VE9Ba2ZUd1ZDenNOV2R0UDNacVV1S1F4bmc0PSIsImFsZyI6IlJTMjU2In0..."; // Put your real token here (from Redux/Auth context)
 
-        <Chip
-          icon={<CalendarMonthOutlined />}
-          label="01 Jan 2026 - 07 Jan 2026"
-          sx={{
-            backgroundColor: "#FFFFFF",
-            fontWeight: 500,
-          }}
-        />
+  useEffect(() => {
+    const fetchRequisitions = async () => {
+      try {
+        setLoading(true);
+        const response = await fetch(
+          "https://dev-backend.invotrx.com/acc/get_assigned_org_requisitions?status=all",
+          {
+            method: "GET",
+            headers: {
+              "accept": "application/json",
+              "Authorization": `Bearer ${token}`,
+            },
+          }
+        );
+
+        if (!response.ok) throw new Error("Failed to fetch requisitions");
+
+        const result = await response.json();
+
+        if (result.success) {
+          setRequisitions(result.data || []);
+        } else {
+          setError(result.message || "Something went wrong");
+        }
+      } catch (err) {
+        setError(err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchRequisitions();
+  }, [token]);
+
+  if (loading) {
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 8 }}>
+        <CircularProgress />
       </Box>
+    );
+  }
 
-      {/* ================= ALERT ================= */}
-      {/* <Alert
-        icon={false}
-        sx={{
-          mb: 3,
-          backgroundColor: "#FFF4EC",
-          color: "#D9480F",
-          borderRadius: 2,
-          fontWeight: 500,
-        }}
-      >
-        Alert: 3 clinical programmers serving notice — post replacements on Ri8fit
-        now
-      </Alert> */}
+  if (error) {
+    return <Alert severity="error" sx={{ mt: 4 }}>{error}</Alert>;
+  }
 
-      {/* ================= CARDS GRID ================= */}
+  return (
+    <Box>
+      <Typography variant="h5" sx={{ mb: 3, fontWeight: 600 }}>
+        Assigned Organization Requisitions ({requisitions.length})
+      </Typography>
+
       <Grid container spacing={3}>
-        {companies.map((company) => (
-          <Grid item size={{ xs: 12, sm: 6, md: 4 }} key={company}>
-            <CompanyCard company={company} />
+        {requisitions.map((job) => (
+          <Grid item xs={12} md={6} lg={4} key={job.job_id}>
+            <Card sx={{ height: "100%" }}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>
+                  {job.job_title}
+                </Typography>
+
+                <Box sx={{ display: "flex", gap: 1, mb: 2, flexWrap: "wrap" }}>
+                  <Chip label={job.organisation_name} color="primary" size="small" />
+                  <Chip label={job.job_type} size="small" />
+                  <Chip label={`${job.min_years}-${job.max_years} yrs`} size="small" />
+                </Box>
+
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  <strong>Function:</strong> {job.function} → {job.sub_function}
+                </Typography>
+
+                <Typography variant="body2" color="text.secondary" gutterBottom>
+                  <strong>Positions:</strong> {job.no_of_positions} | 
+                  <strong> Closing:</strong> {new Date(job.closing_date).toLocaleDateString()}
+                </Typography>
+
+                <Typography variant="body2" sx={{ mt: 1 }}>
+                  <strong>Skills:</strong> {job.skills}
+                </Typography>
+
+                <Chip
+                  label={job.status.toUpperCase()}
+                  color={job.status === "open" ? "success" : "default"}
+                  sx={{ mt: 2 }}
+                />
+              </CardContent>
+            </Card>
           </Grid>
         ))}
       </Grid>
-    </Box>
-  );
-}
 
-/* ================= COMPANY CARD ================= */
-
-function CompanyCard({ company }) {
-  return (
-    <Card
-      sx={{
-        borderRadius: 3,
-        p: 2.5,
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-        boxShadow: "0 2px 10px rgba(0,0,0,0.05)",
-      }}
-    >
-      {/* ================= HEADER ================= */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 1.5,
-          mb: 2,
-        }}
-      >
-        <Box
-          sx={{
-            width: 36,
-            height: 36,
-            borderRadius: 2,
-            backgroundColor: "#E7F5FF",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-          }}
-        >
-          <LayersIcon sx={{ color: "#0BB3E6", fontSize: 22 }} />
-        </Box>
-
-        <Typography sx={{ fontWeight: 600, fontSize: 15 }}>
-          {company}
+      {requisitions.length === 0 && (
+        <Typography sx={{ mt: 4, textAlign: "center", color: "#666" }}>
+          No requisitions found.
         </Typography>
-      </Box>
-
-      {/* Divider */}
-      <Box
-        sx={{
-          borderTop: "1px solid #E5E7EB",
-          mb: 2,
-        }}
-      />
-
-      {/* ================= CORE PROFILE ================= */}
-      <Typography
-        sx={{
-          fontWeight: 600,
-          fontSize: 14,
-          mb: 1,
-        }}
-      >
-        Core Company Profile
-      </Typography>
-
-      <InfoRow label="Company name" value="Calendly Pvt Ltd" />
-      <InfoRow label="Location" value="Bangalore" />
-      <InfoRow label="Website" value="calendly.com" isLink />
-      <InfoRow label="Industry" value="IT Solutions" />
-      <InfoRow label="Timezone" value="IST" />
-
-      {/* ================= METRICS ================= */}
-      <Typography
-        sx={{
-          fontWeight: 600,
-          fontSize: 14,
-          mt: 2,
-          mb: 1,
-        }}
-      >
-        Essential Hiring Metrics
-      </Typography>
-
-      <InfoRow label="Total hires made" value="87" />
-      <InfoRow label="Hiring success rate" value="87%" highlight />
-      <InfoRow label="Active employer companies" value="87" />
-
-      {/* ================= ACTION ================= */}
-      <Box sx={{ mt: "auto" }}>
-        <Button
-          fullWidth
-          disableElevation
-          sx={{
-            mt: 2,
-            backgroundColor: "#FF6B35",
-            color: "#FFFFFF",
-            borderRadius: 2,
-            py: 1.2,
-            fontWeight: 600,
-            textTransform: "none",
-            "&:hover": {
-              backgroundColor: "#e85a2a",
-            },
-          }}
-        >
-          See Full Details
-        </Button>
-      </Box>
-    </Card>
-  );
-}
-
-/* ================= INFO ROW ================= */
-
-function InfoRow({ label, value }) {
-  return (
-    <Box
-      sx={{display:'flex',justifyContent:'space-between',alignItems:'center',mb:0.75}}
-    >
-      <Typography sx={{fontSize:14,color:"#6B7280"}}>
-        {label}
-      </Typography>
-      <Typography sx={{fontSize:14}}>
-        {value}
-      </Typography>
+      )}
     </Box>
   );
-}
+};
+
+export default Requisitions;

@@ -1,24 +1,23 @@
 // src/layout/DrawerLayout.jsx
+
 import React, { useState } from "react";
 import { Outlet, NavLink, useLocation, useNavigate } from "react-router-dom";
-import { useSelector } from "react-redux";
+import { useSelector } from "react-redux";                          // 👈
 import {
-  Box, Drawer, AppBar, Toolbar, IconButton, InputBase,
+  Box, Drawer, AppBar, Toolbar, IconButton,
   List, ListItemButton, ListItemIcon, ListItemText,
   Avatar, Badge, Typography,
 } from "@mui/material";
 import {
   Dashboard, Business, People, Work,
   NotificationsNone, Menu as MenuIcon, Logout,
-  ManageAccountsOutlined,
 } from "@mui/icons-material";
 import NavigateNextIcon from "@mui/icons-material/NavigateNextRounded";
-import HomeRoundedIcon  from "@mui/icons-material/HomeRounded";
-import { getTrailForPath, resolveTrail } from "../components/Breadcrumbconf";
-import { selectDynamicLabels } from "../redux/slices/breadcrumbSlice";
-// import { selectDynamicLabels } from "../redux/slices/breadcrumbSlice"; // 👈
+import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
+import { getTrailForPath, resolveTrail } from "./Breadcrumbconf";
+import { selectDynamicLabels } from "../redux/slices/breadcrumbSlice"; // 👈
 
-const drawerWidth    = 220;
+const drawerWidth = 220;
 const collapsedWidth = 72;
 
 const sidebarSections = [
@@ -28,18 +27,16 @@ const sidebarSections = [
       { label: "Dashboard", icon: <Dashboard />, path: "/account-manager/dashboard" },
     ],
   },
-{
-  title: "Workspace",
-  items: [
-    { label: "Dashboard",         icon: <Dashboard />,                        path: "/account-manager/dashboard"       },
-    { label: "Organization",      icon: <Business />,                         path: "/account-manager/organization"    },
-    { label: "Requisitions",      icon: <Work />,                             path: "/account-manager/requisitions"    },
-    { label: "Interviews",        icon: <People />,                           path: "/account-manager/interviews"      },
-    { label: "Account Mgmt",      icon: <ManageAccountsOutlined />,       path: "/account-manager/account-management" }, // 👈 new
-    { label: "Candidates",        icon: <People />,   path: "/account-manager/candidates",        disabled: true },
-    { label: "Upload Candidates", icon: <People />,   path: "/account-manager/upload-candidates", disabled: true },
-  ],
-},
+  {
+    title: "Workspace",
+    items: [
+      { label: "Organization", icon: <Business />, path: "/account-manager/organization" },
+      { label: "Requisitions", icon: <Work />, path: "/account-manager/requisitions" },
+      { label: "Interviews", icon: <People />, path: "/account-manager/interviews" },
+      { label: "Candidates", icon: <People />, path: "/account-manager/candidates", disabled: true },
+      { label: "Upload Candidates", icon: <People />, path: "/account-manager/upload-candidates", disabled: true },
+    ],
+  },
   {
     title: "Help",
     items: [
@@ -48,10 +45,10 @@ const sidebarSections = [
   },
 ];
 
-/* ── TopBarBreadcrumb ── */
-function TopBarBreadcrumb() {
-  const location      = useLocation();
-  const navigate      = useNavigate();
+/* ── TopBarBreadcrumb ─────────────────────────────────────────── */
+function TopBarBreadcrumb() {                          // 👈 no props needed
+  const location = useLocation();
+  const navigate = useNavigate();
   const dynamicLabels = useSelector(selectDynamicLabels); // 👈 reads from Redux
 
   const rawTrail = getTrailForPath(location.pathname);
@@ -67,6 +64,7 @@ function TopBarBreadcrumb() {
         sx={{
           display: "flex", alignItems: "center",
           cursor: "pointer", px: 0.8, py: 0.4, borderRadius: "6px",
+          transition: "background 0.12s",
           "&:hover": { backgroundColor: "#f5f5f0" },
         }}
       >
@@ -85,17 +83,19 @@ function TopBarBreadcrumb() {
                 px: 0.8, py: 0.4, borderRadius: "6px",
                 cursor: c.isLast || !c.path ? "default" : "pointer",
                 backgroundColor: c.isLast ? "#fff5f0" : "transparent",
+                transition: "background 0.12s",
                 "&:hover": !c.isLast && c.path ? { backgroundColor: "#f5f5f0" } : {},
               }}
             >
               {IconComp && (
-                <IconComp sx={{ fontSize: 13, color: c.isLast ? "#FF5F1F" : "#aaa" }} />
+                <IconComp sx={{ fontSize: 13, color: c.isLast ? "#FF5F1F" : "#aaa", opacity: 0.85 }} />
               )}
               <Typography sx={{
                 fontSize: "12.5px",
                 fontWeight: c.isLast ? 600 : 500,
                 color: c.isLast ? "#FF5F1F" : "#888",
                 whiteSpace: "nowrap",
+                lineHeight: 1,
               }}>
                 {c.label}
               </Typography>
@@ -107,9 +107,10 @@ function TopBarBreadcrumb() {
   );
 }
 
-/* ── DrawerLayout ── */
+/* ── DrawerLayout ─────────────────────────────────────────────── */
 const DrawerLayout = () => {
   const [open, setOpen] = useState(true);
+
 
   return (
     <Box sx={{ display: "flex", height: "100vh" }}>
@@ -130,6 +131,7 @@ const DrawerLayout = () => {
           },
         }}
       >
+        {/* Logo + toggle */}
         <Box sx={{ display: "flex", alignItems: "center", p: 2, borderBottom: "1px solid #f0f0e8", minHeight: 52 }}>
           <IconButton onClick={() => setOpen(!open)} sx={{ mr: open ? 1 : 0 }}>
             <MenuIcon />
@@ -141,6 +143,7 @@ const DrawerLayout = () => {
           )}
         </Box>
 
+        {/* Nav items */}
         <Box sx={{ flexGrow: 1, overflowY: "auto", py: 1 }}>
           {sidebarSections.map((section, si) => (
             <Box key={si} sx={{ mb: 1.5 }}>
@@ -159,14 +162,25 @@ const DrawerLayout = () => {
                     sx={{
                       mx: 1.5, my: 0.3, borderRadius: "8px", color: "#555",
                       "&.active": { backgroundColor: "#fff0eb", color: "#ff5722", fontWeight: 500 },
-                      "&:hover":  { backgroundColor: "#fff5f0", color: "#ff5722" },
+                      "&:hover": { backgroundColor: "#fff5f0", color: "#ff5722" },
                     }}
                   >
-                    <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : "auto", color: "inherit" }}>
+                    <ListItemIcon
+                      sx={{ minWidth: 0, mr: open ? 2 : "auto", color: "inherit" }}
+                    >
                       {item.icon}
                     </ListItemIcon>
+
                     {open && (
-                      <ListItemText primary={item.label} primaryTypographyProps={{ fontSize: "13.5px" }} />
+                      <ListItemText
+                        primary={item.label}
+                        sx={{
+                          "& .MuiTypography-root": {
+                            fontSize: "13.5px",
+                            fontWeight: 500,
+                          },
+                        }}
+                      />
                     )}
                   </ListItemButton>
                 ))}
@@ -175,6 +189,7 @@ const DrawerLayout = () => {
           ))}
         </Box>
 
+        {/* Logout */}
         <Box sx={{ p: 2, borderTop: "1px solid #f0f0e8" }}>
           <ListItemButton
             onClick={() => alert("Logout clicked")}
@@ -196,7 +211,7 @@ const DrawerLayout = () => {
           sx={{ backgroundColor: "#fff", color: "#000", borderBottom: "1px solid #e8e8e0", height: "52px" }}
         >
           <Toolbar disableGutters sx={{ px: 2, height: "52px", minHeight: "52px", gap: 2 }}>
-            <TopBarBreadcrumb /> {/* 👈 no props needed — reads Redux directly */}
+            <TopBarBreadcrumb />     {/* 👈 no props — reads Redux internally */}
             <Box sx={{ flexGrow: 1 }} />
             <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
               <IconButton size="small">
@@ -220,3 +235,4 @@ const DrawerLayout = () => {
 };
 
 export default DrawerLayout;
+
