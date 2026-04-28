@@ -51,7 +51,7 @@ export default function OrgCandidates() {
   }
 
   return (
-    <Box sx={{ p: 1 }}>
+    <Box sx={{ p: 1,backgroundColor:"#fff" }}>
       {/* ── Header ── */}
       <Typography variant="h5" fontWeight={600} mb={0.5}>
         Matched Candidates

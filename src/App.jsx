@@ -23,6 +23,7 @@ import AmOrganizations from "./pages/Organizations";
 import OrgDetail from "./pages/Organizations/orgDetails";
 import AmDashboard from "./pages/Dashboard";
 import AccountManagement from "./pages/AccountManagement/AccountManagement";
+import VerifySignupOTP from "./pages/SignUp/verifySignup";
 
 const App = () => {
   return (
@@ -39,6 +40,7 @@ const App = () => {
           <Route element={<AmLayout />}>
             <Route path="/login"           element={<AmLogin />} />
             <Route path="/signup"          element={<AmSignup />} />
+             <Route path="/signup/verify-otp" element={<VerifySignupOTP />} />
             <Route path="/forgot-password" element={<AmForgotPassword />} />
           </Route>
 

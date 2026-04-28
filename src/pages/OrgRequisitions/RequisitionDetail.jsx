@@ -317,6 +317,7 @@ function ReqInterviewCard({ interview }) {
 
 /* ─── CandidateCard ── */
 function CandidateCard({ candidate, onView }) {
+  console.log("candidate,,,",candidate)
   const [hovered, setHovered] = React.useState(false);
   const matchColor =
     candidate.match_score >= 80 ? { bg: "#E7F8EE", color: "#0F6E56" } :
