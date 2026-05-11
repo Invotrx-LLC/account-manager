@@ -81,7 +81,7 @@ const sidebarSections = [
         label: "Candidates",
         icon: <People />,
         path: "/account-manager/candidates",
-        disabled: true,
+        // disabled: true,
       },
       // {
       //   label: "Upload Candidates",

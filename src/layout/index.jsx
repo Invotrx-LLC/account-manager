@@ -12,10 +12,11 @@ const AmLayout = () => {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        overflowY:"hidden"
       }}
     >
       <Container maxWidth="sm">
-        <Box sx={{ textAlign: 'center', mb: 4 }}>
+        {/* <Box sx={{ textAlign: 'center' }}>
           <Typography 
             variant="h4" 
             fontWeight={700}
@@ -27,7 +28,7 @@ const AmLayout = () => {
           <Typography variant="body2" color="#666" sx={{ mt: 1 }}>
             Account Manager Portal
           </Typography>
-        </Box>
+        </Box> */}
 
         {/* This is where Login, Signup, Forgot Password pages will render */}
         <Outlet />

@@ -13,11 +13,13 @@ import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined
 import AccessTimeIcon from "@mui/icons-material/AccessTime";
 import { useDispatch } from "react-redux";
 import { setDynamicLabels } from "../../redux/slices/breadcrumbSlice";
+// import { useNavigate } from "react-router-dom";
 import {
   useGetOrganisationJobsQuery,
   useGetJobMatchedCandidatesQuery,
   useGetOrganisationInterviewsQuery,
 } from "../../redux/services/requisition/requisition";
+import { ArrowBack } from "@mui/icons-material";
 
 const C = {
   accent: "#FF5F1F",
@@ -84,15 +86,43 @@ export default function RequisitionDetail() {
   return (
     <Box sx={{ p: 1 }}>
       {/* Header */}
-      <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: "2px", flexWrap: "wrap", gap: 1 }}>
-        <Typography fontSize={22} fontWeight={700} color={C.textPrimary}>
-          {job.job_title}
-        </Typography>
-        <Box component="span" sx={{ fontSize: 11, fontWeight: 700, px: "10px", py: "4px", borderRadius: "10px", backgroundColor: chip.bg, color: chip.color, textTransform: "uppercase", letterSpacing: "0.05em" }}>
-          {job.status}
-        </Box>
-      </Box>
-      <Typography fontSize={13} color={C.textSecondary} mb="16px">
+ <Box
+  sx={{
+    display: "flex",
+    alignItems: "center",
+    // justifyContent: "space-between",
+    mb: "2px",
+    flexWrap: "wrap",
+    gap: 1,
+  }}
+>
+  <ArrowBack
+    onClick={() => navigate(-1)}
+    sx={{ cursor: "pointer",color:"GrayText",fontWeight:"12px" }}
+  />
+
+  <Typography fontSize={22} fontWeight={700} color={C.textPrimary}>
+    {job.job_title}
+  </Typography>
+
+  <Box
+    component="span"
+    sx={{
+      fontSize: 11,
+      fontWeight: 700,
+      px: "10px",
+      py: "4px",
+      borderRadius: "10px",
+      backgroundColor: chip.bg,
+      color: chip.color,
+      textTransform: "uppercase",
+      letterSpacing: "0.05em",
+    }}
+  >
+    {job.status}
+  </Box>
+</Box>
+      <Typography fontSize={13} color={C.textSecondary} mb="16px" sx={{ml:4}}>
         {job.job_position_id} · {job.job_type}
       </Typography>
 
@@ -105,7 +135,7 @@ export default function RequisitionDetail() {
 
       {tab === 0 && <ReqOverviewTab job={job} />}
       {tab === 1 && <ReqCandidatesTab jobId={jobId} orgId={orgId} navigate={navigate} orgName={orgName} jobTitle={job.job_title} />}
-      {tab === 2 && <ReqInterviewsTab orgId={orgId} jobPositionId={job.job_position_id} />}
+      {tab === 2 && <ReqInterviewsTab orgId={orgId} jobId={jobId}  jobPositionId={job.job_position_id} />}
       {tab === 3 && (
         <Box sx={{ textAlign: "center", py: 10, border: `1px solid ${C.border}`, borderRadius: "12px", backgroundColor: "#fff" }}>
           <Typography fontSize={15} fontWeight={600} color={C.textPrimary}>Activity</Typography>
@@ -213,9 +243,9 @@ function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
 }
 
 /* ─── Tab 2: Interviews (filtered by job_position_id) ── */
-function ReqInterviewsTab({ orgId, jobPositionId }) {
+function ReqInterviewsTab({ orgId, jobPositionId,jobId }) {
   const [statusFilter, setStatusFilter] = useState("all");
-  const { data, isLoading, isError } = useGetOrganisationInterviewsQuery(orgId);
+  const { data, isLoading, isError } = useGetOrganisationInterviewsQuery(jobId);
 
   const all = (data?.data ?? []).filter((iv) => iv.job_position_id === jobPositionId);
 

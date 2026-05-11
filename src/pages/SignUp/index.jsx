@@ -4,7 +4,7 @@ import {
   Button,
   Typography,
   Box,
-  Stack,
+  Grid,
   InputAdornment,
   IconButton,
 } from "@mui/material";
@@ -17,10 +17,11 @@ import { useNavigate } from "react-router-dom";
 const AmSignup = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
+  const [confirmError, setConfirmError] = useState("");
 
   const [signup, { isLoading }] = useSignupMutation();
+  const navigate = useNavigate();
 
-  // ✅ FORM STATE
   const [form, setForm] = useState({
     first_name: "",
     last_name: "",
@@ -29,65 +30,86 @@ const AmSignup = () => {
     password: "",
     confirm_password: "",
   });
-const navigate = useNavigate();
+
   const handleChange = (field) => (e) => {
     setForm({ ...form, [field]: e.target.value });
   };
 
-  // ✅ SUBMIT
   const handleSignup = async () => {
-  let {
-    first_name,
-    last_name,
-    phone_number,
-    email,
-    password,
-    confirm_password,
-  } = form;
-
-  if (
-    !first_name ||
-    !last_name ||
-    !phone_number ||
-    !email ||
-    !password ||
-    !confirm_password
-  ) {
-    toast.error("All fields are required");
-    return;
-  }
-
-  if (password !== confirm_password) {
-    toast.error("Passwords do not match");
-    return;
-  }
-
-  // ✅ FIX PHONE FORMAT (India)
-  if (!phone_number.startsWith("+")) {
-    phone_number = `+91${phone_number}`;
-  }
-
-  try {
-    const res = await signup({
+    let {
       first_name,
       last_name,
       phone_number,
       email,
       password,
       confirm_password,
-    }).unwrap();
+    } = form;
 
-    if(res?.success){
-      toast.success(res?.message || "Signup successful ✅");
-      navigate("/signup/verify-otp", { state: { email } });
+    if (
+      !first_name ||
+      !last_name ||
+      !phone_number ||
+      !email ||
+      !password ||
+      !confirm_password
+    ) {
+      toast.error("All fields are required");
+      return;
     }
-  } catch (err) {
-    toast.error(err?.data?.message || "Signup failed");
-  }
-};
-// const handleSignup = async()=>{
-//   navigate("/signup/verify-otp")
-// }
+
+    if (password !== confirm_password) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    if (!phone_number.startsWith("+")) {
+      phone_number = `+91${phone_number}`;
+    }
+
+    try {
+      const res = await signup({
+        first_name,
+        last_name,
+        phone_number,
+        email,
+        password,
+        confirm_password,
+      }).unwrap();
+
+      if (res?.success) {
+        toast.success(res?.message || "Signup successful ✅");
+        navigate("/signup/verify-otp", { state: { email } });
+      }
+    } catch (err) {
+      toast.error(err?.data?.message || "Signup failed");
+    }
+  };
+
+  // ✅ COMMON INPUT STYLE
+  const inputStyle = {
+    "& .MuiOutlinedInput-root": {
+      borderRadius: "14px",
+      backgroundColor: "#fafafa",
+      height: "52px",
+      "& fieldset": {
+        borderColor: "#e0e0e0",
+      },
+      "&:hover fieldset": {
+        borderColor: "#bdbdbd",
+      },
+      "&.Mui-focused fieldset": {
+        borderColor: "#FE9F43",
+        borderWidth: "1.5px",
+      },
+    },
+    "& .MuiInputLabel-root": {
+      color: "#9e9e9e",
+      fontSize: "14px",
+    },
+    "& .MuiInputLabel-root.Mui-focused": {
+      color: "#FE9F43",
+    },
+  };
 
   return (
     <Box
@@ -96,125 +118,225 @@ const navigate = useNavigate();
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "#f3f4f6",
+        background: "#f4f6f8",
       }}
     >
       <Box
         sx={{
-          width: "380px",
-          p: 4,
-          borderRadius: "24px",
-          backgroundColor: "#ffffff",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+          width: "100%",
+          maxWidth: 540,
+          p: 5,
+          borderRadius: "28px",
+          background: "#ffffff",
+          boxShadow: "0px 10px 40px rgba(0,0,0,0.08)",
         }}
       >
-        {/* Title */}
-        <Box textAlign="center">
-          <Typography fontSize="22px" fontWeight={600}>
-            Sign up
-          </Typography>
+        {/* Header */}
+        <Box textAlign="center" mb={3}>
+  <Typography
+    sx={{
+      fontSize: "32px",
+      fontWeight: 700,
+      color: "#1c1c1c",
+    }}
+  >
+    Sign up
+  </Typography>
 
-          <Typography fontSize="13px" color="#8E8E8E" mt={1}>
-            Your All-in-One Client Hiring Command Center
-          </Typography>
-        </Box>
+  <Typography
+    sx={{
+      fontSize: "15px",
+      color: "#8E8E8E",
+      mt: 1,
+    }}
+  >
+    {/* Your All-in-One Client Hiring Command Center */}
+  </Typography>
+</Box>
 
-        <Stack spacing={2.5} mt={3}>
+        <Grid container spacing={2.5}>
           {/* First Name */}
-          <TextField
-            fullWidth
-            placeholder="First Name"
-            value={form.first_name}
-            onChange={handleChange("first_name")}
-          />
+          <Grid item size={{xs:12 ,sm:6}} >
+            <TextField
+              fullWidth
+              label="First Name"
+              variant="outlined"
+              value={form.first_name}
+              onChange={handleChange("first_name")}
+              sx={inputStyle}
+            />
+          </Grid>
 
           {/* Last Name */}
-          <TextField
-            fullWidth
-            placeholder="Last Name"
-            value={form.last_name}
-            onChange={handleChange("last_name")}
-          />
-
-          {/* Phone */}
-          <TextField
-            fullWidth
-            placeholder="Phone Number"
-            value={form.phone_number}
-            onChange={handleChange("phone_number")}
-          />
+          <Grid item size={{xs:12 ,sm:6}} >
+            <TextField
+              fullWidth
+              label="Last Name"
+              variant="outlined"
+              value={form.last_name}
+              onChange={handleChange("last_name")}
+              sx={inputStyle}
+            />
+          </Grid>
 
           {/* Email */}
-          <TextField
-            fullWidth
-            placeholder="E-mail"
-            value={form.email}
-            onChange={handleChange("email")}
-          />
+          <Grid item size={{xs:12 }} >
+            <TextField
+              fullWidth
+              label="E-mail"
+              value={form.email}
+              onChange={handleChange("email")}
+              sx={inputStyle}
+            />
+          </Grid>
+
+          {/* Phone */}
+          <Grid item size={{xs:12 }} >
+           
+  <TextField
+    fullWidth
+    label="Phone Number"
+    value={form.phone_number}
+    onChange={(e) => {
+      // allow only numbers
+      const value = e.target.value.replace(/\D/g, "");
+
+      // limit to 10 digits (change if needed)
+      if (value.length <= 10) {
+        setForm({ ...form, phone_number: value });
+      }
+    }}
+    sx={inputStyle}
+    InputProps={{
+      startAdornment: (
+        <InputAdornment position="start">
+          <Typography sx={{ color: "#555", fontWeight: 500 }}>
+            +91
+          </Typography>
+        </InputAdornment>
+      ),
+    }}
+    inputProps={{
+      inputMode: "numeric",
+      pattern: "[0-9]*",
+    }}
+  />
+</Grid>
 
           {/* Password */}
-          <TextField
-            fullWidth
-            type={showPassword ? "text" : "password"}
-            placeholder="Password"
-            value={form.password}
-            onChange={handleChange("password")}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton onClick={() => setShowPassword(!showPassword)}>
-                    {showPassword ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
+          <Grid item size={{xs:12 ,sm:6}} >
+            <TextField
+              fullWidth
+              label="Password"
+              type={showPassword ? "text" : "password"}
+              value={form.password}
+              onChange={handleChange("password")}
+              sx={inputStyle}
+              InputProps={{
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
+            />
+          </Grid>
 
           {/* Confirm Password */}
-          <TextField
-            fullWidth
-            type={showConfirm ? "text" : "password"}
-            placeholder="Confirm Password"
-            value={form.confirm_password}
-            onChange={handleChange("confirm_password")}
-            InputProps={{
-              endAdornment: (
-                <InputAdornment position="end">
-                  <IconButton onClick={() => setShowConfirm(!showConfirm)}>
-                    {showConfirm ? <VisibilityOff /> : <Visibility />}
-                  </IconButton>
-                </InputAdornment>
-              ),
-            }}
-          />
+          <Grid item size={{xs:12 ,sm:6}} >
+          
+  <TextField
+    fullWidth
+    label="Confirm Password"
+    type={showConfirm ? "text" : "password"}
+    value={form.confirm_password}
+    onChange={(e) => {
+      const value = e.target.value;
 
-          {/* Button */}
-          <Button
-            fullWidth
-            onClick={handleSignup}
-            disabled={isLoading}
-            sx={{
-              height: "48px",
-              backgroundColor: "#FE9F43",
-              borderRadius: "10px",
-              textTransform: "none",
-              fontWeight: 600,
-              color: "#fff",
-            }}
-          >
-            {isLoading ? "Signing up..." : "Sign Up"}
-          </Button>
+      setForm({ ...form, confirm_password: value });
+
+      // 🔥 LIVE CHECK
+      if (value === "") {
+        setConfirmError("");
+      } else if (value !== form.password) {
+        setConfirmError("Passwords do not match ❌");
+      } else {
+        setConfirmError("Passwords match ✅");
+      }
+    }}
+    sx={inputStyle}
+    error={confirmError.includes("not match")}
+    helperText={confirmError}
+    InputProps={{
+      endAdornment: (
+        <InputAdornment position="end">
+          <IconButton onClick={() => setShowConfirm(!showConfirm)}>
+            {showConfirm ? <VisibilityOff /> : <Visibility />}
+          </IconButton>
+        </InputAdornment>
+      ),
+    }}
+  />
+</Grid>
+
+          {/* Signup Button */}
+          <Grid item size={{xs:12 }} >
+            <Button
+              fullWidth
+              onClick={handleSignup}
+              disabled={isLoading}
+              sx={{
+                height: "52px",
+                background: "#FE9F43",
+                borderRadius: "14px",
+                textTransform: "none",
+                fontWeight: 600,
+                fontSize: "16px",
+                color: "#fff",
+                mt: 1,
+                "&:hover": {
+                  background: "#f78b1f",
+                },
+              }}
+            >
+              {isLoading ? "Signing up..." : "Sign Up"}
+            </Button>
+          </Grid>
 
           {/* Social */}
-          <Stack direction={{ xs: "column", sm: "row" }} spacing={2}>
-            <Button fullWidth variant="outlined">
-              Google
+          {/* <Grid item xs={12} sm={6}>
+            <Button
+              fullWidth
+              variant="outlined"
+              sx={{
+                height: "48px",
+                borderRadius: "12px",
+                textTransform: "none",
+              }}
+            >
+              Sign up with Google
             </Button>
-            <Button fullWidth variant="outlined" startIcon={<LinkedInIcon />}>
-              Linkedin
+          </Grid>
+
+          <Grid item xs={12} sm={6}>
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<LinkedInIcon />}
+              sx={{
+                height: "48px",
+                borderRadius: "12px",
+                textTransform: "none",
+              }}
+            >
+              Sign up with Linkedin
             </Button>
-          </Stack>
-        </Stack>
+          </Grid> */}
+        </Grid>
       </Box>
     </Box>
   );

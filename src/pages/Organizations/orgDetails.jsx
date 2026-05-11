@@ -36,11 +36,19 @@ import {
 import {
   useGetMyOrganisationsQuery,
   useGetOrganisationJobsQuery,
-  useGetAssignedOrgCandidatesQuery,
+  // useGetAssignedOrgCandidatesQuery,
   useGetOrganisationInterviewsQuery,
   useGetOrganisationJobAnalyticsQuery,
+  useGetOrganisationCandidatesQuery
 } from "../../redux/services/requisition/requisition";
 import { PeopleOutlineOutlined } from "@mui/icons-material";
+
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import IconButton from "@mui/material/IconButton";
+import CloseIcon from "@mui/icons-material/Close";
+
 import {
   LineChart,
   Line,
@@ -148,7 +156,7 @@ export default function OrgDetail() {
         <Tab label="Requisitions" />
         <Tab label="Candidates" />
         <Tab label="Interviews" />
-        <Tab label="Analytics" />
+        {/* <Tab label="Analytics" /> */}
         <Tab label="Billing" />
       </Tabs>
 
@@ -1009,35 +1017,27 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
 function OrgCandidatesTab({ orgId, navigate, orgName }) {
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const { data, isLoading, isError } = useGetAssignedOrgCandidatesQuery();
+  const { data, isLoading, isError } = useGetOrganisationCandidatesQuery(orgId);
+  const candidates = data?.data ?? [];
 
-  const allCandidates = data?.data ?? [];
-  const orgCandidates = allCandidates.filter((c) =>
-    c.jobs?.some((j) => j.organisation_id === orgId),
-  );
-
+  // Collect all unique stages across all candidates' jobs
   const statusOptions = React.useMemo(() => {
     const set = new Set();
-    orgCandidates.forEach((c) =>
-      c.jobs
-        ?.filter((j) => j.organisation_id === orgId)
-        .forEach((j) => set.add(j.current_stage)),
+    candidates.forEach((c) =>
+      c.jobs?.forEach((j) => set.add(j.current_stage))
     );
     return Array.from(set);
-  }, [orgCandidates]);
+  }, [candidates]);
 
   const filtered =
     statusFilter === "all"
-      ? orgCandidates
-      : orgCandidates.filter((c) =>
-          c.jobs?.some(
-            (j) =>
-              j.organisation_id === orgId && j.current_stage === statusFilter,
-          ),
+      ? candidates
+      : candidates.filter((c) =>
+          c.jobs?.some((j) => j.current_stage === statusFilter)
         );
 
   if (isLoading) return <Loader />;
-  if (isError || !orgCandidates.length)
+  if (isError || !candidates.length)
     return (
       <StaticPlaceholder
         label="No Candidates"
@@ -1047,6 +1047,7 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
 
   return (
     <Box>
+      {/* Header row */}
       <Box
         sx={{
           display: "flex",
@@ -1079,11 +1080,11 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
 
       <Grid container spacing={2}>
         {filtered.map((candidate) => {
-          const orgJobs =
-            candidate.jobs?.filter((j) => j.organisation_id === orgId) ?? [];
+          // All jobs for this candidate are already org-scoped from the API
+          const orgJobs = candidate.jobs ?? [];
           const primaryJob = orgJobs[0];
           return (
-            <Grid
+          <Grid
               size={{ xs: 12, sm: 6, md: 4, xl: 3 }}
               key={candidate.candidate_id}
             >
@@ -1091,10 +1092,15 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
                 candidate={candidate}
                 primaryJob={primaryJob}
                 orgJobCount={orgJobs.length}
-                onView={() =>
+                onView={(matchedCandidateId) =>               // ← accepts the id
                   navigate(
                     `/account-manager/candidate/${candidate.candidate_id}`,
-                    { state: { orgName } },
+                    {
+                      state: {
+                        orgName,
+                        matched_candidate_id: matchedCandidateId, // ← passes it
+                      },
+                    }
                   )
                 }
               />
@@ -1442,8 +1448,11 @@ function RequisitionCard({ job, onOpen }) {
 /* ═══════════════════════════════════════════════
    AssignedCandidateCard (unchanged)
 ═══════════════════════════════════════════════ */
+
+
 function AssignedCandidateCard({ candidate, primaryJob, orgJobCount, onView }) {
   const [hovered, setHovered] = React.useState(false);
+  const [jobsDialogOpen, setJobsDialogOpen] = React.useState(false);
 
   const stageColor = (stage = "") => {
     const s = stage.toLowerCase();
@@ -1451,229 +1460,259 @@ function AssignedCandidateCard({ candidate, primaryJob, orgJobCount, onView }) {
     if (s.includes("shortlist")) return { bg: C.greenSoft, color: C.green };
     if (s.includes("onboard")) return { bg: C.indigoSoft, color: C.indigo };
     if (s.includes("interview")) return { bg: C.amberSoft, color: C.amber };
+    if (s.includes("select")) return { bg: C.indigoSoft, color: C.indigo };
     return { bg: "#F3F4F6", color: "#6B7280" };
   };
 
   const sc = stageColor(primaryJob?.current_stage);
+  const orgJobs = candidate.jobs ?? [];
 
   return (
-    <Card
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      sx={{
-        borderRadius: "12px",
-        border: `1px solid ${hovered ? C.accent : C.border}`,
-        boxShadow: hovered ? "0 0 0 3px rgba(255,95,31,0.07)" : "none",
-        transition: "border-color 0.15s, box-shadow 0.15s",
-        height: "100%",
-        display: "flex",
-        flexDirection: "column",
-      }}
-    >
-      <CardContent
+    <>
+      {/* ── Card ── */}
+      <Card
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
         sx={{
-          p: "16px",
-          flexGrow: 1,
+          borderRadius: "12px",
+          border: `1px solid ${hovered ? C.accent : C.border}`,
+          boxShadow: hovered ? "0 0 0 3px rgba(255,95,31,0.07)" : "none",
+          transition: "border-color 0.15s, box-shadow 0.15s",
+          height: "100%",
           display: "flex",
           flexDirection: "column",
         }}
       >
-        <Box
-          sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: "12px" }}
-        >
-          <Avatar
-            sx={{
-              width: 40,
-              height: 40,
-              bgcolor: C.accent,
-              fontWeight: 700,
-              fontSize: 15,
-              flexShrink: 0,
-            }}
-          >
-            {candidate.candidate_name?.charAt(0).toUpperCase()}
-          </Avatar>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography
-              sx={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: C.textPrimary,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {candidate.candidate_name}
-            </Typography>
-            <Typography
-              sx={{
-                fontSize: 11,
-                color: C.textSecondary,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {candidate.email}
-            </Typography>
-          </Box>
-        </Box>
-
-        <Divider sx={{ mb: "10px" }} />
-
-        <Grid container spacing={1} sx={{ mb: "10px" }}>
-          <Grid size={{ xs: 7 }}>
-            <Box
-              sx={{ backgroundColor: "#F9FAFB", borderRadius: "8px", p: "8px" }}
-            >
-              <Typography
-                sx={{ fontSize: 10, color: C.textSecondary, mb: "2px" }}
-              >
-                Current Stage
-              </Typography>
-              <Box
-                component="span"
-                sx={{
-                  fontSize: 10,
-                  fontWeight: 700,
-                  px: "6px",
-                  py: "2px",
-                  borderRadius: "6px",
-                  backgroundColor: sc.bg,
-                  color: sc.color,
-                  textTransform: "capitalize",
-                }}
-              >
-                {primaryJob?.current_stage ?? "—"}
-              </Box>
-            </Box>
-          </Grid>
-          <Grid size={{ xs: 5 }}>
-            <Box
-              sx={{ backgroundColor: "#F9FAFB", borderRadius: "8px", p: "8px" }}
-            >
-              <Typography
-                sx={{ fontSize: 10, color: C.textSecondary, mb: "2px" }}
-              >
-                Jobs Here
-              </Typography>
-              <Typography
-                sx={{ fontSize: 12, fontWeight: 700, color: C.textPrimary }}
-              >
-                {orgJobCount}
-              </Typography>
-            </Box>
-          </Grid>
-        </Grid>
-
-        {primaryJob?.job_title && (
-          <Box
-            sx={{ display: "flex", justifyContent: "space-between", mb: "6px" }}
-          >
-            <Typography sx={{ fontSize: 11, color: C.textSecondary }}>
-              Job
-            </Typography>
-            <Typography
-              sx={{
-                fontSize: 11,
-                fontWeight: 500,
-                color: C.textPrimary,
-                maxWidth: "65%",
-                textAlign: "right",
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
-            >
-              {primaryJob.job_title}
-            </Typography>
-          </Box>
-        )}
-
-        <Box
-          sx={{ display: "flex", justifyContent: "space-between", mb: "6px" }}
-        >
-          <Typography sx={{ fontSize: 11, color: C.textSecondary }}>
-            Phone
-          </Typography>
-          <Typography
-            sx={{ fontSize: 11, fontWeight: 500, color: C.textPrimary }}
-          >
-            {candidate.phone_number}
-          </Typography>
-        </Box>
-
-        <Box
+        <CardContent
           sx={{
+            p: "16px",
+            flexGrow: 1,
             display: "flex",
-            gap: 1,
-            flexWrap: "wrap",
-            mt: "4px",
-            mb: "10px",
+            flexDirection: "column",
           }}
         >
-          {[
-            {
-              label: "Shortlisted",
-              value: candidate.shortlisted_count,
-              color: C.green,
-            },
-            {
-              label: "Interviewing",
-              value: candidate.interviewing_count,
-              color: C.amber,
-            },
-            {
-              label: "Selected",
-              value: candidate.selected_count,
-              color: C.indigo,
-            },
-          ].map(
-            ({ label, value, color }) =>
+          {/* Header */}
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: "12px" }}>
+            <Avatar
+              sx={{
+                width: 40, height: 40,
+                bgcolor: C.accent, fontWeight: 700, fontSize: 15, flexShrink: 0,
+              }}
+            >
+              {candidate.candidate_name?.charAt(0).toUpperCase()}
+            </Avatar>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography sx={{ fontSize: 13, fontWeight: 700, color: C.textPrimary,
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {candidate.candidate_name}
+              </Typography>
+              <Typography sx={{ fontSize: 11, color: C.textSecondary,
+                whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                {candidate.email}
+              </Typography>
+            </Box>
+          </Box>
+
+          <Divider sx={{ mb: "10px" }} />
+
+          {/* Stats */}
+          <Grid container spacing={1} sx={{ mb: "10px" }}>
+            <Grid size={{ xs: 7 }}>
+              <Box sx={{ backgroundColor: "#F9FAFB", borderRadius: "8px", p: "8px" }}>
+                <Typography sx={{ fontSize: 10, color: C.textSecondary, mb: "2px" }}>
+                  Current Stage
+                </Typography>
+                <Box component="span" sx={{
+                  fontSize: 10, fontWeight: 700, px: "6px", py: "2px",
+                  borderRadius: "6px", backgroundColor: sc.bg, color: sc.color,
+                  textTransform: "capitalize",
+                }}>
+                  {primaryJob?.current_stage ?? "—"}
+                </Box>
+              </Box>
+            </Grid>
+            <Grid size={{ xs: 5 }}>
+              <Box sx={{ backgroundColor: "#F9FAFB", borderRadius: "8px", p: "8px" }}>
+                <Typography sx={{ fontSize: 10, color: C.textSecondary, mb: "2px" }}>
+                  Jobs Here
+                </Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 700, color: C.textPrimary }}>
+                  {orgJobCount}
+                </Typography>
+              </Box>
+            </Grid>
+          </Grid>
+
+          {/* Phone */}
+          <Box sx={{ display: "flex", justifyContent: "space-between", mb: "6px" }}>
+            <Typography sx={{ fontSize: 11, color: C.textSecondary }}>Phone</Typography>
+            <Typography sx={{ fontSize: 11, fontWeight: 500, color: C.textPrimary }}>
+              {candidate.phone_number}
+            </Typography>
+          </Box>
+
+          {/* Stage badges */}
+          <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap", mt: "4px", mb: "12px" }}>
+            {[
+              { label: "Matched", value: candidate.matched_count, color: C.accent },
+              { label: "Shortlisted", value: candidate.shortlisted_count, color: "#0F6E56" },
+              { label: "Interviewing", value: candidate.interviewing_count, color: "#92400E" },
+              { label: "Selected", value: candidate.selected_count, color: C.indigo },
+            ].map(({ label, value, color }) =>
               value > 0 && (
-                <Box
-                  key={label}
-                  sx={{
-                    fontSize: 10,
-                    fontWeight: 600,
-                    px: "6px",
-                    py: "2px",
-                    borderRadius: "6px",
-                    backgroundColor: "#F3F4F6",
-                    color,
-                  }}
-                >
+                <Box key={label} sx={{
+                  fontSize: 10, fontWeight: 600, px: "6px", py: "2px",
+                  borderRadius: "6px", backgroundColor: "#F3F4F6", color,
+                }}>
                   {label}: {value}
                 </Box>
-              ),
-          )}
-        </Box>
+              )
+            )}
+          </Box>
 
-        <Box sx={{ mt: "auto" }}>
-          <Button
-            variant="outlined"
-            fullWidth
+          {/* View Jobs button */}
+          <Box sx={{ mt: "auto" }}>
+            <Button
+              variant="outlined"
+              fullWidth
+              size="small"
+              onClick={() => setJobsDialogOpen(true)}
+              sx={{
+                borderColor: C.accent, color: C.accent,
+                textTransform: "none", fontWeight: 600,
+                borderRadius: "8px", fontSize: 12,
+                "&:hover": { backgroundColor: C.accentSoft, borderColor: C.accent },
+              }}
+            >
+              View Jobs ({orgJobCount})
+            </Button>
+          </Box>
+        </CardContent>
+      </Card>
+
+      {/* ── Jobs Dialog ── */}
+      <Dialog
+        open={jobsDialogOpen}
+        onClose={() => setJobsDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: "16px",
+            p: 0,
+            overflow: "hidden",
+          },
+        }}
+      >
+        {/* Dialog Header */}
+        <DialogTitle
+          sx={{
+            px: "20px", py: "16px",
+            borderBottom: `1px solid ${C.border}`,
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Avatar sx={{ width: 36, height: 36, bgcolor: C.accent, fontWeight: 700, fontSize: 14 }}>
+              {candidate.candidate_name?.charAt(0).toUpperCase()}
+            </Avatar>
+            <Box>
+              <Typography fontSize={14} fontWeight={700} color={C.textPrimary}>
+                {candidate.candidate_name}
+              </Typography>
+              <Typography fontSize={11} color={C.textSecondary}>
+                {orgJobCount} job{orgJobCount !== 1 ? "s" : ""} matched
+              </Typography>
+            </Box>
+          </Box>
+          <IconButton
             size="small"
-            onClick={onView}
-            sx={{
-              borderColor: C.accent,
-              color: C.accent,
-              textTransform: "none",
-              fontWeight: 600,
-              borderRadius: "8px",
-              fontSize: 12,
-              "&:hover": {
-                backgroundColor: C.accentSoft,
-                borderColor: C.accent,
-              },
-            }}
+            onClick={() => setJobsDialogOpen(false)}
+            sx={{ color: "#9CA3AF", "&:hover": { backgroundColor: "#F3F4F6" } }}
           >
-            View Profile
-          </Button>
-        </Box>
-      </CardContent>
-    </Card>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+
+        {/* Dialog Body */}
+        <DialogContent sx={{ p: 0 }}>
+          {orgJobs.map((job, idx) => {
+            const jsc = stageColor(job.current_stage);
+            const isLast = idx === orgJobs.length - 1;
+
+            return (
+              <Box
+                key={job.matched_candidate_id}
+                sx={{
+                  px: "20px", py: "16px",
+                  borderBottom: isLast ? "none" : `1px solid ${C.border}`,
+                  backgroundColor: idx % 2 === 0 ? "#fff" : "#FAFAFA",
+                }}
+              >
+                {/* Job title row */}
+                <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1, mb: "10px" }}>
+                  <Box sx={{ flex: 1 }}>
+                    <Typography fontSize={13} fontWeight={700} color={C.textPrimary} lineHeight={1.4}>
+                      {job.job_title}
+                    </Typography>
+                    <Typography fontSize={11} color={C.textSecondary} mt="2px" sx={{ textTransform: "capitalize" }}>
+                      {job.function} · {job.sub_function}
+                    </Typography>
+                  </Box>
+                  {/* Match score badge */}
+                  <Box sx={{
+                    fontSize: 11, fontWeight: 700, px: "8px", py: "3px",
+                    borderRadius: "8px", backgroundColor: C.accentSoft, color: C.accent,
+                    whiteSpace: "nowrap", flexShrink: 0,
+                  }}>
+                    Score: {job.match_score}
+                  </Box>
+                </Box>
+
+                {/* Stage + matched date + View Profile */}
+                <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 1 }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                    {/* Stage chip */}
+                    <Box component="span" sx={{
+                      fontSize: 10, fontWeight: 700, px: "8px", py: "3px",
+                      borderRadius: "8px", backgroundColor: jsc.bg, color: jsc.color,
+                      textTransform: "capitalize",
+                    }}>
+                      {job.current_stage}
+                    </Box>
+                    {/* Matched date */}
+                    <Typography fontSize={11} color={C.textSecondary}>
+                      {new Date(job.matched_at).toLocaleDateString("en-GB", {
+                        day: "2-digit", month: "short", year: "numeric",
+                      })}
+                    </Typography>
+                  </Box>
+
+                  {/* View Profile button — passes matched_candidate_id */}
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => {
+                      setJobsDialogOpen(false);
+                      onView(job.matched_candidate_id);
+                    }}
+                    sx={{
+                      backgroundColor: C.accent, color: "#fff",
+                      textTransform: "none", fontWeight: 600,
+                      borderRadius: "8px", fontSize: 11,
+                      boxShadow: "none",
+                      "&:hover": { backgroundColor: "#e04e10", boxShadow: "none" },
+                    }}
+                  >
+                    View Profile
+                  </Button>
+                </Box>
+              </Box>
+            );
+          })}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }
 

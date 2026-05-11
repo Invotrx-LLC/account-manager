@@ -24,6 +24,8 @@ import OrgDetail from "./pages/Organizations/orgDetails";
 import AmDashboard from "./pages/Dashboard";
 import AccountManagement from "./pages/AccountManagement/AccountManagement";
 import VerifySignupOTP from "./pages/SignUp/verifySignup";
+import CandidatesPage from "./pages/Candidates/Candidate";
+import CandidateDetailPage from "./pages/Candidates/CandidateDetailsPage";
 
 const App = () => {
   return (
@@ -31,73 +33,55 @@ const App = () => {
       <ToastContainer position="top-right" autoClose={3000} />
 
       <BrowserRouter>
-        <Routes>
-
+          <Routes>
+ 
           {/* ── Default ── */}
           <Route path="/" element={<Navigate to="/login" replace />} />
-
+ 
           {/* ── Public Routes ── */}
           <Route element={<AmLayout />}>
-            <Route path="/login"           element={<AmLogin />} />
-            <Route path="/signup"          element={<AmSignup />} />
-             <Route path="/signup/verify-otp" element={<VerifySignupOTP />} />
-            <Route path="/forgot-password" element={<AmForgotPassword />} />
+            <Route path="/login"             element={<AmLogin />} />
+            <Route path="/signup"            element={<AmSignup />} />
+            <Route path="/signup/verify-otp" element={<VerifySignupOTP />} />
+            <Route path="/forgot-password"   element={<AmForgotPassword />} />
           </Route>
-
+ 
           {/* ── Protected Routes ── */}
           <Route path="/account-manager" element={<DrawerLayout />}>
             <Route index element={<Navigate to="dashboard" replace />} />
-
+ 
             {/* Dashboard */}
-            <Route path="dashboard" element={<AmDashboard />} />
-
-            {/* ─────────────────────────────────────────────
-                Org List
-                URL: /account-manager/organization
-            ───────────────────────────────────────────── */}
-            <Route path="organization" element={<AmOrganizations />} />
-              <Route path="account-management" element={<AccountManagement />} />
-            {/* ─────────────────────────────────────────────
-                LEVEL 1 — Org Detail
-                URL: /account-manager/org/:orgId
-                Tabs (internal useState):
-                  0 - Overview
-                  1 - Requisitions
-                  2 - Candidates
-                  3 - Interviews
-                  4 - Billing
-            ───────────────────────────────────────────── */}
-            <Route path="org/:orgId" element={<OrgDetail />} />
-
-            {/* ─────────────────────────────────────────────
-                LEVEL 2 — Requisition Detail
-                URL: /account-manager/org/:orgId/requisitions/:jobId
-                Tabs (internal useState):
-                  0 - Overview
-                  1 - Candidates
-                  2 - Interviews
-                  3 - Activity
-            ───────────────────────────────────────────── */}
-            <Route path="org/:orgId/requisitions/:jobId" element={<RequisitionDetail />} />
-
-            {/* ─────────────────────────────────────────────
-                LEVEL 3 — Candidate Detail
-                URL: /account-manager/candidate/:candidateId
-                Tabs (internal useState):
-                  0 - Profile
-                  1 - Timeline
-                  2 - Interviews
-                  3 - Documents
-            ───────────────────────────────────────────── */}
-            <Route path="candidate/:candidateId" element={<CandidateDetail />} />
-
+            <Route path="dashboard"          element={<AmDashboard />} />
+ 
+            {/* Organizations */}
+            <Route path="organization"       element={<AmOrganizations />} />
+ 
+            {/* Account Management */}
+            <Route path="account-management" element={<AccountManagement />} />
+ 
+            {/* Candidates list */}
+            <Route path="candidates"         element={<CandidatesPage />} />
+ 
+            {/* ✅ Candidate detail — relative path, resolves to:
+                /account-manager/candidates/:candidateId             */}
+            <Route path="candidates/:candidateId" element={<CandidateDetailPage />} />
+ 
+            {/* Org Detail */}
+            <Route path="org/:orgId"                          element={<OrgDetail />} />
+ 
+            {/* Requisition Detail */}
+            <Route path="org/:orgId/requisitions/:jobId"      element={<RequisitionDetail />} />
+ 
+            {/* Org Candidate Detail */}
+            <Route path="candidate/:candidateId"              element={<CandidateDetail />} />
+ 
             {/* Catch-all inside account-manager */}
             <Route path="*" element={<Navigate to="dashboard" replace />} />
           </Route>
-
+ 
           {/* ── Global Catch-all ── */}
           <Route path="*" element={<Navigate to="/login" replace />} />
-
+ 
         </Routes>
       </BrowserRouter>
     </>

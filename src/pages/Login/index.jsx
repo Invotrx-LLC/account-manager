@@ -75,6 +75,7 @@ const AmLogin = () => {
     <Box
       sx={{
         minHeight: "100vh",
+        width: "100%",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
@@ -89,6 +90,8 @@ const AmLogin = () => {
           borderRadius: "24px",
           backgroundColor: "#ffffff",
           boxShadow: "0 10px 30px rgba(0,0,0,0.08)",
+          mt: -8,
+          width: { xs: "90%", sm: "400px" },
         }}
       >
         <Stack spacing={3}>
@@ -97,9 +100,9 @@ const AmLogin = () => {
             <Typography sx={{ fontSize: 30, fontWeight: 600 }}>
               Sign In
             </Typography>
-            <Typography sx={{ fontSize: 14, fontWeight: 500, mt: 1 }}>
+            {/* <Typography sx={{ fontSize: 14, fontWeight: 500, mt: 1 }}>
               Your All-in-One Client Hiring Command Center
-            </Typography>
+            </Typography> */}
           </Box>
 
           {/* Email */}

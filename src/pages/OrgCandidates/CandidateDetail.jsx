@@ -27,6 +27,15 @@ import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import ExpandLessIcon from "@mui/icons-material/ExpandLess";
 import FilterListIcon from "@mui/icons-material/FilterList";
 import { useDispatch } from "react-redux";
+
+
+import Dialog from "@mui/material/Dialog";
+import DialogTitle from "@mui/material/DialogTitle";
+import DialogContent from "@mui/material/DialogContent";
+import IconButton from "@mui/material/IconButton";
+import CloseIcon from "@mui/icons-material/Close";
+
+
 import {
   setDynamicLabels,
   clearDynamicLabels,
@@ -372,6 +381,7 @@ function SkillInfoSection({ candidate }) {
   const scoreIntel = candidate?.score_intel ?? [];
   const skillNotes = candidate?.skill_notes ?? {};
   const summary = skillInfo.summary ?? "";
+  const [skillScoresOpen, setSkillScoresOpen] = React.useState(false);
 
   return (
     <Box>
@@ -382,10 +392,11 @@ function SkillInfoSection({ candidate }) {
         </Box>
       )}
 
-      {/* View all skill scores link */}
+      {/* View all skill scores button */}
       {scoreIntel.length > 0 && (
         <Box sx={{ display: "flex", justifyContent: "flex-end", mb: "12px" }}>
           <Box
+            onClick={() => setSkillScoresOpen(true)}
             sx={{
               display: "inline-flex",
               alignItems: "center",
@@ -406,78 +417,7 @@ function SkillInfoSection({ candidate }) {
         </Box>
       )}
 
-      {/* Score table */}
-      {scoreIntel.length > 0 && (
-        <Box
-          sx={{
-            border: `1px solid ${C.border}`,
-            borderRadius: "10px",
-            overflow: "hidden",
-            mb: "20px",
-          }}
-        >
-          {/* Header */}
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "1fr 140px 140px",
-              px: "16px",
-              py: "10px",
-              backgroundColor: "#F9FAFB",
-              borderBottom: `1px solid ${C.border}`,
-            }}
-          >
-            {["Skill", "Candidate", "Desired"].map((h) => (
-              <Typography key={h} fontSize={11} fontWeight={700} color="#9CA3AF"
-                sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                {h}
-              </Typography>
-            ))}
-          </Box>
-
-          {scoreIntel.map((s, i) => {
-            const isLast = i === scoreIntel.length - 1;
-            const pct = Math.round((s.candidate / s.desired) * 100);
-            const barColor = pct >= 90 ? "#22C55E" : pct >= 70 ? C.accent : "#EF4444";
-
-            return (
-              <Box
-                key={s.skill}
-                sx={{
-                  display: "grid",
-                  gridTemplateColumns: "1fr 140px 140px",
-                  px: "16px",
-                  py: "10px",
-                  borderBottom: isLast ? "none" : "1px solid #F3F4F6",
-                  alignItems: "center",
-                }}
-              >
-                <Typography fontSize={13} fontWeight={500} color={C.textPrimary}>
-                  {s.skill}
-                </Typography>
-
-                <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <Box sx={{ flex: 1, height: 6, backgroundColor: "#F3F4F6", borderRadius: 3 }}>
-                    <Box sx={{ height: "100%", width: `${s.candidate}%`, backgroundColor: barColor, borderRadius: 3 }} />
-                  </Box>
-                  <Typography fontSize={11} fontWeight={700} color={barColor} sx={{ minWidth: 28 }}>
-                    {s.candidate}
-                  </Typography>
-                </Box>
-
-                <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                  <Box sx={{ flex: 1, height: 6, backgroundColor: "#F3F4F6", borderRadius: 3 }}>
-                    <Box sx={{ height: "100%", width: `${s.desired}%`, backgroundColor: "#22C55E", borderRadius: 3 }} />
-                  </Box>
-                  <Typography fontSize={11} fontWeight={700} color="#22C55E" sx={{ minWidth: 28 }}>
-                    {s.desired}
-                  </Typography>
-                </Box>
-              </Box>
-            );
-          })}
-        </Box>
-      )}
+  
 
       {/* Skills Summary */}
       {summary && (
@@ -494,7 +434,7 @@ function SkillInfoSection({ candidate }) {
         </Box>
       )}
 
-      {/* Skill Notes (from skill_notes map) */}
+      {/* Skill Notes */}
       {Object.keys(skillNotes).length > 0 && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: "8px" }}>
           {Object.entries(skillNotes).map(([key, note]) => (
@@ -531,6 +471,174 @@ function SkillInfoSection({ candidate }) {
           </Typography>
         </Box>
       )}
+
+      {/* ── Skill Scores Dialog ── */}
+      <Dialog
+        open={skillScoresOpen}
+        onClose={() => setSkillScoresOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: "16px", overflow: "hidden" } }}
+      >
+        {/* Header */}
+        <DialogTitle
+          sx={{
+            px: "20px", py: "14px",
+            borderBottom: `1px solid ${C.border}`,
+            display: "flex", alignItems: "center", justifyContent: "space-between",
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <Box
+              sx={{
+                width: 32, height: 32, borderRadius: "8px",
+                backgroundColor: C.accentSoft,
+                display: "flex", alignItems: "center", justifyContent: "center",
+              }}
+            >
+              <TrendingUpIcon sx={{ fontSize: 16, color: C.accent }} />
+            </Box>
+            <Box>
+              <Typography fontSize={14} fontWeight={700} color={C.textPrimary}>
+                All Skill Scores
+              </Typography>
+              <Typography fontSize={11} color={C.textSecondary}>
+                {scoreIntel.length} skill{scoreIntel.length !== 1 ? "s" : ""} evaluated
+              </Typography>
+            </Box>
+          </Box>
+          <IconButton
+            size="small"
+            onClick={() => setSkillScoresOpen(false)}
+            sx={{ color: "#9CA3AF", "&:hover": { backgroundColor: "#F3F4F6" } }}
+          >
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
+
+        {/* Legend row */}
+        <Box
+          sx={{
+            px: "20px", py: "10px",
+            borderBottom: `1px solid ${C.border}`,
+            backgroundColor: "#FAFAFA",
+            display: "flex", gap: "16px", flexWrap: "wrap",
+          }}
+        >
+          {[
+            { dot: "#22C55E", label: "≥ 90% — Strong match" },
+            { dot: C.accent,  label: "≥ 70% — Good match" },
+            { dot: "#EF4444", label: "< 70% — Gap" },
+          ].map(({ dot, label }) => (
+            <Box key={label} sx={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <Box sx={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: dot }} />
+              <Typography fontSize={11} color={C.textSecondary}>{label}</Typography>
+            </Box>
+          ))}
+        </Box>
+
+        {/* Table header */}
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "1fr 90px 90px 64px",
+            px: "20px", py: "8px",
+            backgroundColor: "#F9FAFB",
+            borderBottom: `1px solid ${C.border}`,
+          }}
+        >
+          {["Skill", "Candidate", "Desired", "Match"].map((h) => (
+            <Typography key={h} fontSize={10} fontWeight={700} color="#9CA3AF"
+              sx={{ textTransform: "uppercase", letterSpacing: "0.06em" }}>
+              {h}
+            </Typography>
+          ))}
+        </Box>
+
+        {/* Scrollable rows */}
+        <DialogContent sx={{ p: 0, maxHeight: 420, overflowY: "auto" }}>
+          {scoreIntel.map((s, i) => {
+            const pct = s.desired > 0 ? Math.round((s.candidate / s.desired) * 100) : 0;
+            const barColor = pct >= 90 ? "#22C55E" : pct >= 70 ? C.accent : "#EF4444";
+            const isLast = i === scoreIntel.length - 1;
+
+            return (
+              <Box
+                key={s.skill}
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 90px 90px 64px",
+                  px: "20px", py: "11px",
+                  alignItems: "center",
+                  borderBottom: isLast ? "none" : `1px solid #F3F4F6`,
+                  backgroundColor: i % 2 === 0 ? "#fff" : "#FAFAFA",
+                }}
+              >
+                {/* Skill name */}
+                <Typography fontSize={12} fontWeight={500} color={C.textPrimary}
+                  sx={{ pr: "8px", lineHeight: 1.3 }}>
+                  {s.skill}
+                </Typography>
+
+                {/* Candidate bar + score */}
+                <Box sx={{ display: "flex", alignItems: "center", gap: "6px", pr: "8px" }}>
+                  <Box sx={{ flex: 1, height: 5, backgroundColor: "#F3F4F6", borderRadius: 3 }}>
+                    <Box sx={{ height: "100%", width: `${Math.min(s.candidate, 100)}%`, backgroundColor: barColor, borderRadius: 3 }} />
+                  </Box>
+                  <Typography fontSize={11} fontWeight={700} color={barColor} sx={{ minWidth: 24, textAlign: "right" }}>
+                    {s.candidate}
+                  </Typography>
+                </Box>
+
+                {/* Desired bar + score */}
+                <Box sx={{ display: "flex", alignItems: "center", gap: "6px", pr: "8px" }}>
+                  <Box sx={{ flex: 1, height: 5, backgroundColor: "#F3F4F6", borderRadius: 3 }}>
+                    <Box sx={{ height: "100%", width: `${Math.min(s.desired, 100)}%`, backgroundColor: "#22C55E", borderRadius: 3 }} />
+                  </Box>
+                  <Typography fontSize={11} fontWeight={700} color="#22C55E" sx={{ minWidth: 24, textAlign: "right" }}>
+                    {s.desired}
+                  </Typography>
+                </Box>
+
+                {/* Match % pill */}
+                <Box
+                  sx={{
+                    display: "inline-flex", alignItems: "center", justifyContent: "center",
+                    px: "8px", py: "2px", borderRadius: "20px",
+                    backgroundColor: `${barColor}18`,
+                    border: `1px solid ${barColor}40`,
+                  }}
+                >
+                  <Typography fontSize={11} fontWeight={700} color={barColor}>
+                    {pct}%
+                  </Typography>
+                </Box>
+              </Box>
+            );
+          })}
+        </DialogContent>
+
+        {/* Footer summary */}
+        <Box
+          sx={{
+            px: "20px", py: "12px",
+            borderTop: `1px solid ${C.border}`,
+            backgroundColor: "#FAFAFA",
+            display: "flex", gap: "20px",
+          }}
+        >
+          {[
+            { label: "Strong", color: "#22C55E", count: scoreIntel.filter(s => s.desired > 0 && (s.candidate / s.desired) >= 0.9).length },
+            { label: "Good",   color: C.accent,  count: scoreIntel.filter(s => s.desired > 0 && (s.candidate / s.desired) >= 0.7 && (s.candidate / s.desired) < 0.9).length },
+            { label: "Gap",    color: "#EF4444", count: scoreIntel.filter(s => s.desired > 0 && (s.candidate / s.desired) < 0.7).length },
+          ].map(({ label, color, count }) => (
+            <Box key={label} sx={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <Typography fontSize={12} fontWeight={800} color={color}>{count}</Typography>
+              <Typography fontSize={12} color={C.textSecondary}>{label}</Typography>
+            </Box>
+          ))}
+        </Box>
+      </Dialog>
     </Box>
   );
 }
@@ -810,6 +918,7 @@ function TimelineTab({ candidate, onInterviewClick }) {
     { skip: !candidate.matched_candidate_id },
   );
 
+  console.log("useGetCandidateStageTimelineQuery",candidate)
   const entries = data?.data ?? [];
 
   const grouped = {};
@@ -1089,7 +1198,6 @@ export default function CandidateDetail() {
 
   const matched_candidate_id =
     location.state?.matched_candidate_id ?? candidateId;
-
   const { data, isLoading, isError, error } =
     useGetCandidateDetailQuery(matched_candidate_id);
 
@@ -1149,8 +1257,8 @@ export default function CandidateDetail() {
         </Typography>
       </Box>
 
-      <Typography fontSize={12} color="#9CA3AF" mb="16px">
-        ID: {enriched.clin_id}
+      <Typography fontSize={12} color="#9CA3AF" mb="16px" sx={{ml:3}}>
+        ID: CLIN{enriched.clin_id}
         {enriched.skillintel_score != null && ` · SkillIntel Score ${enriched.skill_info?.[0]?.skillintel_score}`}
       </Typography>
 
