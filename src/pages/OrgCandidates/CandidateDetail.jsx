@@ -912,10 +912,14 @@ function ProfileTab({ candidate }) {
 ═══════════════════════════════════════════════ */
 function TimelineTab({ candidate, onInterviewClick }) {
   const currentStage = candidate.current_stage ?? "";
-
+  const location = useLocation();
+  const { candidateId } = useParams();
+   const matched_candidate_id =
+    location.state?.matched_candidate_id ?? candidateId
+  console.log("matched_candidate_id",matched_candidate_id);
   const { data, isLoading } = useGetCandidateStageTimelineQuery(
-    candidate.matched_candidate_id,
-    { skip: !candidate.matched_candidate_id },
+     matched_candidate_id,
+    { skip: !matched_candidate_id },
   );
 
   console.log("useGetCandidateStageTimelineQuery",candidate)

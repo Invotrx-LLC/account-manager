@@ -1,47 +1,114 @@
 import { Card, CardContent, Typography, Box } from "@mui/material";
-import { Fragment } from "react";
+import { Fragment, useMemo } from "react";
 
 const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-const hours = ["2am", "4am", "6am", "8am", "10am", "12pm"];
+
+const timeSlots = [
+  "12 mp", "12 pm", "02 pm", "12 am",
+  "10 am", "8 am", "6 am", "4 am", "2 am",
+];
 
 export default function InterviewHeatmap() {
+  const grid = useMemo(
+    () =>
+      timeSlots.map((h) => ({
+        label: h,
+        cells: days.map(() => Math.random() > 0.55),
+      })),
+    []
+  );
+
   return (
-    <Card>
+    <Card sx={{ borderRadius: 3, boxShadow: "0 1px 6px rgba(0,0,0,0.08)" }}>
       <CardContent>
-        <Typography fontWeight={600} mb={2}>
-          Interviews this week
-        </Typography>
-
+        {/* Header */}
         <Box
-          display="grid"
-          gridTemplateColumns="60px repeat(7, 1fr)"
-          gap={1}
+          display="flex"
+          alignItems="center"
+          justifyContent="space-between"
+          mb={2}
         >
-          <Box />
+          <Typography fontSize={14} fontWeight={600}>
+            🗓 Interviews this week
+          </Typography>
+          <Box
+            sx={{
+              border: "1px solid #e5e7eb",
+              borderRadius: 2,
+              px: 1.5,
+              py: 0.4,
+              fontSize: 12,
+              color: "#374151",
+              cursor: "pointer",
+            }}
+          >
+            📅 Weekly ▾
+          </Box>
+        </Box>
 
+        {/* ✅ Use native style prop — bypasses MUI sx grid issues */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "52px repeat(7, 1fr)",
+            rowGap: "6px",
+            columnGap: "4px",
+          }}
+        >
+          {/* Day headers */}
+          <div /> {/* empty top-left corner */}
           {days.map((d) => (
-            <Typography key={d} fontSize={12} textAlign="center">
+            <div
+              key={d}
+              style={{
+                fontSize: 11,
+                textAlign: "center",
+                color: "#6b7280",
+                fontWeight: 500,
+              }}
+            >
               {d}
-            </Typography>
+            </div>
           ))}
 
-          {hours.map((h) => (
-            <Fragment key={h}>
-              <Typography fontSize={12}>{h}</Typography>
-
-              {days.map((_, i) => (
-                <Box
-                  key={`${h}-${i}`}
-                  height={18}
-                  borderRadius={1}
-                  sx={{
-                    bgcolor: Math.random() > 0.6 ? "#FB923C" : "#FED7AA",
+          {/* Time rows */}
+          {grid.map(({ label, cells }) => (
+            <Fragment key={label}>
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#6b7280",
+                  lineHeight: "20px",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {label}
+              </div>
+              {cells.map((occupied, i) => (
+                <div
+                  key={i}
+                  style={{
+                    height: 20,
+                    borderRadius: 4,
+                    backgroundColor: occupied ? "#FB923C" : "#FEE9D7",
+                    cursor: "pointer",
+                    transition: "background 0.15s",
                   }}
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.backgroundColor = occupied
+                      ? "#EA7315"
+                      : "#FDDCBC")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.backgroundColor = occupied
+                      ? "#FB923C"
+                      : "#FEE9D7")
+                  }
                 />
               ))}
             </Fragment>
           ))}
-        </Box>
+        </div>
       </CardContent>
     </Card>
   );
