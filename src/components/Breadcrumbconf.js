@@ -45,15 +45,15 @@ export const ROUTE_TRAILS = [
   },
 
 
-  // ── Account Management ───────────────────────────────────────
+  // ── User Management ───────────────────────────────────────
 {
-  match: "/account-manager/account-management",
+  match: "/account-manager/user-management",
   exact: true,
   trail: [
     {
-      label: "Account Management",
+      label: "User Management",
       icon: ManageAccountsOutlined,
-      path: "/account-manager/account-management",
+      path: "/account-manager/user-management",
       isLast: true,
     },
   ],

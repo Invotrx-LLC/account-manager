@@ -56,8 +56,8 @@ const App = () => {
             {/* Organizations */}
             <Route path="organization"       element={<AmOrganizations />} />
  
-            {/* Account Management */}
-            <Route path="account-management" element={<AccountManagement />} />
+            {/* User Management */}
+            <Route path="user-management" element={<AccountManagement />} />
  
             {/* Candidates list */}
             <Route path="candidates"         element={<CandidatesPage />} />

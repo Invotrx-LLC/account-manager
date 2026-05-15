@@ -7,43 +7,63 @@ import {
   Grid, Card, CardContent, Chip, Divider, Button, Avatar,
   FormControl, InputLabel, Select, MenuItem,
 } from "@mui/material";
-import WorkOutlineRoundedIcon from "@mui/icons-material/WorkOutlineRounded";
-import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
-import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
-import AccessTimeIcon from "@mui/icons-material/AccessTime";
+
+// ── Safe core MUI icons (available in all MUI v5 installs) ──
+import ArrowBack      from "@mui/icons-material/ArrowBack";
+import Business       from "@mui/icons-material/Business";
+import AccountTree    from "@mui/icons-material/AccountTree";
+import TrendingUp     from "@mui/icons-material/TrendingUp";
+import Group          from "@mui/icons-material/Group";
+import CalendarToday  from "@mui/icons-material/CalendarToday";
+import Person         from "@mui/icons-material/Person";
+import Security       from "@mui/icons-material/Security";
+import CheckCircle    from "@mui/icons-material/CheckCircle";
+import HourglassEmpty from "@mui/icons-material/HourglassEmpty";
+import Cancel         from "@mui/icons-material/Cancel";
+import AccessTime     from "@mui/icons-material/AccessTime";
+import Event          from "@mui/icons-material/Event";
+
 import { useDispatch } from "react-redux";
 import { setDynamicLabels } from "../../redux/slices/breadcrumbSlice";
-// import { useNavigate } from "react-router-dom";
 import {
   useGetOrganisationJobsQuery,
   useGetJobMatchedCandidatesQuery,
   useGetOrganisationInterviewsQuery,
 } from "../../redux/services/requisition/requisition";
-import { ArrowBack } from "@mui/icons-material";
 
+// ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
-  accent: "#FF5F1F",
-  accentSoft: "#FFF0E8",
-  green: "#0F6E56",
-  greenSoft: "#E7F8EE",
-  indigo: "#4338CA",
-  indigoSoft: "#EEF2FF",
-  amber: "#92400E",
-  amberSoft: "#FEF3C7",
-  red: "#B91C1C",
-  redSoft: "#FEE2E2",
-  border: "#E8E8EC",
-  textPrimary: "#111118",
-  textSecondary: "#5C5C70",
+  accent:       "#FF5F1F",
+  accentSoft:   "#FFF0E8",
+  green:        "#0F6E56",
+  greenSoft:    "#E7F8EE",
+  greenBorder:  "#5DCAA5",
+  indigo:       "#4338CA",
+  indigoSoft:   "#EEF2FF",
+  amber:        "#92400E",
+  amberSoft:    "#FEF3C7",
+  amberBorder:  "#F0C070",
+  red:          "#B91C1C",
+  redSoft:      "#FEE2E2",
+  redBorder:    "#F09595",
+  purpleBg:     "#EEEDFE",
+  purpleText:   "#3C3489",
+  purpleBorder: "#AFA9EC",
+  surface:      "#FFFFFF",
+  surfaceMuted: "#F9FAFB",
+  border:       "#E8E8EC",
+  borderStrong: "#D1D5DB",
+  textPrimary:  "#111118",
+  textSecondary:"#5C5C70",
   textTertiary: "#9696A6",
 };
 
 const STATUS_CHIP = {
-  open: { bg: C.greenSoft, color: C.green },
-  active: { bg: C.greenSoft, color: C.green },
-  closed: { bg: "#F3F4F6", color: "#6B7280" },
-  filled: { bg: C.indigoSoft, color: C.indigo },
-  on_hold: { bg: C.amberSoft, color: C.amber },
+  open:    { bg: C.greenSoft,  color: C.green   },
+  active:  { bg: C.greenSoft,  color: C.green   },
+  closed:  { bg: "#F3F4F6",    color: "#6B7280"  },
+  filled:  { bg: C.indigoSoft, color: C.indigo   },
+  on_hold: { bg: C.amberSoft,  color: C.amber    },
 };
 const statusChip = (s = "") =>
   STATUS_CHIP[s.toLowerCase().replace(/\s+/g, "_")] ?? { bg: "#F3F4F6", color: "#6B7280" };
@@ -59,6 +79,80 @@ const TAB_SX = {
   "& .MuiTabs-indicator": { backgroundColor: C.accent },
 };
 
+// ─── Shared sub-components ────────────────────────────────────────────────────
+function SectionLabel({ children }) {
+  return (
+    <Typography sx={{
+      fontSize: 11, fontWeight: 700, letterSpacing: "0.08em",
+      textTransform: "uppercase", color: C.textTertiary, mb: "12px",
+    }}>
+      {children}
+    </Typography>
+  );
+}
+
+function DetailCard({ children }) {
+  return (
+    <Box sx={{ background: C.surface, border: `0.5px solid ${C.border}`, borderRadius: "12px", overflow: "hidden" }}>
+      {children}
+    </Box>
+  );
+}
+
+function DetailRow({ icon: Icon, label, value }) {
+  return (
+    <Box sx={{
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      px: "16px", py: "11px",
+      borderBottom: `0.5px solid ${C.border}`,
+      "&:last-child": { borderBottom: "none" },
+      gap: "12px",
+    }}>
+      <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        {Icon && <Icon sx={{ fontSize: 15, color: C.textTertiary }} />}
+        <Typography fontSize={13} color={C.textSecondary}>{label}</Typography>
+      </Box>
+      <Typography fontSize={13} fontWeight={500} color={C.textPrimary}
+        sx={{ textAlign: "right", textTransform: "capitalize" }}>
+        {value}
+      </Typography>
+    </Box>
+  );
+}
+
+function StatusBadge({ status }) {
+  const map = {
+    approved: { bg: C.greenSoft, color: C.green, border: C.greenBorder, Icon: CheckCircle,    label: "Approved" },
+    pending:  { bg: C.amberSoft, color: C.amber, border: C.amberBorder, Icon: HourglassEmpty, label: "Pending"  },
+    rejected: { bg: C.redSoft,   color: C.red,   border: C.redBorder,   Icon: Cancel,          label: "Rejected" },
+  };
+  const cfg = map[status?.toLowerCase()] ?? map.pending;
+  return (
+    <Box sx={{
+      display: "inline-flex", alignItems: "center", gap: "4px",
+      fontSize: 12, fontWeight: 500, px: "8px", py: "3px", borderRadius: "999px",
+      background: cfg.bg, color: cfg.color, border: `0.5px solid ${cfg.border}`,
+    }}>
+      <cfg.Icon sx={{ fontSize: 13 }} />
+      {cfg.label}
+    </Box>
+  );
+}
+
+function MetaPill({ icon: Icon, children }) {
+  return (
+    <Box sx={{
+      display: "inline-flex", alignItems: "center", gap: "5px",
+      fontSize: 12, px: "10px", py: "5px", borderRadius: "8px",
+      background: C.surfaceMuted, border: `0.5px solid ${C.border}`, color: C.textSecondary,
+    }}>
+      {Icon && <Icon sx={{ fontSize: 14 }} />}
+      {children}
+    </Box>
+  );
+}
+
+// ─── Main Page ────────────────────────────────────────────────────────────────
 export default function RequisitionDetail() {
   const { orgId, jobId } = useParams();
   const navigate = useNavigate();
@@ -78,7 +172,11 @@ export default function RequisitionDetail() {
   }, [orgName, job?.job_title]);
 
   if (isLoading || !job) {
-    return <Box display="flex" justifyContent="center" py={10}><CircularProgress sx={{ color: C.accent }} /></Box>;
+    return (
+      <Box display="flex" justifyContent="center" py={10}>
+        <CircularProgress sx={{ color: C.accent }} />
+      </Box>
+    );
   }
 
   const chip = statusChip(job.status);
@@ -86,43 +184,24 @@ export default function RequisitionDetail() {
   return (
     <Box sx={{ p: 1 }}>
       {/* Header */}
- <Box
-  sx={{
-    display: "flex",
-    alignItems: "center",
-    // justifyContent: "space-between",
-    mb: "2px",
-    flexWrap: "wrap",
-    gap: 1,
-  }}
->
-  <ArrowBack
-    onClick={() => navigate(-1)}
-    sx={{ cursor: "pointer",color:"GrayText",fontWeight:"12px" }}
-  />
+      <Box sx={{ display: "flex", alignItems: "center", mb: "2px", flexWrap: "wrap", gap: 1 }}>
+        <ArrowBack
+          onClick={() => navigate(-1)}
+          sx={{ cursor: "pointer", color: "GrayText", fontSize: "20px" }}
+        />
+        <Typography fontSize={22} fontWeight={700} color={C.textPrimary}>
+          {job.job_title}
+        </Typography>
+        <Box component="span" sx={{
+          fontSize: 11, fontWeight: 700, px: "10px", py: "4px", borderRadius: "10px",
+          backgroundColor: chip.bg, color: chip.color,
+          textTransform: "uppercase", letterSpacing: "0.05em",
+        }}>
+          {job.status}
+        </Box>
+      </Box>
 
-  <Typography fontSize={22} fontWeight={700} color={C.textPrimary}>
-    {job.job_title}
-  </Typography>
-
-  <Box
-    component="span"
-    sx={{
-      fontSize: 11,
-      fontWeight: 700,
-      px: "10px",
-      py: "4px",
-      borderRadius: "10px",
-      backgroundColor: chip.bg,
-      color: chip.color,
-      textTransform: "uppercase",
-      letterSpacing: "0.05em",
-    }}
-  >
-    {job.status}
-  </Box>
-</Box>
-      <Typography fontSize={13} color={C.textSecondary} mb="16px" sx={{ml:4}}>
+      <Typography fontSize={13} color={C.textSecondary} mb="16px" sx={{ ml: 4 }}>
         {job.job_position_id} · {job.job_type}
       </Typography>
 
@@ -134,8 +213,16 @@ export default function RequisitionDetail() {
       </Tabs>
 
       {tab === 0 && <ReqOverviewTab job={job} />}
-      {tab === 1 && <ReqCandidatesTab jobId={jobId} orgId={orgId} navigate={navigate} orgName={orgName} jobTitle={job.job_title} />}
-      {tab === 2 && <ReqInterviewsTab orgId={orgId} jobId={jobId}  jobPositionId={job.job_position_id} />}
+      {tab === 1 && (
+        <ReqCandidatesTab
+          jobId={jobId} orgId={orgId}
+          navigate={navigate} orgName={orgName}
+          jobTitle={job.job_title}
+        />
+      )}
+      {tab === 2 && (
+        <ReqInterviewsTab orgId={orgId} jobId={jobId} jobPositionId={job.job_position_id} />
+      )}
       {tab === 3 && (
         <Box sx={{ textAlign: "center", py: 10, border: `1px solid ${C.border}`, borderRadius: "12px", backgroundColor: "#fff" }}>
           <Typography fontSize={15} fontWeight={600} color={C.textPrimary}>Activity</Typography>
@@ -146,70 +233,133 @@ export default function RequisitionDetail() {
   );
 }
 
-/* ─── Tab 0: Overview ── */
-function ReqOverviewTab({ job }) {
-  const skills = job.skills ? job.skills.split(",").map((s) => s.trim()) : [];
+// ─── Tab 0: Overview ──────────────────────────────────────────────────────────
+function ReqOverviewTab({ job = {} }) {
+  const skills = job.skills
+    ? job.skills.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  const primarySkillCount = Math.ceil(skills.length / 2);
+  const primarySkills   = skills.slice(0, primarySkillCount);
+  const secondarySkills = skills.slice(primarySkillCount);
+
   const closingDate = job.closing_date
     ? new Date(job.closing_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
     : null;
 
-  const rows = [
-    { label: "Function", value: job.function },
-    { label: "Sub-function", value: job.sub_function },
-    { label: "Experience", value: `${job.min_years}–${job.max_years} yrs` },
-    { label: "Positions", value: job.no_of_positions },
-    { label: "Closing date", value: closingDate },
-    { label: "Created by", value: job.created_by },
-    { label: "Approver", value: job.job_approver },
-  ].filter((r) => r.value);
+  const detailRows = [
+    { icon: Business,      label: "Function",     value: job.function     },
+    { icon: AccountTree,   label: "Sub-function", value: job.sub_function },
+    { icon: TrendingUp,    label: "Experience",   value: job.min_years != null && job.max_years != null ? `${job.min_years}–${job.max_years} yrs` : null },
+    { icon: Group,         label: "Positions",    value: job.no_of_positions },
+    { icon: Person,        label: "Created by",   value: job.created_by   },
+    { icon: Security,      label: "Approver",     value: job.job_approver },
+  ].filter((r) => r.value !== undefined && r.value !== null && r.value !== "");
+
+  const approvals = job.approvals ?? [];
 
   return (
-    <Grid container spacing={3}>
-      <Grid size={{ xs: 12, md: 6 }}>
-        <SectionLabel>Job Details</SectionLabel>
-        {rows.map(({ label, value }) => (
-          <Box key={label} sx={{ display: "flex", justifyContent: "space-between", py: "10px", borderBottom: "1px solid #F3F4F6" }}>
-            <Typography fontSize={13} color={C.textSecondary}>{label}</Typography>
-            <Typography fontSize={13} fontWeight={500} color={C.textPrimary} sx={{ textTransform: "capitalize" }}>{value}</Typography>
-          </Box>
-        ))}
+    <Box sx={{ py: "20px", display: "flex", flexDirection: "column", gap: "20px" }}>
+
+      {/* Meta pills */}
+      <Box sx={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+        {job.location && <MetaPill>{job.location}</MetaPill>}
+        {closingDate  && <MetaPill icon={CalendarToday}>Closes {closingDate}</MetaPill>}
+        {job.job_type && <MetaPill>{job.job_type}</MetaPill>}
+      </Box>
+
+      <Grid container spacing="12px">
+        {/* Left: Job Details */}
+        <Grid size={{ xs: 12, md: 6 }}>
+          <SectionLabel>Job details</SectionLabel>
+          <DetailCard>
+            {detailRows.map(({ icon, label, value }) => (
+              <DetailRow key={label} icon={icon} label={label} value={value} />
+            ))}
+          </DetailCard>
+        </Grid>
+
+        {/* Right: Skills + Approvals */}
+        <Grid size={{ xs: 12, md: 6 }} sx={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+
+          {skills.length > 0 && (
+            <Box>
+              <SectionLabel>Required skills</SectionLabel>
+              <Box sx={{ background: C.surface, border: `0.5px solid ${C.border}`, borderRadius: "12px", p: "16px" }}>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
+                  {primarySkills.map((skill) => (
+                    <Chip key={skill} label={skill} size="small"
+                      sx={{
+                        fontSize: 12, height: 26, borderRadius: "999px",
+                        background: C.purpleBg, color: C.purpleText,
+                        border: `0.5px solid ${C.purpleBorder}`,
+                        textTransform: "capitalize",
+                        "& .MuiChip-label": { px: "10px" },
+                      }}
+                    />
+                  ))}
+                  {secondarySkills.map((skill) => (
+                    <Chip key={skill} label={skill} size="small" variant="outlined"
+                      sx={{
+                        fontSize: 12, height: 26, borderRadius: "999px",
+                        color: C.textSecondary, borderColor: C.borderStrong,
+                        background: C.surfaceMuted, textTransform: "capitalize",
+                        "& .MuiChip-label": { px: "10px" },
+                      }}
+                    />
+                  ))}
+                </Box>
+              </Box>
+            </Box>
+          )}
+
+          {approvals.length > 0 && (
+            <Box>
+              <SectionLabel>Approvals</SectionLabel>
+              <DetailCard>
+                {approvals.map(({ stage, status }) => (
+                  <Box key={stage} sx={{
+                    display: "flex", alignItems: "center", justifyContent: "space-between",
+                    px: "16px", py: "11px",
+                    borderBottom: `0.5px solid ${C.border}`,
+                    "&:last-child": { borderBottom: "none" },
+                  }}>
+                    <Typography fontSize={13} color={C.textSecondary}>{stage}</Typography>
+                    <StatusBadge status={status} />
+                  </Box>
+                ))}
+              </DetailCard>
+            </Box>
+          )}
+
+        </Grid>
       </Grid>
-      <Grid size={{ xs: 12, md: 6 }}>
-        <SectionLabel>Required Skills</SectionLabel>
-        <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.8 }}>
-          {skills.map((skill) => (
-            <Chip key={skill} label={skill} size="small" variant="outlined"
-              sx={{ fontSize: 11, textTransform: "capitalize", borderColor: C.border, color: C.textSecondary }} />
-          ))}
-        </Box>
-      </Grid>
-    </Grid>
+    </Box>
   );
 }
 
-/* ─── Tab 1: Candidates ── */
+// ─── Tab 1: Candidates ────────────────────────────────────────────────────────
 function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
   const [stageFilter, setStageFilter] = useState("all");
   const { data, isLoading, isError, error } = useGetJobMatchedCandidatesQuery(jobId);
   const all = data?.data ?? [];
-
   const stages = React.useMemo(() => [...new Set(all.map((c) => c.current_stage))], [all]);
-
-  const filtered = stageFilter === "all"
-    ? all
-    : all.filter((c) => c.current_stage === stageFilter);
+  const filtered = stageFilter === "all" ? all : all.filter((c) => c.current_stage === stageFilter);
 
   if (isLoading) return <Box display="flex" justifyContent="center" py={6}><CircularProgress sx={{ color: C.accent }} /></Box>;
-  if (isError) return <Alert severity="error">Failed to load candidates: {error?.data?.message}</Alert>;
+  if (isError)   return <Alert severity="error">Failed to load candidates: {error?.data?.message}</Alert>;
 
   return (
     <Box>
-      {/* Filter */}
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: "20px", flexWrap: "wrap" }}>
-        <Typography fontSize={13} color={C.textSecondary}>{filtered.length} candidate{filtered.length !== 1 ? "s" : ""}</Typography>
+        <Typography fontSize={13} color={C.textSecondary}>
+          {filtered.length} candidate{filtered.length !== 1 ? "s" : ""}
+        </Typography>
         <FormControl size="small" sx={{ minWidth: 160 }}>
           <InputLabel sx={{ fontSize: 12 }}>Filter by stage</InputLabel>
-          <Select value={stageFilter} label="Filter by stage" onChange={(e) => setStageFilter(e.target.value)} sx={{ fontSize: 12, borderRadius: "8px" }}>
+          <Select value={stageFilter} label="Filter by stage"
+            onChange={(e) => setStageFilter(e.target.value)}
+            sx={{ fontSize: 12, borderRadius: "8px" }}>
             <MenuItem value="all">All Stages</MenuItem>
             {stages.map((s) => (
               <MenuItem key={s} value={s} sx={{ textTransform: "capitalize" }}>{s}</MenuItem>
@@ -228,10 +378,9 @@ function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
             <Grid size={{ xs: 12, sm: 6, md: 4, xl: 3 }} key={candidate.matched_candidate_id}>
               <CandidateCard
                 candidate={candidate}
-                // In RequisitionDetail → ReqCandidatesTab → CandidateCard onView:
                 onView={() => navigate(
                   `/account-manager/candidate/${candidate.matched_candidate_id}`,
-                  { state: { orgName, jobTitle } }   // ✅ both must be passed
+                  { state: { orgName, jobTitle } }
                 )}
               />
             </Grid>
@@ -242,19 +391,18 @@ function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
   );
 }
 
-/* ─── Tab 2: Interviews (filtered by job_position_id) ── */
-function ReqInterviewsTab({ orgId, jobPositionId,jobId }) {
+// ─── Tab 2: Interviews ────────────────────────────────────────────────────────
+function ReqInterviewsTab({ orgId, jobPositionId, jobId }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const { data, isLoading, isError } = useGetOrganisationInterviewsQuery(jobId);
-
   const all = (data?.data ?? []).filter((iv) => iv.job_position_id === jobPositionId);
 
   const interviewStatuses = [
-    { key: "scheduled", value: "Scheduled" },
-    { key: "completed", value: "Completed" },
-    { key: "cancelled", value: "Cancelled" },
-    { key: "rescheduled", value: "Rescheduled" },
-    { key: "no_show", value: "No Show" },
+    { key: "scheduled",     value: "Scheduled"     },
+    { key: "completed",     value: "Completed"     },
+    { key: "cancelled",     value: "Cancelled"     },
+    { key: "rescheduled",   value: "Rescheduled"   },
+    { key: "no_show",       value: "No Show"       },
     { key: "not_conducted", value: "Not Conducted" },
   ];
 
@@ -263,15 +411,19 @@ function ReqInterviewsTab({ orgId, jobPositionId,jobId }) {
     : all.filter((iv) => (iv.status ?? "scheduled") === statusFilter);
 
   if (isLoading) return <Box display="flex" justifyContent="center" py={6}><CircularProgress sx={{ color: C.accent }} /></Box>;
-  if (isError) return <Alert severity="error">Failed to load interviews.</Alert>;
+  if (isError)   return <Alert severity="error">Failed to load interviews.</Alert>;
 
   return (
     <Box>
       <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: "20px", flexWrap: "wrap" }}>
-        <Typography fontSize={13} color={C.textSecondary}>{filtered.length} interview{filtered.length !== 1 ? "s" : ""}</Typography>
+        <Typography fontSize={13} color={C.textSecondary}>
+          {filtered.length} interview{filtered.length !== 1 ? "s" : ""}
+        </Typography>
         <FormControl size="small" sx={{ minWidth: 180 }}>
           <InputLabel sx={{ fontSize: 12 }}>Filter by status</InputLabel>
-          <Select value={statusFilter} label="Filter by status" onChange={(e) => setStatusFilter(e.target.value)} sx={{ fontSize: 12, borderRadius: "8px" }}>
+          <Select value={statusFilter} label="Filter by status"
+            onChange={(e) => setStatusFilter(e.target.value)}
+            sx={{ fontSize: 12, borderRadius: "8px" }}>
             <MenuItem value="all">All Statuses</MenuItem>
             {interviewStatuses.map(({ key, value }) => (
               <MenuItem key={key} value={key}>{value}</MenuItem>
@@ -298,9 +450,10 @@ function ReqInterviewsTab({ orgId, jobPositionId,jobId }) {
 }
 
 function ReqInterviewCard({ interview }) {
-  const typeColor = interview.interview_type?.toLowerCase() === "technical"
-    ? { bg: C.indigoSoft, color: C.indigo }
-    : { bg: C.amberSoft, color: C.amber };
+  const typeColor =
+    interview.interview_type?.toLowerCase() === "technical"
+      ? { bg: C.indigoSoft, color: C.indigo }
+      : { bg: C.amberSoft,  color: C.amber  };
 
   const formattedDate = interview.interview_date
     ? new Date(interview.interview_date).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" })
@@ -311,24 +464,32 @@ function ReqInterviewCard({ interview }) {
       <CardContent sx={{ p: "16px", flexGrow: 1, display: "flex", flexDirection: "column" }}>
         <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: "10px" }}>
           <Box sx={{ width: 36, height: 36, borderRadius: "8px", backgroundColor: C.accentSoft, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <CalendarMonthOutlinedIcon sx={{ color: C.accent, fontSize: 18 }} />
+            <Event sx={{ color: C.accent, fontSize: 18 }} />
           </Box>
-          <Box component="span" sx={{ fontSize: 10, fontWeight: 700, px: "8px", py: "3px", borderRadius: "10px", backgroundColor: typeColor.bg, color: typeColor.color, textTransform: "capitalize", letterSpacing: "0.05em" }}>
+          <Box component="span" sx={{
+            fontSize: 10, fontWeight: 700, px: "8px", py: "3px", borderRadius: "10px",
+            backgroundColor: typeColor.bg, color: typeColor.color,
+            textTransform: "capitalize", letterSpacing: "0.05em",
+          }}>
             {interview.interview_type}
           </Box>
         </Box>
 
-        <Typography sx={{ fontSize: 13, fontWeight: 700, color: C.textPrimary, mb: "2px" }}>{interview.interview_step_name}</Typography>
-        <Typography sx={{ fontSize: 11, color: C.textSecondary, mb: "10px" }}>Step {interview.interview_step_number}</Typography>
+        <Typography sx={{ fontSize: 13, fontWeight: 700, color: C.textPrimary, mb: "2px" }}>
+          {interview.interview_step_name}
+        </Typography>
+        <Typography sx={{ fontSize: 11, color: C.textSecondary, mb: "10px" }}>
+          Step {interview.interview_step_number}
+        </Typography>
 
         <Divider sx={{ mb: "10px" }} />
 
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, mb: "6px" }}>
-          <CalendarMonthOutlinedIcon sx={{ fontSize: 13, color: C.textSecondary }} />
+          <CalendarToday sx={{ fontSize: 13, color: C.textSecondary }} />
           <Typography sx={{ fontSize: 11, color: C.textPrimary, fontWeight: 500 }}>{formattedDate}</Typography>
         </Box>
         <Box sx={{ display: "flex", alignItems: "center", gap: 0.8, mb: "6px" }}>
-          <AccessTimeIcon sx={{ fontSize: 13, color: C.textSecondary }} />
+          <AccessTime sx={{ fontSize: 13, color: C.textSecondary }} />
           <Typography sx={{ fontSize: 11, color: C.textPrimary, fontWeight: 500 }}>
             {interview.start_time} – {interview.end_time} · {interview.duration} min
           </Typography>
@@ -345,14 +506,14 @@ function ReqInterviewCard({ interview }) {
   );
 }
 
-/* ─── CandidateCard ── */
+// ─── CandidateCard ────────────────────────────────────────────────────────────
 function CandidateCard({ candidate, onView }) {
-  console.log("candidate,,,",candidate)
   const [hovered, setHovered] = React.useState(false);
   const matchColor =
     candidate.match_score >= 80 ? { bg: "#E7F8EE", color: "#0F6E56" } :
-      candidate.match_score >= 60 ? { bg: "#FFF8E1", color: "#B45309" } :
-        { bg: "#FEE2E2", color: "#B91C1C" };
+    candidate.match_score >= 60 ? { bg: "#FFF8E1", color: "#B45309" } :
+                                  { bg: "#FEE2E2", color: "#B91C1C" };
+
   return (
     <Card
       onMouseEnter={() => setHovered(true)}
@@ -377,14 +538,23 @@ function CandidateCard({ candidate, onView }) {
             <Typography sx={{ fontSize: 11, color: C.textSecondary }}>{candidate.clin_id}</Typography>
           </Box>
           <Chip label={`${candidate.match_score}%`} size="small"
-            sx={{ fontSize: 11, fontWeight: 700, height: 24, backgroundColor: matchColor.bg, color: matchColor.color, flexShrink: 0, "& .MuiChip-label": { px: "8px" } }} />
+            sx={{
+              fontSize: 11, fontWeight: 700, height: 24,
+              backgroundColor: matchColor.bg, color: matchColor.color,
+              flexShrink: 0, "& .MuiChip-label": { px: "8px" },
+            }}
+          />
         </Box>
+
         <Divider sx={{ mb: "12px" }} />
+
         <Grid container spacing={1} sx={{ mb: "12px" }}>
           <Grid size={{ xs: 6 }}>
             <Box sx={{ backgroundColor: "#F9FAFB", borderRadius: "8px", p: "8px" }}>
               <Typography sx={{ fontSize: 10, color: C.textSecondary, mb: "2px" }}>Stage</Typography>
-              <Typography sx={{ fontSize: 12, fontWeight: 700, color: C.textPrimary, textTransform: "capitalize" }}>{candidate.current_stage}</Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 700, color: C.textPrimary, textTransform: "capitalize" }}>
+                {candidate.current_stage}
+              </Typography>
             </Box>
           </Grid>
           <Grid size={{ xs: 6 }}>
@@ -396,32 +566,31 @@ function CandidateCard({ candidate, onView }) {
             </Box>
           </Grid>
         </Grid>
+
         {[
           { label: "Experience", value: candidate.total_experience },
-          { label: "Email", value: candidate.email },
-          { label: "Phone", value: candidate.phone_number },
+          { label: "Email",      value: candidate.email            },
+          { label: "Phone",      value: candidate.phone_number     },
         ].map(({ label, value }) => (
           <Box key={label} sx={{ display: "flex", justifyContent: "space-between", mb: "6px" }}>
             <Typography sx={{ fontSize: 11, color: C.textSecondary }}>{label}</Typography>
-            <Typography sx={{ fontSize: 11, fontWeight: 500, color: C.textPrimary, maxWidth: "60%", textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{value}</Typography>
+            <Typography sx={{ fontSize: 11, fontWeight: 500, color: C.textPrimary, maxWidth: "60%", textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {value}
+            </Typography>
           </Box>
         ))}
+
         <Box sx={{ mt: "auto" }}>
           <Button variant="outlined" fullWidth size="small" onClick={onView}
-            sx={{ borderColor: C.accent, color: C.accent, textTransform: "none", fontWeight: 600, borderRadius: "8px", fontSize: 12, "&:hover": { backgroundColor: C.accentSoft, borderColor: C.accent } }}>
+            sx={{
+              borderColor: C.accent, color: C.accent, textTransform: "none",
+              fontWeight: 600, borderRadius: "8px", fontSize: 12,
+              "&:hover": { backgroundColor: C.accentSoft, borderColor: C.accent },
+            }}>
             View Profile &amp; Timeline
           </Button>
         </Box>
       </CardContent>
     </Card>
-  );
-}
-
-function SectionLabel({ children }) {
-  return (
-    <Typography fontSize={11} fontWeight={700} color={C.textSecondary}
-      letterSpacing="0.08em" mb="12px" sx={{ textTransform: "uppercase" }}>
-      {children}
-    </Typography>
   );
 }
