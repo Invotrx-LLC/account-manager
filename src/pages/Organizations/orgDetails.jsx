@@ -20,6 +20,8 @@ import {
   Select,
   FormControl,
   InputLabel,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
 import WorkOutlineRoundedIcon from "@mui/icons-material/WorkOutlineRounded";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
@@ -32,7 +34,12 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
-import { PeopleOutlineOutlined } from "@mui/icons-material";
+import {
+  AccessTimeOutlined,
+  Business,
+  LocationOnOutlined,
+  PeopleOutlineOutlined,
+} from "@mui/icons-material";
 import {
   LineChart,
   Line,
@@ -61,9 +68,13 @@ import {
   useGetOrganisationJobAnalyticsQuery,
   useGetOrganisationCandidatesQuery,
 } from "../../redux/services/requisition/requisition";
+import { useGetEmployeeDetailsQuery } from "../../redux/services/orgEmployees/orgEmployees";
 
 import ReusableMRT from "../../components/table/index";
 import ViewToggle from "../../components/table/ViewToggle";
+import SearchIcon from "@mui/icons-material/Search";
+import SearchFilter from "../../components/searchFilter";
+import LayersIcon from "@mui/icons-material/Layers";
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -98,7 +109,7 @@ const statusChip = (s = "") =>
 
 const TAB_SX = {
   borderBottom: "1px solid #E5E7EB",
-  mb: "24px",
+  mb: "5px",
   "& .MuiTab-root": {
     textTransform: "none",
     fontSize: 13,
@@ -135,6 +146,273 @@ function StatusPill({ status }) {
     </Box>
   );
 }
+function OrgHeroHeader({ org, analytics }) {
+  const initials = org.organisation_name
+    ? org.organisation_name
+        .split(" ")
+        .map((w) => w[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
+    : "?";
+
+  const statPills = [
+    {
+      label: "Total Jobs",
+      value: analytics?.job_overview?.total_jobs ?? org.total_jobs ?? "—",
+      accent: C.accent,
+      soft: C.accentSoft,
+      border: C.accentBorder,
+    },
+    {
+      label: "Candidates",
+      value: analytics?.total_candidates ?? "—",
+      accent: C.indigo,
+      soft: C.indigoSoft,
+      border: C.indigoBorder,
+    },
+    {
+      label: "Hires",
+      value:
+        analytics?.candidate_stage_breakdown?.onboarded ??
+        org.total_hires ??
+        "—",
+      accent: C.green,
+      soft: C.greenSoft,
+      border: C.greenBorder,
+    },
+  ];
+  const metaItems = [
+    org.industry && {
+      label: org.industry,
+      icon: <Business sx={{ fontSize: 16 }} />,
+    },
+    org.country && {
+      label: org.country,
+      icon: <LocationOnOutlined sx={{ fontSize: 16 }} />,
+    },
+    org.time_zone && {
+      label: org.time_zone,
+      icon: <AccessTimeOutlined sx={{ fontSize: 16 }} />,
+    },
+  ].filter(Boolean);
+  return (
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "flex-start",
+        justifyContent: "space-between",
+        gap: "16px",
+        flexWrap: "wrap",
+        mb: "0px",
+        pb: "20px",
+        borderBottom: `1px solid ${C.border}`,
+      }}
+    >
+      {/* ── Left: avatar + name + meta ── */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: "16px" }}>
+        {/* Avatar tile */}
+        <Box
+          sx={{
+            width: 56,
+            height: 56,
+            borderRadius: "14px",
+            backgroundColor: C.accentSoft,
+            border: `1.5px solid ${C.accentBorder}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+          }}
+        >
+          <Typography
+            sx={{
+              fontSize: 22,
+              fontWeight: 800,
+              color: C.accent,
+              lineHeight: 1,
+            }}
+          >
+            {initials}
+          </Typography>
+        </Box>
+
+        <Box>
+          {/* Name row + active badge */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              flexWrap: "wrap",
+              mb: "6px",
+            }}
+          >
+            <Typography
+              fontSize={22}
+              fontWeight={700}
+              color={C.textPrimary}
+              lineHeight={1}
+            >
+              {org.organisation_name}
+            </Typography>
+            <Box
+              component="span"
+              sx={{
+                fontSize: 10,
+                fontWeight: 700,
+                px: "10px",
+                py: "3px",
+                borderRadius: "20px",
+                backgroundColor: C.greenSoft,
+                color: C.green,
+                border: `1px solid ${C.greenBorder}`,
+                letterSpacing: "0.05em",
+                textTransform: "uppercase",
+              }}
+            >
+              Active
+            </Box>
+          </Box>
+
+          {/* Meta row */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              flexWrap: "wrap",
+            }}
+          >
+            {/* Org ID — monospace pill */}
+            <Box
+              sx={{
+                fontSize: 11,
+                fontFamily: "monospace",
+                px: "8px",
+                py: "3px",
+                borderRadius: "6px",
+                backgroundColor: "#F3F4F6",
+                color: C.textSecondary,
+                border: `1px solid ${C.border}`,
+                letterSpacing: "0.03em",
+              }}
+            >
+              {org.clin_org_id}
+            </Box>
+
+            {metaItems.map(({ label, icon }, index) => (
+              <React.Fragment key={label}>
+                {index > 0 && (
+                  <Box
+                    sx={{
+                      width: 3,
+                      height: 3,
+                      borderRadius: "50%",
+                      backgroundColor: "#D1D5DB",
+                      flexShrink: 0,
+                    }}
+                  />
+                )}
+                <Box sx={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                  {icon}
+                  <Typography
+                    sx={{
+                      fontSize: 12,
+                      color: C.textSecondary,
+                      textTransform: "capitalize",
+                    }}
+                  >
+                    {label}
+                  </Typography>
+                </Box>
+              </React.Fragment>
+            ))}
+            {org.website_url && (
+              <>
+                <Box
+                  sx={{
+                    width: 3,
+                    height: 3,
+                    borderRadius: "50%",
+                    backgroundColor: "#D1D5DB",
+                    flexShrink: 0,
+                  }}
+                />
+                <Box
+                  component="a"
+                  href={org.website_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  sx={{
+                    fontSize: 12,
+                    color: C.accent,
+                    textDecoration: "none",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "3px",
+                    "&:hover": { textDecoration: "underline" },
+                  }}
+                >
+                  🌐 {org.website_url}
+                  <OpenInNewIcon sx={{ fontSize: 11 }} />
+                </Box>
+              </>
+            )}
+          </Box>
+        </Box>
+      </Box>
+
+      {/* ── Right: stat pills ── */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: "8px",
+          flexWrap: "wrap",
+        }}
+      >
+        {statPills.map(({ label, value, accent, soft, border }) => (
+          <Box
+            key={label}
+            sx={{
+              px: "16px",
+              py: "8px",
+              borderRadius: "10px",
+              backgroundColor: soft,
+              border: `1px solid ${border}`,
+              textAlign: "center",
+              minWidth: 76,
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: 20,
+                fontWeight: 800,
+                color: accent,
+                lineHeight: 1,
+              }}
+            >
+              {value}
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: 10,
+                fontWeight: 600,
+                color: accent,
+                opacity: 0.8,
+                mt: "3px",
+                letterSpacing: "0.03em",
+              }}
+            >
+              {label}
+            </Typography>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+}
 
 // ─── Main ─────────────────────────────────────────────────────────────────────
 export default function OrgDetail() {
@@ -148,7 +426,10 @@ export default function OrgDetail() {
   const org =
     location.state?.org ??
     orgsData?.data?.find((o) => String(o.id) === String(orgId));
-
+  const { data: analyticsData } = useGetOrganisationJobAnalyticsQuery(
+    { organisationId: orgId, groupBy: "month", status: "all" },
+    { skip: !orgId },
+  );
   useEffect(() => {
     if (org?.organisation_name)
       dispatch(setDynamicLabels({ orgId: org.organisation_name }));
@@ -163,19 +444,15 @@ export default function OrgDetail() {
     );
 
   return (
-    <Box sx={{ p: 0 }}>
-      <Typography fontSize={22} fontWeight={700} color={C.textPrimary} mb="2px">
-        {org.organisation_name}
-      </Typography>
-      <Typography fontSize={13} color={C.textSecondary} mb="16px">
-        {org.clin_org_id} · {org.industry ?? "—"} · {org.country ?? "—"}
-      </Typography>
+    <Box sx={{ p: 0, height: "100%" }}>
+      <OrgHeroHeader org={org} analytics={analyticsData?.data} />
 
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={TAB_SX}>
         <Tab label="Overview" />
         <Tab label="Requisitions" />
         <Tab label="Candidates" />
         <Tab label="Interviews" />
+        <Tab label="Org Employees" />
         <Tab label="Billing" />
       </Tabs>
 
@@ -195,7 +472,8 @@ export default function OrgDetail() {
         />
       )}
       {tab === 3 && <OrgInterviewsTab orgId={orgId} />}
-      {tab === 4 && (
+      {tab === 4 && <OrgEmployeesTab orgId={orgId} />}
+      {tab === 5 && (
         <StaticPlaceholder
           label="Billing"
           description="Billing and invoices will appear here."
@@ -325,15 +603,6 @@ function OrgOverviewTab({ org, orgId }) {
       spacing={3}
       sx={{ display: "flex", flexDirection: "column" }}
     >
-      {/* ── Left: profile ── */}
-      {/* <Grid size={{ xs: 12, md: 12 }}>
-        <SectionLabel>Core Company Profile</SectionLabel>
-        {profileRows.map(({ label, value }) => (
-          <InfoRow key={label} label={label} value={value} />
-        ))}
-      </Grid> */}
-
-      {/* ── Right: analytics ── */}
       <Grid size={{ xs: 12, md: 12 }}>
         {/* Group-by toggle */}
         <Box
@@ -396,7 +665,7 @@ function OrgOverviewTab({ org, orgId }) {
               ))}
             </Grid>
 
-            {/* ── Candidate funnel trend (Line) ── */}
+            {/* ── Candidate funnel trend ── */}
             <ChartCard
               title={
                 <Box
@@ -417,24 +686,18 @@ function OrgOverviewTab({ org, orgId }) {
                   >
                     Candidate Funnel Trend
                   </Typography>
-
                   <Tabs
                     value={chartType.funnel}
                     onChange={(e, val) =>
-                      setChartType({
-                        ...chartType,
-                        funnel: val,
-                      })
+                      setChartType({ ...chartType, funnel: val })
                     }
                     sx={{
                       minHeight: "32px",
-
                       "& .MuiTabs-indicator": {
                         backgroundColor: C.accent,
                         height: "3px",
                         borderRadius: "10px",
                       },
-
                       "& .MuiTab-root": {
                         minHeight: "32px",
                         minWidth: "70px",
@@ -444,10 +707,7 @@ function OrgOverviewTab({ org, orgId }) {
                         color: "#888",
                         padding: "6px 12px",
                       },
-
-                      "& .Mui-selected": {
-                        color: `${C.accent} !important`,
-                      },
+                      "& .Mui-selected": { color: `${C.accent} !important` },
                     }}
                   >
                     <Tab label="Bar" value="bar" />
@@ -460,25 +720,17 @@ function OrgOverviewTab({ org, orgId }) {
                 {chartType.funnel === "line" ? (
                   <LineChart data={candidateTrendData}>
                     <CartesianGrid strokeDasharray="3 3" />
-
                     <XAxis dataKey="label" />
-
                     <YAxis />
-
                     <Tooltip />
-
                     <Legend />
-
                     <Line type="monotone" dataKey="Matched" stroke={C.accent} />
-
                     <Line
                       type="monotone"
                       dataKey="Shortlisted"
                       stroke={C.green}
                     />
-
                     <Line type="monotone" dataKey="Rejected" stroke={C.red} />
-
                     <Line
                       type="monotone"
                       dataKey="Onboarded"
@@ -488,31 +740,35 @@ function OrgOverviewTab({ org, orgId }) {
                 ) : (
                   <BarChart data={candidateTrendData}>
                     <CartesianGrid strokeDasharray="3 3" />
-
                     <XAxis dataKey="label" />
-
                     <YAxis />
-
                     <Tooltip />
-
                     <Legend />
-
                     <Bar dataKey="Matched" fill={C.accent} />
-
                     <Bar dataKey="Shortlisted" fill={C.green} />
-
                     <Bar dataKey="Rejected" fill={C.red} />
-
                     <Bar dataKey="Onboarded" fill={C.indigo} />
                   </BarChart>
                 )}
               </ResponsiveContainer>
             </ChartCard>
 
-            {/* ── Stage breakdown (Pie) + Offer trend (Bar) side by side ── */}
+            {/* ── Stage breakdown (Pie) + Offer trend side by side ── */}
             <Grid container spacing={2}>
-              <Grid size={{ xs: 12, sm: 6 }}>
+              {/* LEFT CHART */}
+              <Grid
+                size={{ xs: 12, sm: 6 }}
+                sx={{
+                  display: "flex",
+                }}
+              >
                 <ChartCard
+                  sx={{
+                    height: "100%",
+                    width: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
                   title={
                     <Box
                       sx={{
@@ -566,59 +822,134 @@ function OrgOverviewTab({ org, orgId }) {
                         }}
                       >
                         <Tab label="Pie" value="pie" />
-
                         <Tab label="Line" value="line" />
                       </Tabs>
                     </Box>
                   }
                 >
-                  {funnelData.length === 0 ? (
-                    <NoData />
-                  ) : (
-                    <ResponsiveContainer width="100%" height={240}>
-                      {chartType.stage === "pie" ? (
-                        <PieChart
-                          margin={{
-                            top: 30,
-                            right: 60,
-                            bottom: 30,
-                            left: 60,
+                  <Box
+                    sx={{
+                      flex: 1,
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    {funnelData.length === 0 ? (
+                      <NoData />
+                    ) : chartType.stage === "pie" ? (
+                      <Box>
+                        <ResponsiveContainer width="100%" height={280}>
+                          <PieChart
+                            margin={{
+                              top: 20,
+                              right: 40,
+                              bottom: 20,
+                              left: 40,
+                            }}
+                          >
+                            <Pie
+                              data={funnelData}
+                              dataKey="value"
+                              nameKey="name"
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={60}
+                              outerRadius={90}
+                              paddingAngle={3}
+                              label={false}
+                            >
+                              {funnelData.map((_, i) => (
+                                <Cell
+                                  key={i}
+                                  fill={PIE_COLORS[i % PIE_COLORS.length]}
+                                />
+                              ))}
+                            </Pie>
+
+                            <Tooltip
+                              contentStyle={{
+                                fontSize: 11,
+                                borderRadius: 8,
+                              }}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+
+                        {/* Legend */}
+                        <Box
+                          sx={{
+                            display: "flex",
+                            flexWrap: "wrap",
+                            justifyContent: "center",
+                            gap: 1.5,
+                            mt: 1,
+                            px: 1,
                           }}
                         >
-                          <Pie
-                            data={funnelData}
-                            dataKey="value"
-                            nameKey="name"
-                            cx="50%"
-                            cy="50%"
-                            innerRadius={55}
-                            outerRadius={85}
-                            paddingAngle={4}
-                            label={({ name, value }) => `${name}: ${value}`}
-                            labelLine={false}
-                          >
-                            {funnelData.map((_, i) => (
-                              <Cell
-                                key={i}
-                                fill={PIE_COLORS[i % PIE_COLORS.length]}
+                          {funnelData.map((item, index) => (
+                            <Box
+                              key={item.name}
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                                background: "#fff",
+                                px: 1.2,
+                                py: 0.6,
+                                borderRadius: "999px",
+                                border: "1px solid #F1F5F9",
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  width: 10,
+                                  height: 10,
+                                  borderRadius: "50%",
+                                  backgroundColor:
+                                    PIE_COLORS[index % PIE_COLORS.length],
+                                }}
                               />
-                            ))}
-                          </Pie>
 
-                          <Tooltip
-                            contentStyle={{
-                              fontSize: 11,
-                              borderRadius: 8,
-                            }}
-                          />
-                        </PieChart>
-                      ) : (
+                              <Typography
+                                sx={{
+                                  fontSize: 11,
+                                  color: C.textSecondary,
+                                  whiteSpace: "nowrap",
+                                }}
+                              >
+                                {item.name}:{" "}
+                                <Box
+                                  component="span"
+                                  sx={{
+                                    fontWeight: 700,
+                                    color: C.textPrimary,
+                                  }}
+                                >
+                                  {item.value}
+                                </Box>
+                              </Typography>
+                            </Box>
+                          ))}
+                        </Box>
+                      </Box>
+                    ) : (
+                      <ResponsiveContainer width="100%" height={360}>
                         <LineChart data={funnelData}>
                           <CartesianGrid strokeDasharray="3 3" />
 
-                          <XAxis dataKey="name" />
+                          <XAxis
+                            dataKey="name"
+                            tick={{
+                              fontSize: 11,
+                            }}
+                          />
 
-                          <YAxis />
+                          <YAxis
+                            tick={{
+                              fontSize: 11,
+                            }}
+                          />
 
                           <Tooltip />
 
@@ -629,16 +960,29 @@ function OrgOverviewTab({ org, orgId }) {
                             dataKey="value"
                             stroke={C.accent}
                             strokeWidth={3}
+                            dot={{ r: 4 }}
                           />
                         </LineChart>
-                      )}
-                    </ResponsiveContainer>
-                  )}
+                      </ResponsiveContainer>
+                    )}
+                  </Box>
                 </ChartCard>
               </Grid>
 
-              <Grid size={{ xs: 12, sm: 6 }}>
+              {/* RIGHT CHART */}
+              <Grid
+                size={{ xs: 12, sm: 6 }}
+                sx={{
+                  display: "flex",
+                }}
+              >
                 <ChartCard
+                  sx={{
+                    height: "100%",
+                    width: "100%",
+                    display: "flex",
+                    flexDirection: "column",
+                  }}
                   title={
                     <Box
                       sx={{
@@ -691,86 +1035,151 @@ function OrgOverviewTab({ org, orgId }) {
                     </Box>
                   }
                 >
-                  <ResponsiveContainer width="100%" height={200}>
+                  <Box
+                    sx={{
+                      flex: 1,
+                      width: "100%",
+                      minHeight: 360,
+                      display: "flex",
+                      flexDirection: "column",
+                      // overflow: "hidden",
+                      minWidth: 0,
+                    }}
+                  >
                     {chartType.offer === "bar" ? (
-                      <BarChart
-                        data={offerTrendData}
-                        margin={{ top: 4, right: 8, left: -20, bottom: 0 }}
-                      >
-                        <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                      <ResponsiveContainer width="100%" height={360}>
+                        <BarChart
+                          data={offerTrendData}
+                          margin={{
+                            top: 10,
+                            right: 10,
+                            left: 0,
+                            bottom: 0,
+                          }}
+                        >
+                          <CartesianGrid
+                            strokeDasharray="3 3"
+                            stroke="#F3F4F6"
+                          />
 
-                        <XAxis dataKey="label" tick={{ fontSize: 10 }} />
+                          <XAxis
+                            dataKey="label"
+                            tick={{
+                              fontSize: 10,
+                            }}
+                          />
 
-                        <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                          <YAxis
+                            tick={{
+                              fontSize: 10,
+                            }}
+                            allowDecimals={false}
+                          />
 
-                        <Tooltip
-                          contentStyle={{ fontSize: 11, borderRadius: 8 }}
-                        />
+                          <Tooltip
+                            contentStyle={{
+                              fontSize: 11,
+                              borderRadius: 8,
+                            }}
+                          />
 
-                        <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                          <Legend
+                            iconSize={8}
+                            wrapperStyle={{
+                              fontSize: 11,
+                            }}
+                          />
 
-                        <Bar
-                          dataKey="Released"
-                          fill={C.green}
-                          radius={[4, 4, 0, 0]}
-                        />
+                          <Bar
+                            dataKey="Released"
+                            fill={C.green}
+                            radius={[4, 4, 0, 0]}
+                            maxBarSize={40}
+                          />
 
-                        <Bar
-                          dataKey="Accepted"
-                          fill={C.indigo}
-                          radius={[4, 4, 0, 0]}
-                        />
+                          <Bar
+                            dataKey="Accepted"
+                            fill={C.indigo}
+                            radius={[4, 4, 0, 0]}
+                            maxBarSize={40}
+                          />
 
-                        <Bar
-                          dataKey="Rejected"
-                          fill={C.red}
-                          radius={[4, 4, 0, 0]}
-                        />
+                          <Bar
+                            dataKey="Rejected"
+                            fill={C.red}
+                            radius={[4, 4, 0, 0]}
+                            maxBarSize={40}
+                          />
 
-                        <Bar
-                          dataKey="Revoked"
-                          fill={C.amber}
-                          radius={[4, 4, 0, 0]}
-                        />
-                      </BarChart>
+                          <Bar
+                            dataKey="Revoked"
+                            fill={C.amber}
+                            radius={[4, 4, 0, 0]}
+                            maxBarSize={40}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
                     ) : (
-                      <LineChart data={offerTrendData}>
-                        <CartesianGrid strokeDasharray="3 3" />
+                      <ResponsiveContainer width="100%" height={360}>
+                        <LineChart
+                          data={offerTrendData}
+                          margin={{
+                            top: 10,
+                            right: 10,
+                            left: 0,
+                            bottom: 0,
+                          }}
+                        >
+                          <CartesianGrid strokeDasharray="3 3" />
 
-                        <XAxis dataKey="label" />
+                          <XAxis
+                            dataKey="label"
+                            tick={{
+                              fontSize: 10,
+                            }}
+                          />
 
-                        <YAxis />
+                          <YAxis
+                            tick={{
+                              fontSize: 10,
+                            }}
+                          />
 
-                        <Tooltip />
+                          <Tooltip />
 
-                        <Legend />
+                          <Legend />
 
-                        <Line
-                          type="monotone"
-                          dataKey="Released"
-                          stroke={C.green}
-                        />
+                          <Line
+                            type="monotone"
+                            dataKey="Released"
+                            stroke={C.green}
+                            strokeWidth={3}
+                          />
 
-                        <Line
-                          type="monotone"
-                          dataKey="Accepted"
-                          stroke={C.indigo}
-                        />
+                          <Line
+                            type="monotone"
+                            dataKey="Accepted"
+                            stroke={C.indigo}
+                            strokeWidth={3}
+                          />
 
-                        <Line
-                          type="monotone"
-                          dataKey="Rejected"
-                          stroke={C.red}
-                        />
+                          <Line
+                            type="monotone"
+                            dataKey="Rejected"
+                            stroke={C.red}
+                            strokeWidth={3}
+                          />
 
-                        <Line
-                          type="monotone"
-                          dataKey="Revoked"
-                          stroke={C.amber}
-                        />
-                      </LineChart>
+                          <Line
+                            type="monotone"
+                            dataKey="Revoked"
+                            stroke={C.amber}
+                            strokeWidth={3}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
                     )}
-                  </ResponsiveContainer>
+                  </Box>
                 </ChartCard>
               </Grid>
             </Grid>
@@ -796,24 +1205,18 @@ function OrgOverviewTab({ org, orgId }) {
                   >
                     Job Status Trend
                   </Typography>
-
                   <Tabs
                     value={chartType.job}
                     onChange={(e, val) =>
-                      setChartType({
-                        ...chartType,
-                        job: val,
-                      })
+                      setChartType({ ...chartType, job: val })
                     }
                     sx={{
                       minHeight: "32px",
-
                       "& .MuiTabs-indicator": {
                         backgroundColor: C.accent,
                         height: "3px",
                         borderRadius: "10px",
                       },
-
                       "& .MuiTab-root": {
                         minHeight: "32px",
                         minWidth: "70px",
@@ -833,30 +1236,14 @@ function OrgOverviewTab({ org, orgId }) {
                 {chartType.job === "bar" ? (
                   <BarChart
                     data={jobTrendData}
-                    margin={{
-                      top: 4,
-                      right: 8,
-                      left: -20,
-                      bottom: 0,
-                    }}
+                    margin={{ top: 4, right: 8, left: -20, bottom: 0 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-
                     <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-
                     <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
-
-                    <Tooltip
-                      contentStyle={{
-                        fontSize: 11,
-                        borderRadius: 8,
-                      }}
-                    />
-
+                    <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
                     <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
-
                     <Bar dataKey="Open" fill={C.green} radius={[4, 4, 0, 0]} />
-
                     <Bar
                       dataKey="Closed"
                       fill="#9CA3AF"
@@ -866,17 +1253,11 @@ function OrgOverviewTab({ org, orgId }) {
                 ) : (
                   <LineChart data={jobTrendData}>
                     <CartesianGrid strokeDasharray="3 3" />
-
                     <XAxis dataKey="label" />
-
                     <YAxis />
-
                     <Tooltip />
-
                     <Legend />
-
                     <Line type="monotone" dataKey="Open" stroke={C.green} />
-
                     <Line type="monotone" dataKey="Closed" stroke="#9CA3AF" />
                   </LineChart>
                 )}
@@ -893,36 +1274,45 @@ function OrgOverviewTab({ org, orgId }) {
    TAB 1 — Requisitions  (grid + list toggle)
 ═══════════════════════════════════════════════ */
 function OrgRequisitionsTab({ orgId, orgName, navigate }) {
-  const [view, setView] = useState("grid");
+  const [view, setView] = useState("list");
+  const [search, setSearch] = useState("");
+
   const { data, isLoading, isError, error } = useGetOrganisationJobsQuery({
     orgId,
     status: "all",
   });
-  const jobs = data?.data ?? [];
-
-  const goToReq = (job) =>
-    navigate(
-      `/account-manager/org/${orgId}/requisitions/${job.job_id ?? job.id}`,
-      {
-        state: { jobTitle: job.job_title, orgName, job },
-      },
-    );
-
-  // ── MRT column definitions ──────────────────────────────────────────────────
   const reqColumns = useMemo(
     () => [
       {
         accessorKey: "job_title",
         header: "Job Title",
-        size: 200,
+        size: 250,
         Cell: ({ row }) => (
-          <Box>
-            <Typography fontSize={13} fontWeight={600} color={C.textPrimary}>
-              {row.original.job_title}
-            </Typography>
-            <Typography fontSize={11} color={C.textSecondary}>
-              {row.original.job_position_id}
-            </Typography>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: "8px",
+                backgroundColor: C.accentSoft,
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <WorkOutlineRoundedIcon sx={{ color: C.accent, fontSize: 18 }} />
+            </Box>
+            <Box>
+              <Typography
+                sx={{ fontSize: 13, fontWeight: 700, color: C.textPrimary }}
+              >
+                {row.original.job_title}
+              </Typography>
+              <Typography sx={{ fontSize: 11 }} color={C.textSecondary}>
+                {row.original.job_position_id}
+              </Typography>
+            </Box>
           </Box>
         ),
       },
@@ -935,12 +1325,11 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
       {
         accessorKey: "function",
         header: "Function",
-        size: 130,
+        size: 200,
         Cell: ({ cell }) => (
           <Typography
-            fontSize={13}
             color={C.textSecondary}
-            sx={{ textTransform: "capitalize" }}
+            sx={{ textTransform: "capitalize", fontSize: 12 }}
           >
             {cell.getValue() ?? "—"}
           </Typography>
@@ -949,12 +1338,11 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
       {
         accessorKey: "sub_function",
         header: "Sub-function",
-        size: 140,
+        size: 200,
         Cell: ({ cell }) => (
           <Typography
-            fontSize={13}
             color={C.textSecondary}
-            sx={{ textTransform: "capitalize" }}
+            sx={{ textTransform: "capitalize", fontSize: 12 }}
           >
             {cell.getValue() ?? "—"}
           </Typography>
@@ -967,7 +1355,7 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
         Cell: ({ row }) => {
           const { min_years, max_years } = row.original;
           return (
-            <Typography fontSize={13} color={C.textPrimary}>
+            <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
               {min_years != null && max_years != null
                 ? `${min_years}–${max_years} yrs`
                 : "—"}
@@ -980,7 +1368,7 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
         header: "Positions",
         size: 90,
         Cell: ({ cell }) => (
-          <Typography fontSize={13} color={C.textPrimary}>
+          <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
             {cell.getValue() ?? "—"}
           </Typography>
         ),
@@ -992,7 +1380,7 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
         Cell: ({ cell }) => {
           const v = cell.getValue();
           return (
-            <Typography fontSize={13} color={C.textPrimary}>
+            <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
                     day: "2-digit",
@@ -1010,9 +1398,8 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
         size: 100,
         Cell: ({ cell }) => (
           <Typography
-            fontSize={13}
             color={C.textSecondary}
-            sx={{ textTransform: "capitalize" }}
+            sx={{ textTransform: "capitalize", fontSize: 12 }}
           >
             {cell.getValue() ?? "—"}
           </Typography>
@@ -1021,60 +1408,72 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
     ],
     [],
   );
+  const jobs = data?.data ?? [];
 
-  if (isLoading) return <Loader />;
-  if (isError) return <ErrAlert msg={error?.data?.message ?? error?.status} />;
-  if (!jobs.length)
+  // Global Search Filter
+  const filteredJobs = jobs.filter((job) => {
+    const searchValue = search.toLowerCase();
+
     return (
-      <StaticPlaceholder
-        label="No Requisitions"
-        description="No job requisitions listed for this organization."
-      />
+      job.job_title?.toLowerCase().includes(searchValue) ||
+      job.job_position_id?.toLowerCase().includes(searchValue) ||
+      job.function?.toLowerCase().includes(searchValue) ||
+      job.sub_function?.toLowerCase().includes(searchValue) ||
+      job.job_type?.toLowerCase().includes(searchValue) ||
+      job.status?.toLowerCase().includes(searchValue)
+    );
+  });
+  const goToReq = (job) =>
+    navigate(
+      `/account-manager/org/${orgId}/requisitions/${job.job_id ?? job.id}`,
+      {
+        state: {
+          jobTitle: job.job_title,
+          orgName,
+          job,
+        },
+      },
     );
 
   return (
     <Box>
-      {/* Toolbar */}
+      {/* Top Toolbar */}
       <Box
         sx={{
           display: "flex",
           alignItems: "center",
-          justifyContent: "space-between",
-          mb: "16px",
+          justifyContent: "flex-end",
+          mb: "18px",
+          gap: 2,
+          // border:2
         }}
       >
-        <Typography fontSize={13} color={C.textSecondary}>
-          {jobs.length} requisition{jobs.length !== 1 ? "s" : ""}
-        </Typography>
+        <SearchFilter
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search employees..."
+        />
+
         <ViewToggle view={view} onChange={setView} />
       </Box>
 
-      {/* Grid view */}
-      {view === "grid" && (
-        <Grid container spacing={1.5}>
-          {jobs.map((job) => {
-            const id = job.job_id ?? job.id;
-            return (
-              <Grid size={{ xs: 12, sm: 6, md: 4, xl: 3 }} key={id}>
-                <RequisitionCard job={job} onOpen={() => goToReq(job)} />
-              </Grid>
-            );
-          })}
+      {view === "grid" ? (
+        <Grid container spacing={2}>
+          {filteredJobs.map((job) => (
+            <Grid size={{ xs: 12, sm: 6, md: 4, xl: 3 }} key={job.job_id}>
+              <RequisitionCard job={job} onOpen={() => goToReq(job)} />
+            </Grid>
+          ))}
         </Grid>
-      )}
-
-      {/* List view */}
-      {view === "list" && (
-        <Box
-        //  sx={{border:1}}
-        >
+      ) : (
+        <Box sx={{ mt: -2 }}>
           <ReusableMRT
-            data={jobs}
+            data={filteredJobs}
             columnData={reqColumns}
             enableRowActions={false}
             enableRowSelection={false}
-            enableGlobalFilter={true}
-            height="calc(100vh - 270px)"
+            enableGlobalFilter={false}
+            height="calc(100vh - 240px)"
             onRowClick={goToReq}
           />
         </Box>
@@ -1092,6 +1491,7 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
 
   const { data, isLoading, isError } = useGetOrganisationCandidatesQuery(orgId);
   const candidates = data?.data ?? [];
+  const [search, setSearch] = useState("");
 
   const statusOptions = useMemo(() => {
     const set = new Set();
@@ -1111,7 +1511,6 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
       state: { orgName, matched_candidate_id: matchedCandidateId },
     });
 
-  // ── MRT columns ──────────────────────────────────────────────────────────────
   const candColumns = useMemo(
     () => [
       {
@@ -1134,14 +1533,11 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
             </Avatar>
             <Box sx={{ minWidth: 0 }}>
               <Typography
-                fontSize={13}
-                fontWeight={600}
-                color={C.textPrimary}
-                noWrap
+                sx={{ fontSize: 13, fontWeight: 700, color: C.textPrimary }}
               >
                 {row.original.candidate_name}
               </Typography>
-              <Typography fontSize={11} color={C.textSecondary} noWrap>
+              <Typography sx={{ fontSize: 12 }} color={C.textSecondary} noWrap>
                 {row.original.email}
               </Typography>
             </Box>
@@ -1151,9 +1547,9 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
       {
         accessorKey: "phone_number",
         header: "Phone",
-        size: 130,
+        size: 200,
         Cell: ({ cell }) => (
-          <Typography fontSize={13} color={C.textPrimary}>
+          <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
             {cell.getValue() ?? "—"}
           </Typography>
         ),
@@ -1209,7 +1605,11 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
         size: 90,
         accessorFn: (row) => row.jobs?.length ?? 0,
         Cell: ({ cell }) => (
-          <Typography fontSize={13} fontWeight={600} color={C.textPrimary}>
+          <Typography
+            sx={{ fontSize: 12 }}
+            fontWeight={600}
+            color={C.textPrimary}
+          >
             {cell.getValue()}
           </Typography>
         ),
@@ -1219,7 +1619,7 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
         header: "Matched",
         size: 90,
         Cell: ({ cell }) => (
-          <Typography fontSize={13} color={C.textPrimary}>
+          <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
             {cell.getValue() ?? 0}
           </Typography>
         ),
@@ -1230,7 +1630,7 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
         size: 100,
         Cell: ({ cell }) => (
           <Typography
-            fontSize={13}
+            sx={{ fontSize: 12 }}
             color={cell.getValue() > 0 ? C.green : C.textSecondary}
             fontWeight={cell.getValue() > 0 ? 700 : 400}
           >
@@ -1244,7 +1644,7 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
         size: 100,
         Cell: ({ cell }) => (
           <Typography
-            fontSize={13}
+            sx={{ fontSize: 12 }}
             color={cell.getValue() > 0 ? C.amber : C.textSecondary}
             fontWeight={cell.getValue() > 0 ? 700 : 400}
           >
@@ -1258,7 +1658,7 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
         size: 90,
         Cell: ({ cell }) => (
           <Typography
-            fontSize={13}
+            sx={{ fontSize: 12 }}
             color={cell.getValue() > 0 ? C.indigo : C.textSecondary}
             fontWeight={cell.getValue() > 0 ? 700 : 400}
           >
@@ -1269,7 +1669,18 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
     ],
     [],
   );
+  const searchedCandidates = filtered.filter((candidate) => {
+    const value = search.toLowerCase();
 
+    return (
+      candidate.candidate_name?.toLowerCase().includes(value) ||
+      candidate.email?.toLowerCase().includes(value) ||
+      candidate.phone_number?.toLowerCase().includes(value) ||
+      candidate.jobs?.some((job) =>
+        job.current_stage?.toLowerCase().includes(value),
+      )
+    );
+  });
   if (isLoading) return <Loader />;
   if (isError || !candidates.length)
     return (
@@ -1281,7 +1692,6 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
 
   return (
     <Box>
-      {/* Toolbar */}
       <Box
         sx={{
           display: "flex",
@@ -1291,9 +1701,74 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
           flexWrap: "wrap",
         }}
       >
-        <Typography fontSize={13} color={C.textSecondary}>
-          {filtered.length} candidate{filtered.length !== 1 ? "s" : ""}
-        </Typography>
+        <Box
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 1,
+            px: 1.8,
+            // py: 0.8,
+            borderRadius: "8px",
+            background: "rgba(255, 95, 31, 0.08)",
+            border: "1px solid rgba(255, 95, 31, 0.2)",
+            transition: "0.3s ease",
+            "&:hover": {
+              background: "rgba(255, 95, 31, 0.14)",
+              transform: "translateY(-1px)",
+            },
+          }}
+        >
+          <Box
+            sx={{
+              minWidth: 28,
+              height: 28,
+              borderRadius: "8px",
+              background: "#FF5F1F",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              px: 1,
+              boxShadow: "0 4px 12px rgba(255,95,31,0.35)",
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: "#fff",
+                lineHeight: 1,
+              }}
+            >
+              {filtered.length}
+            </Typography>
+          </Box>
+
+          <Box sx={{ padding: 1, borderRadius: 0 }}>
+            <Typography
+              sx={{
+                fontSize: 10,
+                fontWeight: 600,
+                color: "#FF5F1F",
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                lineHeight: 1,
+              }}
+            >
+              Total
+            </Typography>
+
+            <Typography
+              sx={{
+                fontSize: 10,
+                fontWeight: 600,
+                color: C.textPrimary,
+                lineHeight: 1,
+              }}
+            >
+              Candidate{filtered.length !== 1 ? "s" : ""}
+            </Typography>
+          </Box>
+        </Box>
         <FormControl size="small" sx={{ minWidth: 160 }}>
           <InputLabel sx={{ fontSize: 12 }}>Filter by stage</InputLabel>
           <Select
@@ -1310,15 +1785,19 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
             ))}
           </Select>
         </FormControl>
-        <Box sx={{ ml: "auto" }}>
+        <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 2 }}>
+          <SearchFilter
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search employees..."
+          />
           <ViewToggle view={view} onChange={setView} />
         </Box>
       </Box>
 
-      {/* Grid view */}
       {view === "grid" && (
         <Grid container spacing={2}>
-          {filtered.map((candidate) => {
+          {searchedCandidates.map((candidate) => {
             const orgJobs = candidate.jobs ?? [];
             const primaryJob = orgJobs[0];
             return (
@@ -1338,15 +1817,14 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
         </Grid>
       )}
 
-      {/* List view */}
       {view === "list" && (
         <ReusableMRT
-          data={filtered}
+          data={searchedCandidates}
           columnData={candColumns}
           enableRowActions={false}
           enableRowSelection={false}
           enableGlobalFilter={true}
-          height="calc(100vh - 320px)"
+          height="calc(100vh - 260px)"
           onRowClick={(row) =>
             goToCandidate(row, row.jobs?.[0]?.matched_candidate_id)
           }
@@ -1360,8 +1838,9 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
    TAB 3 — Interviews  (grid + list toggle)
 ═══════════════════════════════════════════════ */
 function OrgInterviewsTab({ orgId }) {
-  const [view, setView] = useState("grid");
+  const [view, setView] = useState("list");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [search, setSearch] = useState("");
 
   const { data, isLoading, isError } = useGetOrganisationInterviewsQuery(orgId);
   const interviews = data?.data ?? [];
@@ -1379,8 +1858,19 @@ function OrgInterviewsTab({ orgId }) {
     statusFilter === "all"
       ? interviews
       : interviews.filter((iv) => (iv.status ?? "scheduled") === statusFilter);
+  const searchedInterviews = filtered.filter((iv) => {
+    const value = search.toLowerCase();
 
-  // ── MRT columns ──────────────────────────────────────────────────────────────
+    return (
+      iv.job_title?.toLowerCase().includes(value) ||
+      iv.job_position_id?.toLowerCase().includes(value) ||
+      iv.interview_step_name?.toLowerCase().includes(value) ||
+      iv.interview_type?.toLowerCase().includes(value) ||
+      iv.sub_function?.toLowerCase().includes(value) ||
+      iv.created_by?.toLowerCase().includes(value) ||
+      iv.status?.toLowerCase().includes(value)
+    );
+  });
   const ivColumns = useMemo(
     () => [
       {
@@ -1389,10 +1879,12 @@ function OrgInterviewsTab({ orgId }) {
         size: 200,
         Cell: ({ row }) => (
           <Box>
-            <Typography fontSize={13} fontWeight={600} color={C.textPrimary}>
+            <Typography
+              sx={{ fontSize: 13, fontWeight: 700, color: C.textPrimary }}
+            >
               {row.original.job_title}
             </Typography>
-            <Typography fontSize={11} color={C.textSecondary}>
+            <Typography sx={{ fontSize: 12 }} color={C.textSecondary}>
               {row.original.job_position_id}
             </Typography>
           </Box>
@@ -1404,10 +1896,10 @@ function OrgInterviewsTab({ orgId }) {
         size: 160,
         Cell: ({ row }) => (
           <Box>
-            <Typography fontSize={13} color={C.textPrimary}>
+            <Typography sx={{ fontSize: 14 }} color={C.textPrimary}>
               {row.original.interview_step_name}
             </Typography>
-            <Typography fontSize={11} color={C.textSecondary}>
+            <Typography sx={{ fontSize: 14 }} color={C.textSecondary}>
               Step {row.original.interview_step_number}
             </Typography>
           </Box>
@@ -1442,11 +1934,11 @@ function OrgInterviewsTab({ orgId }) {
       {
         accessorKey: "interview_date",
         header: "Date",
-        size: 120,
+        size: 150,
         Cell: ({ cell }) => {
           const v = cell.getValue();
           return (
-            <Typography fontSize={13} color={C.textPrimary}>
+            <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
                     day: "2-digit",
@@ -1461,9 +1953,9 @@ function OrgInterviewsTab({ orgId }) {
       {
         id: "time_slot",
         header: "Time",
-        size: 160,
+        size: 250,
         Cell: ({ row }) => (
-          <Typography fontSize={13} color={C.textPrimary}>
+          <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
             {row.original.start_time} – {row.original.end_time} ·{" "}
             {row.original.duration} min
           </Typography>
@@ -1472,12 +1964,11 @@ function OrgInterviewsTab({ orgId }) {
       {
         accessorKey: "sub_function",
         header: "Sub-function",
-        size: 130,
+        size: 300,
         Cell: ({ cell }) => (
           <Typography
-            fontSize={13}
             color={C.textSecondary}
-            sx={{ textTransform: "capitalize" }}
+            sx={{ textTransform: "capitalize", fontSize: 12 }}
           >
             {cell.getValue() ?? "—"}
           </Typography>
@@ -1488,7 +1979,7 @@ function OrgInterviewsTab({ orgId }) {
         header: "Created by",
         size: 130,
         Cell: ({ cell }) => (
-          <Typography fontSize={13} color={C.textPrimary}>
+          <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
             {cell.getValue() ?? "—"}
           </Typography>
         ),
@@ -1536,7 +2027,6 @@ function OrgInterviewsTab({ orgId }) {
 
   return (
     <Box>
-      {/* Toolbar */}
       <Box
         sx={{
           display: "flex",
@@ -1546,9 +2036,78 @@ function OrgInterviewsTab({ orgId }) {
           flexWrap: "wrap",
         }}
       >
-        <Typography fontSize={13} color={C.textSecondary}>
-          {filtered.length} interview{filtered.length !== 1 ? "s" : ""}
-        </Typography>
+        <Box
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 1,
+            px: 1.8,
+            // py: 0.8,
+            borderRadius: "8px",
+            background: "rgba(255, 95, 31, 0.08)",
+            border: "1px solid rgba(255, 95, 31, 0.2)",
+            transition: "0.3s ease",
+            "&:hover": {
+              background: "rgba(255, 95, 31, 0.14)",
+              transform: "translateY(-1px)",
+            },
+          }}
+        >
+          <Box
+            sx={{
+              minWidth: 28,
+              height: 28,
+              borderRadius: "8px",
+              background: "#FF5F1F",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              px: 1,
+              boxShadow: "0 4px 12px rgba(255,95,31,0.35)",
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: "#fff",
+                lineHeight: 1,
+              }}
+            >
+              {searchedInterviews.length}
+            </Typography>
+          </Box>
+
+          <Box sx={{ padding: 1, borderRadius: 0 }}>
+            <Typography
+              sx={{
+                fontSize: 10,
+                fontWeight: 600,
+                color: "#FF5F1F",
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                lineHeight: 1,
+              }}
+            >
+              Total
+            </Typography>
+
+            <Typography
+              sx={{
+                fontSize: 10,
+                fontWeight: 600,
+                color: C.textPrimary,
+                lineHeight: 1,
+              }}
+            >
+              Candidate{searchedInterviews.length !== 1 ? "s" : ""}
+            </Typography>
+          </Box>
+        </Box>
+        {/* <Typography fontSize={13} color={C.textSecondary}>
+          {searchedInterviews.length} interview
+          {searchedInterviews.length !== 1 ? "s" : ""}
+        </Typography> */}
         <FormControl size="small" sx={{ minWidth: 180 }}>
           <InputLabel sx={{ fontSize: 12 }}>Filter by status</InputLabel>
           <Select
@@ -1565,19 +2124,32 @@ function OrgInterviewsTab({ orgId }) {
             ))}
           </Select>
         </FormControl>
-        <Box sx={{ ml: "auto" }}>
+        <Box
+          sx={{
+            ml: "auto",
+            display: "flex",
+            alignItems: "center",
+            gap: 2,
+          }}
+        >
+          <SearchFilter
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search interviews..."
+          />
+
           <ViewToggle view={view} onChange={setView} />
         </Box>
       </Box>
 
-      {filtered.length === 0 ? (
+      {searchedInterviews.length === 0 ? (
         <StaticPlaceholder
           label="No Interviews"
           description="No interviews match the selected filter."
         />
       ) : view === "grid" ? (
         <Grid container spacing={2}>
-          {filtered.map((iv) => (
+          {searchedInterviews.map((iv) => (
             <Grid size={{ xs: 12, sm: 6, md: 4, xl: 3 }} key={iv.interview_id}>
               <InterviewCard interview={iv} />
             </Grid>
@@ -1585,14 +2157,470 @@ function OrgInterviewsTab({ orgId }) {
         </Grid>
       ) : (
         <ReusableMRT
-          data={filtered}
+          data={searchedInterviews}
           columnData={ivColumns}
           enableRowActions={false}
           enableRowSelection={false}
           enableGlobalFilter={true}
-          height="calc(100vh - 320px)"
+          height="calc(100vh - 260px)"
         />
       )}
+    </Box>
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   TAB 4 — Employees
+═══════════════════════════════════════════════ */
+function OrgEmployeesTab({ orgId }) {
+  const { data, isLoading, isError } = useGetEmployeeDetailsQuery(orgId);
+
+  const employees = data?.data ?? [];
+
+  const [search, setSearch] = useState("");
+
+  // ── Search Filter ─────────────────────────────────────
+  const filteredEmployees = employees.filter((emp) => {
+    const value = search.toLowerCase();
+
+    return (
+      emp.full_name?.toLowerCase().includes(value) ||
+      emp.email_id?.toLowerCase().includes(value) ||
+      emp.phone_number?.toLowerCase().includes(value) ||
+      emp.designation?.toLowerCase().includes(value) ||
+      emp.department?.toLowerCase().includes(value) ||
+      emp.user_role?.toLowerCase().includes(value) ||
+      emp.employee_type?.toLowerCase().includes(value) ||
+      emp.employee_status?.toLowerCase().includes(value)
+    );
+  });
+
+  // ── Employee status color helper ─────────────────────
+  const empStatusColor = (status = "") => {
+    const s = status.toLowerCase();
+
+    if (s === "active")
+      return {
+        bg: C.greenSoft,
+        color: C.green,
+      };
+
+    if (s === "inactive")
+      return {
+        bg: C.redSoft,
+        color: C.red,
+      };
+
+    return {
+      bg: "#F3F4F6",
+      color: "#6B7280",
+    };
+  };
+
+  // ── Role color helper ─────────────────────────────────
+  const roleColor = (role = "") => {
+    const r = role.toLowerCase();
+
+    if (r.includes("super_admin") || r.includes("admin")) {
+      return {
+        bg: C.indigoSoft,
+        color: C.indigo,
+      };
+    }
+
+    if (r.includes("hm_user") || r.includes("user")) {
+      return {
+        bg: C.amberSoft,
+        color: C.amber,
+      };
+    }
+
+    return {
+      bg: "#F3F4F6",
+      color: "#6B7280",
+    };
+  };
+
+  // ── MRT Columns ───────────────────────────────────────
+  const empColumns = useMemo(
+    () => [
+      {
+        accessorKey: "full_name",
+        header: "Employee",
+        size: 350,
+
+        Cell: ({ row }) => (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+            }}
+          >
+            <Avatar
+              sx={{
+                width: 34,
+                height: 34,
+                bgcolor: C.accent,
+                fontSize: 13,
+                fontWeight: 700,
+                flexShrink: 0,
+              }}
+            >
+              {row.original.full_name?.charAt(0).toUpperCase()}
+            </Avatar>
+
+            <Box sx={{ minWidth: 0 }}>
+              <Typography
+                sx={{ fontSize: 13, fontWeight: 700, color: C.textPrimary }}
+              >
+                {row.original.full_name}
+              </Typography>
+
+              <Typography sx={{ fontSize: 12 }} color={C.textSecondary} noWrap>
+                {row.original.email_id}
+              </Typography>
+            </Box>
+          </Box>
+        ),
+      },
+
+      {
+        accessorKey: "phone_number",
+        header: "Phone",
+        size: 140,
+
+        Cell: ({ cell }) => (
+          <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
+            {cell.getValue() ?? "—"}
+          </Typography>
+        ),
+      },
+
+      {
+        accessorKey: "designation",
+        header: "Designation",
+        size: 150,
+
+        Cell: ({ cell }) => (
+          <Typography
+            color={C.textPrimary}
+            sx={{
+              textTransform: "capitalize",
+              fontSize: 12,
+            }}
+          >
+            {cell.getValue() ?? "—"}
+          </Typography>
+        ),
+      },
+
+      {
+        accessorKey: "department",
+        header: "Department",
+        size: 140,
+
+        Cell: ({ cell }) => (
+          <Typography
+            color={C.textSecondary}
+            sx={{
+              textTransform: "capitalize",
+              fontSize: 12,
+            }}
+          >
+            {cell.getValue() ?? "—"}
+          </Typography>
+        ),
+      },
+
+      {
+        accessorKey: "user_role",
+        header: "Role",
+        size: 130,
+
+        Cell: ({ cell }) => {
+          const val = cell.getValue() ?? "—";
+
+          const rc = roleColor(val);
+
+          return (
+            <Box
+              component="span"
+              sx={{
+                fontSize: 11,
+                fontWeight: 700,
+                px: "8px",
+                py: "3px",
+                borderRadius: "8px",
+                backgroundColor: rc.bg,
+                color: rc.color,
+                textTransform: "capitalize",
+                whiteSpace: "nowrap",
+              }}
+            >
+              {val.replace(/_/g, " ")}
+            </Box>
+          );
+        },
+      },
+
+      {
+        accessorKey: "employee_type",
+        header: "Type",
+        size: 110,
+
+        Cell: ({ cell }) => (
+          <Typography
+            color={C.textSecondary}
+            sx={{
+              textTransform: "capitalize",
+              fontSize: 12,
+            }}
+          >
+            {cell.getValue() ?? "—"}
+          </Typography>
+        ),
+      },
+
+      {
+        accessorKey: "employee_status",
+        header: "Status",
+        size: 100,
+
+        Cell: ({ cell }) => {
+          const val = cell.getValue() ?? "—";
+
+          const sc = empStatusColor(val);
+
+          return (
+            <Box
+              component="span"
+              sx={{
+                fontSize: 11,
+                fontWeight: 700,
+                px: "8px",
+                py: "3px",
+                borderRadius: "8px",
+                backgroundColor: sc.bg,
+                color: sc.color,
+                textTransform: "capitalize",
+              }}
+            >
+              {val}
+            </Box>
+          );
+        },
+      },
+
+      {
+        accessorKey: "gender",
+        header: "Gender",
+        size: 90,
+
+        Cell: ({ cell }) => (
+          <Typography
+            color={C.textSecondary}
+            sx={{
+              textTransform: "capitalize",
+              fontSize: 12,
+            }}
+          >
+            {cell.getValue() ?? "—"}
+          </Typography>
+        ),
+      },
+
+      {
+        accessorKey: "time_zone",
+        header: "Timezone",
+        size: 140,
+
+        Cell: ({ cell }) => (
+          <Typography sx={{ fontSize: 12 }} color={C.textSecondary}>
+            {cell.getValue() ?? "—"}
+          </Typography>
+        ),
+      },
+
+      {
+        accessorKey: "active_from",
+        header: "Active From",
+        size: 120,
+
+        Cell: ({ cell }) => {
+          const v = cell.getValue();
+
+          return (
+            <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
+              {v
+                ? new Date(v).toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "—"}
+            </Typography>
+          );
+        },
+      },
+
+      {
+        accessorKey: "active_to",
+        header: "Active To",
+        size: 120,
+
+        Cell: ({ cell }) => {
+          const v = cell.getValue();
+
+          return (
+            <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
+              {v
+                ? new Date(v).toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "—"}
+            </Typography>
+          );
+        },
+      },
+
+      {
+        accessorKey: "created_at",
+        header: "Created At",
+        size: 130,
+
+        Cell: ({ cell }) => {
+          const v = cell.getValue();
+
+          return (
+            <Typography sx={{ fontSize: 12 }} color={C.textSecondary}>
+              {v
+                ? new Date(v).toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "—"}
+            </Typography>
+          );
+        },
+      },
+    ],
+    [],
+  );
+
+  if (isLoading) return <Loader />;
+
+  if (isError) return <ErrAlert msg="Failed to load employee details" />;
+
+  if (!employees.length)
+    return (
+      <StaticPlaceholder
+        label="No Employees"
+        description="No employees found for this organization."
+      />
+    );
+
+  return (
+    <Box>
+      {/* Toolbar */}
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          mb: "16px",
+          gap: 2,
+        }}
+      >
+        <Box
+          sx={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 1,
+            px: 1.8,
+            // py: 0.8,
+            borderRadius: "8px",
+            background: "rgba(255, 95, 31, 0.08)",
+            border: "1px solid rgba(255, 95, 31, 0.2)",
+            transition: "0.3s ease",
+            "&:hover": {
+              background: "rgba(255, 95, 31, 0.14)",
+              transform: "translateY(-1px)",
+            },
+          }}
+        >
+          <Box
+            sx={{
+              minWidth: 28,
+              height: 28,
+              borderRadius: "8px",
+              background: "#FF5F1F",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              px: 1,
+              boxShadow: "0 4px 12px rgba(255,95,31,0.35)",
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: "#fff",
+                lineHeight: 1,
+              }}
+            >
+              {filteredEmployees.length}
+            </Typography>
+          </Box>
+
+          <Box sx={{ padding: 1, borderRadius: 0 }}>
+            <Typography
+              sx={{
+                fontSize: 10,
+                fontWeight: 600,
+                color: "#FF5F1F",
+                textTransform: "uppercase",
+                letterSpacing: 1,
+                lineHeight: 1,
+              }}
+            >
+              Total
+            </Typography>
+
+            <Typography
+              sx={{
+                fontSize: 10,
+                fontWeight: 600,
+                color: C.textPrimary,
+                lineHeight: 1,
+              }}
+            >
+              Candidate{filteredEmployees.length !== 1 ? "s" : ""}
+            </Typography>
+          </Box>
+        </Box>
+        
+
+        <SearchFilter
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Search employees..."
+        />
+      </Box>
+
+      {/* MRT */}
+      <ReusableMRT
+        data={filteredEmployees}
+        columnData={empColumns}
+        enableRowActions={false}
+        enableRowSelection={false}
+        enableGlobalFilter={false}
+        height="calc(100vh - 260px)"
+      />
     </Box>
   );
 }
@@ -2058,171 +3086,304 @@ function AssignedCandidateCard({ candidate, primaryJob, orgJobCount, onView }) {
       </Card>
 
       {/* Jobs Dialog */}
-      <Dialog
-        open={jobsDialogOpen}
-        onClose={() => setJobsDialogOpen(false)}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{ sx: { borderRadius: "16px", p: 0, overflow: "hidden" } }}
+     <Dialog
+  open={jobsDialogOpen}
+  onClose={() => setJobsDialogOpen(false)}
+  maxWidth="sm"
+  fullWidth
+  PaperProps={{
+    sx: {
+      borderRadius: "20px",
+      overflow: "hidden",
+      background: "#FFFFFF",
+      boxShadow: "0 10px 40px rgba(0,0,0,0.08)",
+    },
+  }}
+>
+  {/* HEADER */}
+  <DialogTitle
+    sx={{
+      px: 2.5,
+      py: 2,
+      borderBottom: `1px solid ${C.border}`,
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      background:
+        "linear-gradient(180deg, rgba(255,95,31,0.04), rgba(255,95,31,0.01))",
+    }}
+  >
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+      <Avatar
+        sx={{
+          width: 44,
+          height: 44,
+          bgcolor: "#FF5F1F",
+          fontWeight: 700,
+          fontSize: 16,
+          boxShadow: "0 4px 14px rgba(255,95,31,0.35)",
+        }}
       >
-        <DialogTitle
+        {candidate.candidate_name?.charAt(0).toUpperCase()}
+      </Avatar>
+
+      <Box>
+        <Typography
           sx={{
-            px: "20px",
-            py: "16px",
-            borderBottom: `1px solid ${C.border}`,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
+            fontSize: 15,
+            fontWeight: 700,
+            color: C.textPrimary,
+            lineHeight: 1.2,
           }}
         >
-          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Avatar
+          {candidate.candidate_name}
+        </Typography>
+
+        <Typography
+          sx={{
+            fontSize: 11,
+            fontWeight: 600,
+            color: "#FF5F1F",
+            mt: 0.4,
+            textTransform: "uppercase",
+            letterSpacing: 0.7,
+          }}
+        >
+          {orgJobCount} Job{orgJobCount !== 1 ? "s" : ""} Matched
+        </Typography>
+      </Box>
+    </Box>
+
+    <IconButton
+      size="small"
+      onClick={() => setJobsDialogOpen(false)}
+      sx={{
+        color: "#9CA3AF",
+        background: "#F9FAFB",
+        border: "1px solid #F3F4F6",
+        "&:hover": {
+          backgroundColor: "#F3F4F6",
+        },
+      }}
+    >
+      <CloseIcon fontSize="small" />
+    </IconButton>
+  </DialogTitle>
+
+  {/* BODY */}
+  <DialogContent sx={{ p: 0 }}>
+    {orgJobs.map((job, idx) => {
+      const jsc = stageColor(job.current_stage);
+      const isLast = idx === orgJobs.length - 1;
+
+      return (
+        <Box
+          key={job.matched_candidate_id}
+          sx={{
+            px: 2.5,
+            py: 2,
+            borderBottom: isLast ? "none" : `1px solid ${C.border}`,
+            backgroundColor: idx % 2 === 0 ? "#fff" : "#FCFCFC",
+            transition: "0.2s ease",
+            "&:hover": {
+              backgroundColor: "#FFF8F5",
+            },
+          }}
+        >
+          {/* TOP */}
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "flex-start",
+              gap: 1.5,
+              mb: 1.5,
+            }}
+          >
+            <Box sx={{ flex: 1 }}>
+              <Typography
+                sx={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: C.textPrimary,
+                  lineHeight: 1.4,
+                  mb: 1,
+                }}
+              >
+                {job.job_title}
+              </Typography>
+
+              {/* FUNCTION */}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.8,
+                  mb: 0.7,
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: "#FF5F1F",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.8,
+                    minWidth: 65,
+                  }}
+                >
+                  Function
+                </Typography>
+
+                <Typography
+                  sx={{
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: C.textPrimary,
+                  }}
+                >
+                  {job.function} · {job.sub_function}
+                </Typography>
+              </Box>
+
+              {/* DATE */}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 0.8,
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    color: "#FF5F1F",
+                    textTransform: "uppercase",
+                    letterSpacing: 0.8,
+                    minWidth: 65,
+                  }}
+                >
+                  Matched
+                </Typography>
+
+                <Typography
+                  sx={{
+                    fontSize: 11,
+                    fontWeight: 500,
+                    color: C.textSecondary,
+                  }}
+                >
+                  {new Date(job.matched_at).toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })}
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* SCORE */}
+            <Box
               sx={{
-                width: 36,
-                height: 36,
-                bgcolor: C.accent,
-                fontWeight: 700,
-                fontSize: 14,
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                justifyContent: "center",
+                px: 1.5,
+                py: 1,
+                minWidth: 70,
+                borderRadius: "14px",
+                background: "rgba(255,95,31,0.08)",
+                border: "1px solid rgba(255,95,31,0.15)",
               }}
             >
-              {candidate.candidate_name?.charAt(0).toUpperCase()}
-            </Avatar>
-            <Box>
-              <Typography fontSize={14} fontWeight={700} color={C.textPrimary}>
-                {candidate.candidate_name}
+              <Typography
+                sx={{
+                  fontSize: 9,
+                  fontWeight: 700,
+                  color: "#FF5F1F",
+                  textTransform: "uppercase",
+                  letterSpacing: 1,
+                  mb: 0.2,
+                }}
+              >
+                Score
               </Typography>
-              <Typography fontSize={11} color={C.textSecondary}>
-                {orgJobCount} job{orgJobCount !== 1 ? "s" : ""} matched
+
+              <Typography
+                sx={{
+                  fontSize: 18,
+                  fontWeight: 800,
+                  color: C.textPrimary,
+                  lineHeight: 1,
+                }}
+              >
+                {job.match_score}
               </Typography>
             </Box>
           </Box>
-          <IconButton
-            size="small"
-            onClick={() => setJobsDialogOpen(false)}
-            sx={{ color: "#9CA3AF", "&:hover": { backgroundColor: "#F3F4F6" } }}
+
+          {/* BOTTOM */}
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: 1,
+              flexWrap: "wrap",
+            }}
           >
-            <CloseIcon fontSize="small" />
-          </IconButton>
-        </DialogTitle>
-        <DialogContent sx={{ p: 0 }}>
-          {orgJobs.map((job, idx) => {
-            const jsc = stageColor(job.current_stage);
-            const isLast = idx === orgJobs.length - 1;
-            return (
-              <Box
-                key={job.matched_candidate_id}
-                sx={{
-                  px: "20px",
-                  py: "16px",
-                  borderBottom: isLast ? "none" : `1px solid ${C.border}`,
-                  backgroundColor: idx % 2 === 0 ? "#fff" : "#FAFAFA",
-                }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "flex-start",
-                    justifyContent: "space-between",
-                    gap: 1,
-                    mb: "10px",
-                  }}
-                >
-                  <Box sx={{ flex: 1 }}>
-                    <Typography
-                      fontSize={13}
-                      fontWeight={700}
-                      color={C.textPrimary}
-                      lineHeight={1.4}
-                    >
-                      {job.job_title}
-                    </Typography>
-                    <Typography
-                      fontSize={11}
-                      color={C.textSecondary}
-                      mt="2px"
-                      sx={{ textTransform: "capitalize" }}
-                    >
-                      {job.function} · {job.sub_function}
-                    </Typography>
-                  </Box>
-                  <Box
-                    sx={{
-                      fontSize: 11,
-                      fontWeight: 700,
-                      px: "8px",
-                      py: "3px",
-                      borderRadius: "8px",
-                      backgroundColor: C.accentSoft,
-                      color: C.accent,
-                      whiteSpace: "nowrap",
-                      flexShrink: 0,
-                    }}
-                  >
-                    Score: {job.match_score}
-                  </Box>
-                </Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    flexWrap: "wrap",
-                    gap: 1,
-                  }}
-                >
-                  <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
-                    <Box
-                      component="span"
-                      sx={{
-                        fontSize: 10,
-                        fontWeight: 700,
-                        px: "8px",
-                        py: "3px",
-                        borderRadius: "8px",
-                        backgroundColor: jsc.bg,
-                        color: jsc.color,
-                        textTransform: "capitalize",
-                      }}
-                    >
-                      {job.current_stage}
-                    </Box>
-                    <Typography fontSize={11} color={C.textSecondary}>
-                      {new Date(job.matched_at).toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "numeric",
-                      })}
-                    </Typography>
-                  </Box>
-                  <Button
-                    size="small"
-                    variant="contained"
-                    onClick={() => {
-                      setJobsDialogOpen(false);
-                      onView(job.matched_candidate_id);
-                    }}
-                    sx={{
-                      backgroundColor: C.accent,
-                      color: "#fff",
-                      textTransform: "none",
-                      fontWeight: 600,
-                      borderRadius: "8px",
-                      fontSize: 11,
-                      boxShadow: "none",
-                      "&:hover": {
-                        backgroundColor: "#e04e10",
-                        boxShadow: "none",
-                      },
-                    }}
-                  >
-                    View Profile
-                  </Button>
-                </Box>
-              </Box>
-            );
-          })}
-        </DialogContent>
-      </Dialog>
+            {/* STAGE */}
+            <Box
+              component="span"
+              sx={{
+                fontSize: 10,
+                fontWeight: 700,
+                px: "10px",
+                py: "5px",
+                borderRadius: "999px",
+                backgroundColor: jsc.bg,
+                color: jsc.color,
+                textTransform: "capitalize",
+                letterSpacing: 0.3,
+              }}
+            >
+              {job.current_stage}
+            </Box>
+
+            {/* BUTTON */}
+            <Button
+              size="small"
+              variant="contained"
+              onClick={() => {
+                setJobsDialogOpen(false);
+                onView(job.matched_candidate_id);
+              }}
+              sx={{
+                background: "#FF5F1F",
+                color: "#fff",
+                textTransform: "none",
+                fontWeight: 700,
+                borderRadius: "10px",
+                px: 2,
+                py: 0.7,
+                fontSize: 11,
+                boxShadow: "0 4px 14px rgba(255,95,31,0.3)",
+                "&:hover": {
+                  background: "#E65317",
+                  boxShadow: "0 6px 18px rgba(255,95,31,0.4)",
+                },
+              }}
+            >
+              View Profile
+            </Button>
+          </Box>
+        </Box>
+      );
+    })}
+  </DialogContent>
+</Dialog>
     </>
   );
 }
@@ -2379,6 +3540,7 @@ function ChartCard({ title, children }) {
         borderRadius: "12px",
         p: "16px",
         backgroundColor: "#fff",
+        width: "100%",
       }}
     >
       <Typography

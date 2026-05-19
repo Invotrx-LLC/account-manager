@@ -948,7 +948,7 @@ const DrawerLayout = () => {
           </Toolbar>
         </AppBar>
 
-        <Box sx={{ flex: 1, p: 3, backgroundColor: "#fff", overflow: "auto" }}>
+        <Box sx={{ flex: 1, p: 2,backgroundColor: "#fff", overflow: "auto" }}>
           <Outlet />
         </Box>
       </Box>

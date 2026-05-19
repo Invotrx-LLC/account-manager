@@ -20,10 +20,10 @@ import {
 import {
   AccountCircle,
   CloseOutlined,
-//   DeleteOutline,
+  //   DeleteOutline,
   Send,
 } from "@mui/icons-material";
-import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
+import DeleteOutlineOutlinedIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import SearchIcon from "@mui/icons-material/Search";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
@@ -53,12 +53,12 @@ export default function ReusableMRT({
         ...col,
 
         // ✅ default header styles + custom override
-        muiTableHeadCellProps: {
+        muiTableBodyCellProps: {
           sx: {
-            fontSize: "13px",
-            fontWeight: 600,
-            color: "#111827",
-            ...(col.headerSx || {}),
+            backgroundColor: "white",
+            p: "14px 24px", // bigger cell padding
+            minWidth: "180px", // increase cell width
+            fontSize: "14px",
           },
         },
 
@@ -89,7 +89,7 @@ export default function ReusableMRT({
 
     muiTableContainerProps: {
       sx: {
-         maxHeight: `calc(${height} - 48px)`,
+        maxHeight: `calc(${height} - 48px)`,
         // maxHeight: height,
         overflowY: "auto",
         overflowX: "auto",
@@ -154,7 +154,9 @@ export default function ReusableMRT({
     muiTableBodyCellProps: {
       sx: {
         backgroundColor: "white",
-        p: "8px 16px",
+        p: "14px 24px", // bigger cell padding
+        minWidth: "180px", // increase cell width
+        fontSize: "14px",
       },
     },
 

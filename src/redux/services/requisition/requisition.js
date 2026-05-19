@@ -113,12 +113,14 @@ export const requisitionApi = api.injectEndpoints({
         url: `/acc/get_all_imported_candidates_with_pagination`,
         params: {
           limit: params.limit ?? 100,
-          ...(params.cursor_created_at && { cursor_created_at: params.cursor_created_at }),
-          ...(params.cursor_id         && { cursor_id: params.cursor_id }),
-          ...(params.search            && { search: params.search }),
-          ...(params.domain            && { domain: params.domain }),
-          ...(params.function          && { function: params.function }),
-          ...(params.sub_function      && { sub_function: params.sub_function }),
+          ...(params.cursor_created_at && {
+            cursor_created_at: params.cursor_created_at,
+          }),
+          ...(params.cursor_id && { cursor_id: params.cursor_id }),
+          ...(params.search && { search: params.search }),
+          ...(params.domain && { domain: params.domain }),
+          ...(params.function && { function: params.function }),
+          ...(params.sub_function && { sub_function: params.sub_function }),
         },
       }),
       // ⚠️  No providesTags here — we manage state manually with useLazyQuery
@@ -134,7 +136,17 @@ export const requisitionApi = api.injectEndpoints({
     }),
 
     getCandidateDetails: builder.query({
-      query: (candidateId) => `/acc/get_candidate_complete_details/${candidateId}`,
+      query: (candidateId) =>
+        `/acc/get_candidate_complete_details/${candidateId}`,
+    }),
+    getJobDetails: builder.query({
+      query: (jobId) => ({
+        url: `/acc/account_manager/get_job_details/${jobId}`,
+        method: "GET",
+      }),
+      providesTags: (result, error, jobId) => [
+        { type: "JobDetails", id: jobId },
+      ],
     }),
   }),
 });
@@ -155,7 +167,8 @@ export const {
   useGetMyProfileQuery,
   useUpdateMyProfileMutation,
   useGetImportedCandidatesQuery,
-  useLazyGetImportedCandidatesQuery,   //  lazy version for manual "Show More" fetching
+  useLazyGetImportedCandidatesQuery, //  lazy version for manual "Show More" fetching
   useUpdateCandidateActiveStatusMutation,
-  useGetCandidateDetailsQuery
+  useGetCandidateDetailsQuery,
+  useGetJobDetailsQuery,
 } = requisitionApi;
