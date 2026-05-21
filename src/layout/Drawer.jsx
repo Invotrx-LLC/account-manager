@@ -859,7 +859,7 @@ const DrawerLayout = () => {
           },
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", p: 2, borderBottom: "1px solid #f0f0e8", minHeight: 52 }}>
+        <Box sx={{ display: "flex", alignItems: "center", padding:"5px 1px 5px 20px", borderBottom: "1px solid #f0f0e8", minHeight: 52 }}>
           <IconButton onClick={() => setOpen(!open)} sx={{ mr: open ? 1 : 0 }}>
             <MenuIcon />
           </IconButton>

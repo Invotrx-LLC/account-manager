@@ -16,6 +16,8 @@ import PublicOutlinedIcon        from "@mui/icons-material/PublicOutlined";
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useGetCandidateDetailsQuery } from "../../redux/services/requisition/requisition";
+import { useDispatch } from "react-redux";
+import { setDynamicLabels } from "../../redux/slices/breadcrumbSlice";
 
 /* ─────────────────────────── Design Tokens ─────────────────────────── */
 const C = {
@@ -551,7 +553,16 @@ export default function CandidateDetailPage() {
     { label: "Skills",         count: allSkills.length      },
     { label: "Certifications", count: certifications.length },
   ];
-
+    const dispatch        = useDispatch(); 
+ useEffect(() => {
+    if (c.full_name) {
+      dispatch(setDynamicLabels({ candidateId: c.full_name }));  // ← add
+    }
+    // Clean up when leaving the page so stale name doesn't bleed into other routes
+    return () => {
+      dispatch(setDynamicLabels({ candidateId: null }));          // ← cleanup
+    };
+  }, [c.full_name, dispatch]);
   if (isLoading) return <PageSkeleton />;
 
   if (isError) return (
@@ -564,6 +575,7 @@ export default function CandidateDetailPage() {
       </Box>
     </Box>
   );
+  
 
   return (
     <Box sx={{ backgroundColor: C.bg, minHeight: "100vh", p: "20px 20px 40px" }}>

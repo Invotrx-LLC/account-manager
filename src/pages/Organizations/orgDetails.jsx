@@ -420,7 +420,7 @@ export default function OrgDetail() {
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
-  const [tab, setTab] = useState(0);
+  const [tab, setTab] = useState(location.state?.activeTab ?? 0);
 
   const { data: orgsData, isLoading } = useGetMyOrganisationsQuery();
   const org =
@@ -1281,6 +1281,7 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
     orgId,
     status: "all",
   });
+  console.log("orgId",orgId)
   const reqColumns = useMemo(
     () => [
       {
@@ -1424,16 +1425,17 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
     );
   });
   const goToReq = (job) =>
-    navigate(
-      `/account-manager/org/${orgId}/requisitions/${job.job_id ?? job.id}`,
-      {
-        state: {
-          jobTitle: job.job_title,
-          orgName,
-          job,
-        },
+  navigate(
+    `/account-manager/org/${orgId}/requisitions/${job.job_id ?? job.id}`,
+    {
+      state: {
+        jobTitle: job.job_title,
+        orgName,
+        job,
+        previousTab: 1, // Requisitions tab index
       },
-    );
+    },
+  );
 
   return (
     <Box>
@@ -1506,10 +1508,23 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
           c.jobs?.some((j) => j.current_stage === statusFilter),
         );
 
-  const goToCandidate = (candidate, matchedCandidateId) =>
-    navigate(`/account-manager/candidate/${candidate.candidate_id}`, {
-      state: { orgName, matched_candidate_id: matchedCandidateId },
-    });
+ const goToCandidate = (candidate, matchedCandidateId, job) =>
+  navigate(`/account-manager/candidate/${candidate.candidate_id}`, {
+    state: {
+      orgId,
+      orgName,
+      matched_candidate_id: matchedCandidateId,
+      previousTab: 2,
+
+      // important
+      from: "org-candidates",
+      previousPath: location.pathname,
+
+      // modal/job context
+      jobId: job?.job_id,
+      jobTitle: job?.job_title,
+    },
+  });
 
   const candColumns = useMemo(
     () => [
@@ -1878,8 +1893,23 @@ function OrgInterviewsTab({ orgId }) {
         header: "Job",
         size: 200,
         Cell: ({ row }) => (
-          <Box>
-            <Typography
+           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Box
+              sx={{
+                width: 36,
+                height: 36,
+                borderRadius: "8px",
+                backgroundColor: C.accentSoft,
+                flexShrink: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <WorkOutlineRoundedIcon sx={{ color: C.accent, fontSize: 18 }} />
+            </Box>
+            <Box>
+              <Typography
               sx={{ fontSize: 13, fontWeight: 700, color: C.textPrimary }}
             >
               {row.original.job_title}
@@ -1887,6 +1917,7 @@ function OrgInterviewsTab({ orgId }) {
             <Typography sx={{ fontSize: 12 }} color={C.textSecondary}>
               {row.original.job_position_id}
             </Typography>
+            </Box>
           </Box>
         ),
       },
