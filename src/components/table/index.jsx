@@ -41,6 +41,7 @@ export default function ReusableMRT({
   onRowClick,
   onDelete,
   height,
+  ...rest          
 }) {
   // ✅ REQUIRED STATE
   // const [showColumnFilters, setShowColumnFilters] = useState(false);
@@ -285,7 +286,7 @@ export default function ReusableMRT({
           overflow: "auto",
         }}
       >
-        <MaterialReactTable table={table} />
+        <MaterialReactTable table={table} {...rest} />
       </Box>
 
       {/* ===== FOOTER ===== */}

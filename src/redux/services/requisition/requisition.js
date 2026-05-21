@@ -58,6 +58,12 @@ export const requisitionApi = api.injectEndpoints({
         method: "GET",
       }),
     }),
+      getJobInterviews: builder.query({
+      query: (jobId) => ({
+        url: `/acc/interviews/by-job/${jobId}`,
+        method: "GET",
+      }),
+    }),
 
     getInterviewStatusDropdown: builder.query({
       query: () => ({
@@ -123,8 +129,7 @@ export const requisitionApi = api.injectEndpoints({
           ...(params.sub_function && { sub_function: params.sub_function }),
         },
       }),
-      // ⚠️  No providesTags here — we manage state manually with useLazyQuery
-      //     so RTK cache invalidation won't interfere with our accumulation logic
+
     }),
 
     updateCandidateActiveStatus: builder.mutation({
@@ -135,9 +140,35 @@ export const requisitionApi = api.injectEndpoints({
       }),
     }),
 
+       uploadCandidateResume: builder.mutation({
+  query: (formData) => ({
+    url: "/acc/upload-resume-with-subfunction-or-job_id/",
+    method: "POST",
+    body: formData,
+  }),
+  invalidatesTags: ["ImportedCandidates"],
+}),
+ 
+
     getCandidateDetails: builder.query({
       query: (candidateId) =>
         `/acc/get_candidate_complete_details/${candidateId}`,
+    }),
+
+    searchCandidates: builder.query({
+  query: (search) => ({
+    url: `/acc/search_candidates`,
+    params: { search },
+    method: "GET",
+  }),
+  // No providesTags — purely on-demand, managed by lazy query
+}),
+getResumeView: builder.query({
+    query: (candidateId) => ({
+      url: `/acc/resume_view_by_input/`,
+      params: { candidate_id: candidateId },
+      method: "GET",
+    }),
     }),
     getJobDetails: builder.query({
       query: (jobId) => ({
@@ -147,7 +178,10 @@ export const requisitionApi = api.injectEndpoints({
       providesTags: (result, error, jobId) => [
         { type: "JobDetails", id: jobId },
       ],
-    }),
+  }),
+  getInterviewDetails: builder.query({
+  query: (interviewId) => `/acc/get_interview-details/${interviewId}`,
+}),
   }),
 });
 
@@ -160,6 +194,7 @@ export const {
   useGetCandidateDetailQuery,
   useGetOrganisationCandidatesQuery,
   useGetOrganisationInterviewsQuery,
+  useGetJobInterviewsQuery,
   useGetInterviewStatusDropdownQuery,
   useAssignOrganisationMutation,
   useGetAllInternalUsersQuery,
@@ -170,5 +205,9 @@ export const {
   useLazyGetImportedCandidatesQuery, //  lazy version for manual "Show More" fetching
   useUpdateCandidateActiveStatusMutation,
   useGetCandidateDetailsQuery,
+  useUploadCandidateResumeMutation,
+  useLazySearchCandidatesQuery,
+useLazyGetResumeViewQuery,
   useGetJobDetailsQuery,
+  useGetInterviewDetailsQuery,
 } = requisitionApi;

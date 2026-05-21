@@ -44,11 +44,34 @@ import {
   useGetJobMatchedCandidatesQuery,
   useGetOrganisationInterviewsQuery,
   useGetJobDetailsQuery,
+  useGetJobInterviewsQuery,
 } from "../../redux/services/requisition/requisition";
 import ReusableMRT from "../../components/table";
 import ViewToggle from "../../components/table/ViewToggle";
 import SearchFilter from "../../components/searchFilter";
+import {
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  IconButton, TextField,
+} from "@mui/material";
+import CloseIcon        from "@mui/icons-material/Close";
+import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
+import { toast }        from "react-toastify";
+import { useUploadCandidateResumeMutation } from "../../redux/services/requisition/requisition";
 
+// Copy these constants from your CandidatesPage file:
+const DOMAIN_OPTIONS   = ["clinical", "regulatory", "pharmacovigilance"];
+const FUNCTION_OPTIONS = [
+  "biostatistics", "clinical_data_management", "clinical_operations",
+  "medical_writing", "pharmacovigilance", "regulatory_affairs",
+];
+const SUB_FUNCTION_MAP = {
+  biostatistics:            ["statistical_programmer", "biostatistician", "sas_programmer"],
+  clinical_data_management: ["clinical_programmer", "crf_developer", "data_manager", "database_programmer"],
+  clinical_operations:      ["clinical_research_associate", "clinical_trial_manager", "site_coordinator"],
+  medical_writing:          ["medical_writer", "regulatory_writer"],
+  pharmacovigilance:        ["safety_associate", "pv_specialist"],
+  regulatory_affairs:       ["regulatory_specialist", "submissions_manager"],
+};
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
   accent: "#FF5F1F",
@@ -896,32 +919,244 @@ function ReqOverviewTab({ job = {}, jobDetail = null }) {
 }
 
 // ─── Tab 1: Candidates ────────────────────────────────────────────────────────
+// ─── Add Candidate Dialog ─────────────────────────────────────────────────────
+function AddCandidateToJobDialog({ open, onClose, jobId, onSuccess }) {
+  const [form, setForm] = useState({
+    domain: "", function: "", sub_function: "", availability: "", resume: null,
+  });
+  const [uploading, setUploading] = useState(false);
+  const [uploadCandidateResume] = useUploadCandidateResumeMutation();
+
+  const handleClose = () => {
+    setForm({ domain: "", function: "", sub_function: "", availability: "", resume: null });
+    onClose();
+  };
+
+  const handleSubmit = async () => {
+    if (!form.resume) { toast.error("Resume is required"); return; }
+    if (!form.availability?.trim()) { toast.error("Availability is required"); return; }
+
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("job_id",       jobId);
+      fd.append("availability", form.availability);
+      fd.append("domain",       form.domain);
+      fd.append("function",     form.function);
+      fd.append("sub_function", form.sub_function);
+      fd.append("resume",       form.resume);
+
+      await uploadCandidateResume(fd).unwrap();
+      toast.success("Candidate added successfully");
+      onSuccess?.();
+      handleClose();
+    } catch (err) {
+      toast.error(err?.data?.detail?.[0]?.msg || err?.data?.message || "Failed to upload");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={handleClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: "20px", p: 1 } }}
+    >
+      <DialogTitle
+        sx={{
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          fontWeight: 700, fontSize: 18, color: C.textPrimary, pb: 1,
+        }}
+      >
+        <Box sx={{ display: "flex", alignItems: "center", gap: "10px" }}>
+          <Box sx={{
+            width: 34, height: 34, borderRadius: "9px",
+            backgroundColor: "#FFF0E8",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
+            <Person sx={{ fontSize: 18, color: C.accent }} />
+          </Box>
+          Add Candidate
+        </Box>
+        <IconButton size="small" onClick={handleClose} sx={{ color: "#9CA3AF" }}>
+          <CloseIcon fontSize="small" />
+        </IconButton>
+      </DialogTitle>
+
+      <DialogContent>
+        <Box sx={{ display: "flex", flexDirection: "column", gap: "14px", mt: 1 }}>
+
+          {/* Domain */}
+          <FormControl fullWidth size="small">
+            <InputLabel sx={{ fontSize: 13 }}>Domain</InputLabel>
+            <Select
+              value={form.domain}
+              label="Domain"
+              onChange={(e) => setForm({ ...form, domain: e.target.value })}
+              sx={{ borderRadius: "10px", fontSize: 13 }}
+            >
+              {DOMAIN_OPTIONS.map((d) => (
+                <MenuItem key={d} value={d} sx={{ fontSize: 13, textTransform: "capitalize" }}>
+                  {d.replace(/_/g, " ")}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* Function */}
+          <FormControl fullWidth size="small">
+            <InputLabel sx={{ fontSize: 13 }}>Function</InputLabel>
+            <Select
+              value={form.function}
+              label="Function"
+              onChange={(e) => setForm({ ...form, function: e.target.value, sub_function: "" })}
+              sx={{ borderRadius: "10px", fontSize: 13 }}
+            >
+              {FUNCTION_OPTIONS.map((f) => (
+                <MenuItem key={f} value={f} sx={{ fontSize: 13, textTransform: "capitalize" }}>
+                  {f.replace(/_/g, " ")}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* Sub-function */}
+          <FormControl fullWidth size="small" disabled={!form.function}>
+            <InputLabel sx={{ fontSize: 13 }}>Sub-function</InputLabel>
+            <Select
+              value={form.sub_function}
+              label="Sub-function"
+              onChange={(e) => setForm({ ...form, sub_function: e.target.value })}
+              sx={{ borderRadius: "10px", fontSize: 13 }}
+            >
+              {(SUB_FUNCTION_MAP[form.function] ?? []).map((s) => (
+                <MenuItem key={s} value={s} sx={{ fontSize: 13, textTransform: "capitalize" }}>
+                  {s.replace(/_/g, " ")}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+
+          {/* Availability */}
+          <TextField
+            label="Availability (days)"
+            required
+            fullWidth
+            size="small"
+            value={form.availability}
+            onChange={(e) => setForm({ ...form, availability: e.target.value })}
+            placeholder="e.g. 30"
+            InputProps={{ sx: { borderRadius: "10px", fontSize: 13 } }}
+            InputLabelProps={{ sx: { fontSize: 13 } }}
+          />
+
+          {/* Resume upload */}
+          <Box
+            sx={{
+              border: `2px dashed ${form.resume ? C.accent : "#E5E7EB"}`,
+              borderRadius: "14px",
+              py: "28px",
+              px: 2,
+              textAlign: "center",
+              backgroundColor: form.resume ? "#FFF0E8" : "#FAFAFA",
+              transition: "all 0.2s",
+              cursor: "pointer",
+            }}
+          >
+            <Button
+              component="label"
+              disableRipple
+              sx={{
+                display: "flex", flexDirection: "column", gap: "6px",
+                width: "100%", textTransform: "none", color: C.textPrimary,
+                "&:hover": { backgroundColor: "transparent" },
+              }}
+            >
+              <CloudUploadOutlinedIcon sx={{ fontSize: 36, color: form.resume ? C.accent : "#9CA3AF" }} />
+              {form.resume ? (
+                <>
+                  <Typography fontSize={13} fontWeight={700} color={C.accent}>
+                    {form.resume.name}
+                  </Typography>
+                  <Typography fontSize={11} color={C.textSecondary}>
+                    Click to replace
+                  </Typography>
+                </>
+              ) : (
+                <>
+                  <Typography fontSize={13} fontWeight={600} color={C.textPrimary}>
+                    Browse Resume
+                  </Typography>
+                  <Typography fontSize={11} color={C.textSecondary}>
+                    PDF, DOC, DOCX supported
+                  </Typography>
+                </>
+              )}
+              <input
+                hidden
+                type="file"
+                accept=".pdf,.doc,.docx"
+                onChange={(e) => setForm({ ...form, resume: e.target.files[0] })}
+              />
+            </Button>
+          </Box>
+        </Box>
+      </DialogContent>
+
+      <DialogActions sx={{ px: "20px", pb: "20px", gap: "8px" }}>
+        <Button
+          onClick={handleClose}
+          sx={{ textTransform: "none", fontSize: 13, color: C.textSecondary, borderRadius: "10px", px: "16px" }}
+        >
+          Cancel
+        </Button>
+        <Button
+          variant="contained"
+          disabled={uploading}
+          onClick={handleSubmit}
+          startIcon={uploading ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : null}
+          sx={{
+            textTransform: "none", fontSize: 13, fontWeight: 600,
+            borderRadius: "10px", backgroundColor: C.accent,
+            px: "24px", boxShadow: "none",
+            "&:hover": { backgroundColor: "#E5541B", boxShadow: "none" },
+            "&:disabled": { backgroundColor: "#FFCFB3", color: "#fff" },
+          }}
+        >
+          {uploading ? "Uploading…" : "Add Candidate"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+// ─── Tab 1: Candidates ────────────────────────────────────────────────────────
 function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
   const [stageFilter, setStageFilter] = useState("all");
   const [view, setView] = useState("list");
   const [search, setSearch] = useState("");
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
 
-  const { data, isLoading, isError, error } =
+  const { data, isLoading, isError, error, refetch } =
     useGetJobMatchedCandidatesQuery(jobId);
 
   const all = data?.data ?? [];
 
-  // ── Stage Options ───────────────────────────────
   const stages = React.useMemo(
     () => [...new Set(all.map((c) => c.current_stage))],
     [all],
   );
 
-  // ── Stage Filter ────────────────────────────────
   const filtered =
     stageFilter === "all"
       ? all
       : all.filter((c) => c.current_stage === stageFilter);
 
-  // ── Search Filter ───────────────────────────────
   const searchedCandidates = filtered.filter((candidate) => {
     const value = search.toLowerCase();
-
     return (
       candidate.full_name?.toLowerCase().includes(value) ||
       candidate.email?.toLowerCase().includes(value) ||
@@ -931,44 +1166,21 @@ function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
     );
   });
 
-  // ── MRT Columns ─────────────────────────────────
   const candidateColumns = React.useMemo(
     () => [
       {
         accessorKey: "full_name",
         header: "Candidate",
         size: 250,
-
         Cell: ({ row }) => (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1.5,
-            }}
-          >
-            <Avatar
-              sx={{
-                width: 34,
-                height: 34,
-                bgcolor: C.accent,
-                fontSize: 13,
-                fontWeight: 700,
-              }}
-            >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Avatar sx={{ width: 34, height: 34, bgcolor: C.accent, fontSize: 13, fontWeight: 700 }}>
               {row.original.full_name?.charAt(0).toUpperCase()}
             </Avatar>
-
             <Box sx={{ minWidth: 0 }}>
-              <Typography
-                sx={{ fontSize: 14 }}
-                fontWeight={600}
-                color={C.textPrimary}
-                noWrap
-              >
+              <Typography sx={{ fontSize: 14 }} fontWeight={600} color={C.textPrimary} noWrap>
                 {row.original.full_name}
               </Typography>
-
               <Typography sx={{ fontSize: 12 }} color={C.textSecondary} noWrap>
                 {row.original.email}
               </Typography>
@@ -976,41 +1188,27 @@ function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
           </Box>
         ),
       },
-
       {
         accessorKey: "current_stage",
         header: "Stage",
         size: 140,
-
         Cell: ({ cell }) => (
-          <Box
-            component="span"
-            sx={{
-              fontSize: 11,
-              fontWeight: 700,
-              px: "8px",
-              py: "3px",
-              borderRadius: "8px",
-              backgroundColor: C.indigoSoft,
-              color: C.indigo,
-              textTransform: "capitalize",
-            }}
-          >
+          <Box component="span" sx={{
+            fontSize: 11, fontWeight: 700, px: "8px", py: "3px",
+            borderRadius: "8px", backgroundColor: C.indigoSoft,
+            color: C.indigo, textTransform: "capitalize",
+          }}>
             {cell.getValue()}
           </Box>
         ),
       },
-
       {
         accessorKey: "match_score",
         header: "Match %",
         size: 100,
-
         Cell: ({ cell }) => {
           const value = cell.getValue();
-
           const color = value >= 80 ? C.green : value >= 60 ? C.amber : C.red;
-
           return (
             <Typography sx={{ fontSize: 12 }} fontWeight={700} color={color}>
               {value}%
@@ -1018,34 +1216,28 @@ function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
           );
         },
       },
-
       {
         accessorKey: "availability",
         header: "Availability",
         size: 120,
-
         Cell: ({ cell }) => (
           <Typography sx={{ fontSize: 12 }}>
             {cell.getValue() === 0 ? "Immediate" : `${cell.getValue()} days`}
           </Typography>
         ),
       },
-
       {
         accessorKey: "total_experience",
         header: "Experience",
         size: 120,
-
         Cell: ({ cell }) => (
           <Typography sx={{ fontSize: 12 }}>{cell.getValue()}</Typography>
         ),
       },
-
       {
         accessorKey: "phone_number",
         header: "Phone",
         size: 150,
-
         Cell: ({ cell }) => (
           <Typography sx={{ fontSize: 12 }}>{cell.getValue()}</Typography>
         ),
@@ -1054,7 +1246,6 @@ function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
     [],
   );
 
-  // ── Loading ─────────────────────────────────────
   if (isLoading)
     return (
       <Box display="flex" justifyContent="center" py={6}>
@@ -1062,196 +1253,111 @@ function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
       </Box>
     );
 
-  // ── Error ───────────────────────────────────────
   if (isError)
     return (
       <Alert severity="error">
-        Failed to load candidates:
-        {error?.data?.message}
+        Failed to load candidates: {error?.data?.message}
       </Alert>
     );
 
   return (
     <Box>
       {/* Toolbar */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 2,
-          mb: "20px",
-          mt: -2,
-          flexWrap: "wrap",
-        }}
-      >
-        <Box
-          sx={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 1,
-            px: 1.8,
-            // py: 0.8,
-            borderRadius: "8px",
-            background: "rgba(255, 95, 31, 0.08)",
-            border: "1px solid rgba(255, 95, 31, 0.2)",
-            transition: "0.3s ease",
-            "&:hover": {
-              background: "rgba(255, 95, 31, 0.14)",
-              transform: "translateY(-1px)",
-            },
-          }}
-        >
-          <Box
-            sx={{
-              minWidth: 28,
-              height: 28,
-              borderRadius: "8px",
-              background: "#FF5F1F",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              px: 1,
-              boxShadow: "0 4px 12px rgba(255,95,31,0.35)",
-            }}
-          >
-            <Typography
-              sx={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#fff",
-                lineHeight: 1,
-              }}
-            >
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: "20px", mt: -2, flexWrap: "wrap" }}>
+
+        {/* Count badge */}
+        <Box sx={{
+          display: "inline-flex", alignItems: "center", gap: 1,
+          px: 1.8, borderRadius: "8px",
+          background: "rgba(255, 95, 31, 0.08)",
+          border: "1px solid rgba(255, 95, 31, 0.2)",
+          transition: "0.3s ease",
+          "&:hover": { background: "rgba(255, 95, 31, 0.14)", transform: "translateY(-1px)" },
+        }}>
+          <Box sx={{
+            minWidth: 28, height: 28, borderRadius: "8px",
+            background: "#FF5F1F", display: "flex", alignItems: "center",
+            justifyContent: "center", px: 1,
+            boxShadow: "0 4px 12px rgba(255,95,31,0.35)",
+          }}>
+            <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#fff", lineHeight: 1 }}>
               {searchedCandidates.length}
             </Typography>
           </Box>
-
           <Box sx={{ padding: 1, borderRadius: 0 }}>
-            <Typography
-              sx={{
-                fontSize: 10,
-                fontWeight: 600,
-                color: "#FF5F1F",
-                textTransform: "uppercase",
-                letterSpacing: 1,
-                lineHeight: 1,
-              }}
-            >
+            <Typography sx={{ fontSize: 10, fontWeight: 600, color: "#FF5F1F", textTransform: "uppercase", letterSpacing: 1, lineHeight: 1 }}>
               Total
             </Typography>
-
-            <Typography
-              sx={{
-                fontSize: 10,
-                fontWeight: 600,
-                color: C.textPrimary,
-                lineHeight: 1,
-              }}
-            >
+            <Typography sx={{ fontSize: 10, fontWeight: 600, color: C.textPrimary, lineHeight: 1 }}>
               Candidate{searchedCandidates.length !== 1 ? "s" : ""}
             </Typography>
           </Box>
         </Box>
-        {/* <Typography fontSize={13} color={C.textSecondary}>
-          {searchedCandidates.length} candidate
-          {searchedCandidates.length !== 1 ? "s" : ""}
-        </Typography> */}
 
         {/* Stage Filter */}
         <FormControl size="small" sx={{ minWidth: 160 }}>
           <InputLabel sx={{ fontSize: 12 }}>Filter by stage</InputLabel>
-
           <Select
             value={stageFilter}
             label="Filter by stage"
             onChange={(e) => setStageFilter(e.target.value)}
-            sx={{
-              fontSize: 12,
-              borderRadius: "8px",
-            }}
+            sx={{ fontSize: 12, borderRadius: "8px" }}
           >
             <MenuItem value="all">All Stages</MenuItem>
-
             {stages.map((s) => (
-              <MenuItem
-                key={s}
-                value={s}
-                sx={{
-                  textTransform: "capitalize",
-                }}
-              >
-                {s}
-              </MenuItem>
+              <MenuItem key={s} value={s} sx={{ textTransform: "capitalize" }}>{s}</MenuItem>
             ))}
           </Select>
         </FormControl>
 
-        {/* Search + Toggle */}
-        <Box
-          sx={{
-            ml: "auto",
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-          }}
-        >
+        {/* Right side */}
+        <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 2 }}>
           <SearchFilter
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search candidates..."
           />
-
           <ViewToggle view={view} onChange={setView} />
+
+          {/* ── Add Candidate button ── */}
+          <Button
+            variant="contained"
+            onClick={() => setAddDialogOpen(true)}
+            sx={{
+              textTransform: "none", fontSize: 12, fontWeight: 600,
+              borderRadius: "8px", px: "14px", height: 36,
+              backgroundColor: C.accent, boxShadow: "none", whiteSpace: "nowrap",
+              "&:hover": { backgroundColor: "#E5541B", boxShadow: "none" },
+            }}
+          >
+            + Add Candidate
+          </Button>
         </Box>
       </Box>
 
       {/* Empty State */}
       {searchedCandidates.length === 0 ? (
-        <Box
-          sx={{
-            textAlign: "center",
-            py: 8,
-          }}
-        >
+        <Box sx={{ textAlign: "center", py: 8 }}>
           <Typography fontSize={13} color={C.textSecondary}>
             No candidates match the filters.
           </Typography>
         </Box>
       ) : view === "grid" ? (
-        // ── GRID VIEW ───────────────────────────
         <Grid container spacing={2.5}>
           {searchedCandidates.map((candidate) => (
-            <Grid
-              size={{
-                xs: 12,
-                sm: 6,
-                md: 4,
-                xl: 3,
-              }}
-              key={candidate.matched_candidate_id}
-            >
+            <Grid size={{ xs: 12, sm: 6, md: 4, xl: 3 }} key={candidate.matched_candidate_id}>
               <CandidateCard
                 candidate={candidate}
                 onView={() =>
-                  navigate(
-                    `/account-manager/candidate/${candidate.matched_candidate_id}`,
-                    {
-                      state: {
-                        orgName,
-                        jobTitle,
-                        previousTab: 1, // Candidates tab
-                        orgId,
-                        jobId,
-                      },
-                    },
-                  )
+                  navigate(`/account-manager/candidate/${candidate.matched_candidate_id}`, {
+                    state: { orgName, jobTitle, previousTab: 1, orgId, jobId },
+                  })
                 }
               />
             </Grid>
           ))}
         </Grid>
       ) : (
-        // ── TABLE VIEW ──────────────────────────
         <ReusableMRT
           data={searchedCandidates}
           columnData={candidateColumns}
@@ -1261,17 +1367,19 @@ function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
           height="calc(100vh - 268px)"
           onRowClick={(row) =>
             navigate(`/account-manager/candidate/${row.matched_candidate_id}`, {
-              state: {
-                orgName,
-                jobTitle,
-                previousTab: 1,
-                orgId,
-                jobId,
-              },
+              state: { orgName, jobTitle, previousTab: 1, orgId, jobId },
             })
           }
         />
       )}
+
+      {/* ── Add Candidate Dialog ── */}
+      <AddCandidateToJobDialog
+        open={addDialogOpen}
+        onClose={() => setAddDialogOpen(false)}
+        jobId={jobId}
+        onSuccess={refetch}
+      />
     </Box>
   );
 }
@@ -1279,7 +1387,7 @@ function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
 // ─── Tab 2: Interviews ────────────────────────────────────────────────────────
 function ReqInterviewsTab({ orgId, jobPositionId, jobId }) {
   const [statusFilter, setStatusFilter] = useState("all");
-  const { data, isLoading, isError } = useGetOrganisationInterviewsQuery(jobId);
+  const { data, isLoading, isError } = useGetJobInterviewsQuery(jobId);
   const all = (data?.data ?? []).filter(
     (iv) => iv.job_position_id === jobPositionId,
   );

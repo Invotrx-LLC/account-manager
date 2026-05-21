@@ -39,6 +39,7 @@ import {
   Business,
   LocationOnOutlined,
   PeopleOutlineOutlined,
+  PersonOutlineOutlined,
 } from "@mui/icons-material";
 import {
   LineChart,
@@ -76,6 +77,441 @@ import SearchIcon from "@mui/icons-material/Search";
 import SearchFilter from "../../components/searchFilter";
 import LayersIcon from "@mui/icons-material/Layers";
 
+// ─── Add this import at the top of your file ───────────────────────────────
+import { useGetInterviewDetailsQuery } from "../../redux/services/requisition/requisition";
+import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
+// import PersonOutlineIcon from "@mui/icons-material/PersonOutline";
+import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
+// import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
+import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
+import WorkspacePremiumOutlinedIcon from "@mui/icons-material/WorkspacePremiumOutlined";
+import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
+
+/* ════════════════════════════════════════════════════════════════════════════
+   INTERVIEW DETAIL DIALOG
+════════════════════════════════════════════════════════════════════════════ */
+function InterviewDetailDialog({ open, onClose, interviewId }) {
+  const { data, isLoading, isError } = useGetInterviewDetailsQuery(
+    interviewId,
+    { skip: !interviewId }
+  );
+  const iv = data?.data ?? null;
+  console.log("Interview details fetched:", iv);
+  const statusColorMap = {
+    scheduled: { bg: "#EEF2FF", color: "#4338CA", border: "#C7D2FE" },
+    completed: { bg: "#E7F8EE", color: "#0F6E56", border: "#5DCAA5" },
+    cancelled: { bg: "#F3F4F6", color: "#6B7280", border: "#D1D5DB" },
+    rescheduled: { bg: "#FEF3C7", color: "#92400E", border: "#F0C070" },
+    no_show: { bg: "#FEE2E2", color: "#B91C1C", border: "#F09595" },
+    not_conducted: { bg: "#F3F4F6", color: "#6B7280", border: "#D1D5DB" },
+  };
+  const statusCfg = statusColorMap[(iv?.status ?? "").toLowerCase()] ?? statusColorMap.scheduled;
+
+  const formatDate = (d) =>
+    d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }) : "—";
+
+  const formatTime = (t) => {
+    if (!t) return "—";
+    const [h, m] = t.split(":");
+    const hr = parseInt(h, 10);
+    return `${hr % 12 || 12}:${m} ${hr >= 12 ? "PM" : "AM"}`;
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth="md"
+      fullWidth
+      scroll="paper"           // ← Important
+      PaperProps={{
+        sx: {
+          borderRadius: "20px",
+          overflow: "hidden",
+          boxShadow: "0 24px 60px rgba(0,0,0,0.12)",
+          maxHeight: "92vh",     // ← Prevents going out of screen
+        },
+      }}
+    >
+      {/* ── Header band ── */}
+<Box
+  sx={{
+ background: "linear-gradient(135deg, #FF5F1F 0%, #FF8C5A 100%)",
+     px: "24px",
+    pt: "22px",
+    pb: "20 px",
+    position: "relative",
+    flexShrink: 0,
+  }}
+>
+  <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+    
+    {/* Left Side */}
+    <Box>
+      <Typography 
+        fontSize={11} 
+        fontWeight={700} 
+        color="rgba(255,255,255,0.75)" 
+        letterSpacing="0.1em" 
+        textTransform="uppercase" 
+        mb="4px"
+      >
+        Interview Details
+      </Typography>
+
+      {isLoading ? (
+        <Box sx={{ width: 260, height: 28, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.2)" }} />
+      ) : (
+        <Typography fontSize={20} fontWeight={700} color="#fff" lineHeight={1.2}>
+          {iv?.interview_step_name ?? "—"}
+        </Typography>
+      )}
+    </Box>
+
+    {/* Right Side - Two Values in Flex */}
+    <Box sx={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", justifyContent: "flex-end" }}>
+      {iv && (
+        <>
+          {/* Step Info */}
+          <Box sx={{
+            px: "12px",
+            py: "6px",
+            borderRadius: "999px",
+            backgroundColor: "rgba(255,255,255,0.15)",
+            border: "1px solid rgba(255,255,255,0.3)",
+            display: "flex",
+            alignItems: "center",
+            gap: "6px"
+          }}>
+            <Typography fontSize={11} fontWeight={600} color="#fff">
+              Step {iv.interview_step_number} • {iv.interview_step_type}
+            </Typography>
+          </Box>
+
+          {/* Second Value - You can change this as needed */}
+          {iv.status && (
+            <Box sx={{
+              px: "12px",
+              py: "6px",
+              borderRadius: "999px",
+              backgroundColor: "rgba(255,255,255,0.18)",
+              border: "1px solid rgba(255,255,255,0.35)",
+            }}>
+              <Typography 
+                fontSize={11} 
+                fontWeight={700} 
+                color="#fff" 
+                textTransform="uppercase"
+                letterSpacing="0.5px"
+              >
+                {iv.status}
+              </Typography>
+            </Box>
+          )}
+
+          {iv.is_final && (
+            <Box sx={{
+              px: "12px",
+              py: "6px",
+              borderRadius: "999px",
+              backgroundColor: "#FBBF24",
+              color: "#1F2937",
+            }}>
+              <Typography fontSize={11} fontWeight={700}>
+                ⭐ Final Round
+              </Typography>
+            </Box>
+          )}
+        </>
+      )}
+    </Box>
+  </Box>
+</Box>
+
+      {/* ── Scrollable Content Area ── */}
+      <DialogContent
+        dividers
+        sx={{
+          p: "24px",
+          pt: "0px",
+          mt: "-28px",
+          backgroundColor: "#f8fafc",
+          overflowY: "auto",
+          maxHeight: "calc(92vh - 180px)",   // Adjust if needed
+        }}
+      >
+        {isLoading ? (
+          <Box sx={{
+            backgroundColor: "#fff", borderRadius: "16px",
+            border: "1px solid #E8E8EC",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            py: 10, gap: 2, flexDirection: "column",
+            
+          }}>
+            <CircularProgress sx={{ color: "#FF5F1F" }} />
+            <Typography fontSize={13} color="#5C5C70">Loading interview details…</Typography>
+          </Box>
+        ) : isError || !iv ? (
+          <Box sx={{
+            backgroundColor: "#fff", borderRadius: "16px",
+            border: "1px solid #E8E8EC", py: 8, textAlign: "center",
+          }}>
+            <Typography fontSize={14} color="#B91C1C" fontWeight={600}>Failed to load details</Typography>
+          </Box>
+        ) : (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: "12px",   mt: "30px", }}>
+
+            {/* ── Status + Candidate row ── */}
+            <Box sx={{
+              backgroundColor: "#fff", borderRadius: "16px",
+              border: "1px solid #E8E8EC",
+              px: "20px", py: "16px",
+              display: "flex", alignItems: "center",
+              justifyContent: "space-between", flexWrap: "wrap", gap: "12px",
+              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
+            }}>
+              <Box sx={{ display: "flex", alignItems: "center", gap: "14px" }}>
+                <Avatar sx={{ width: 44, height: 44, bgcolor: "#FF5F1F", fontWeight: 700, fontSize: 16 }}>
+                  {iv.candidate_name?.charAt(0).toUpperCase()}
+                </Avatar>
+                <Box>
+                  <Typography fontSize={15} fontWeight={700} color="#111118">{iv.candidate_name}</Typography>
+                  <Typography fontSize={12} color="#5C5C70">{iv.candidate_experience} experience</Typography>
+                </Box>
+              </Box>
+              <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                {/* Skill intel score */}
+                <Box sx={{
+               
+                  px: "12px", py: "10px", borderRadius: "10px",
+                  backgroundColor: "#F0FDF4", border: "1px solid #BBF7D0",
+                  display: "flex", alignItems: "center", gap: "5px",
+                }}>
+                  <WorkspacePremiumOutlinedIcon sx={{ fontSize: 14, color: "#0F6E56" }} />
+                  <Typography fontSize={12} fontWeight={700} color="#0F6E56">
+                    {iv.skill_intel_score}% match
+                  </Typography>
+                </Box>
+                {/* Status badge */}
+                <Box sx={{
+                  px: "12px", py: "5px", borderRadius: "10px",
+                  backgroundColor: statusCfg.bg,
+                  border: `1px solid ${statusCfg.border}`,
+                }}>
+                  <Typography fontSize={12} fontWeight={700} color={statusCfg.color} textTransform="capitalize">
+                    {iv.status}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+
+            {/* ── Date / Time / Platform row ── */}
+            <Box sx={{
+              display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
+              gap: "12px",
+            }}>
+              {[
+                {
+                  Icon: CalendarMonthOutlinedIcon,
+                  label: "Date",
+                  value: formatDate(iv.date),
+                  accent: false,
+                },
+                {
+                  Icon: AccessTimeOutlinedIcon,
+                  label: "Time",
+                  value: `${formatTime(iv.start_time)} – ${formatTime(iv.end_time)} · ${iv.duration} min`,
+                  accent: false,
+                },
+                {
+                  Icon: VideocamOutlinedIcon,
+                  label: "Platform",
+                  value: iv.platform,
+                  accent: true,
+                  link: iv.meeting_url,
+                },
+              ].map(({ Icon, label, value, accent, link }) => (
+                <Box key={label} sx={{
+                  backgroundColor: "#fff", borderRadius: "14px",
+                  border: "1px solid #E8E8EC",
+                  px: "16px", py: "14px",
+                  display: "flex", flexDirection: "column", gap: "8px",
+                  boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                }}>
+                  <Box sx={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Icon sx={{ fontSize: 14, color: "#9696A6" }} />
+                    <Typography fontSize={10} fontWeight={700} color="#9696A6" textTransform="uppercase" letterSpacing="0.08em">
+                      {label}
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <Typography fontSize={13} fontWeight={600} color="#111118">{value}</Typography>
+                    {link && (
+                      <IconButton
+                        size="small"
+                        href={link}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        component="a"
+                        sx={{
+                          color: "#FF5F1F", p: "4px",
+                          "&:hover": { backgroundColor: "#FFF0E8" },
+                        }}
+                      >
+                        <OpenInNewIcon sx={{ fontSize: 14 }} />
+                      </IconButton>
+                    )}
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+
+            {/* ── Interviewers row ── */}
+            <Box sx={{
+              display: "grid", gridTemplateColumns: "1fr 1fr",
+              gap: "12px",
+            }}>
+              {/* Primary interviewer */}
+              <Box sx={{
+                backgroundColor: "#fff", borderRadius: "14px",
+                border: "1px solid #E8E8EC",
+                px: "16px", py: "14px",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+              }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: "6px", mb: "10px" }}>
+                  <PersonOutlineOutlined sx={{ fontSize: 14, color: "#9696A6" }} />
+                  <Typography fontSize={10} fontWeight={700} color="#9696A6" textTransform="uppercase" letterSpacing="0.08em">
+                    Primary Interviewer
+                  </Typography>
+                </Box>
+                {iv.primary_interviewer?.name ? (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                    <Avatar sx={{ width: 32, height: 32, fontSize: 12, fontWeight: 700, bgcolor: "#EEF2FF", color: "#4338CA" }}>
+                      {iv.primary_interviewer.name.charAt(0).toUpperCase()}
+                    </Avatar>
+                    <Typography fontSize={13} fontWeight={600} color="#111118">
+                      {iv.primary_interviewer.name}
+                    </Typography>
+                  </Box>
+                ) : (
+                  <Typography fontSize={12} color="#9696A6">Not assigned</Typography>
+                )}
+              </Box>
+
+              {/* Panel members */}
+              <Box sx={{
+                backgroundColor: "#fff", borderRadius: "14px",
+                border: "1px solid #E8E8EC",
+                px: "16px", py: "14px",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+              }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: "6px", mb: "10px" }}>
+                  <GroupOutlinedIcon sx={{ fontSize: 14, color: "#9696A6" }} />
+                  <Typography fontSize={10} fontWeight={700} color="#9696A6" textTransform="uppercase" letterSpacing="0.08em">
+                    Panel Members
+                  </Typography>
+                </Box>
+                {iv.panel_members?.length > 0 ? (
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                    {iv.panel_members.map((p) => (
+                      <Box key={p.id} sx={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                        <Avatar sx={{ width: 28, height: 28, fontSize: 11, fontWeight: 700, bgcolor: "#FFF0E8", color: "#FF5F1F" }}>
+                          {p.name.charAt(0).toUpperCase()}
+                        </Avatar>
+                        <Typography fontSize={13} fontWeight={500} color="#111118">{p.name}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                ) : (
+                  <Typography fontSize={12} color="#9696A6">No panel members</Typography>
+                )}
+              </Box>
+            </Box>
+
+            {/* ── Skills + Job details row ── */}
+            <Box sx={{
+              display: "grid", gridTemplateColumns: "1fr 1fr",
+              gap: "12px",
+            }}>
+              {/* Skills */}
+              <Box sx={{
+                backgroundColor: "#fff", borderRadius: "14px",
+                border: "1px solid #E8E8EC",
+                px: "16px", py: "14px",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+              }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: "6px", mb: "10px" }}>
+                  <PsychologyOutlinedIcon sx={{ fontSize: 14, color: "#9696A6" }} />
+                  <Typography fontSize={10} fontWeight={700} color="#9696A6" textTransform="uppercase" letterSpacing="0.08em">
+                    Required Skills
+                  </Typography>
+                </Box>
+                <Box sx={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
+                  {(iv.skills ?? "").split(",").map((s) => s.trim()).filter(Boolean).map((skill) => (
+                    <Box key={skill} sx={{
+                      px: "8px", py: "3px", borderRadius: "6px",
+                      backgroundColor: "#F3F4F6", border: "1px solid #E8E8EC",
+                    }}>
+                      <Typography fontSize={11} fontWeight={500} color="#5C5C70" textTransform="capitalize">
+                        {skill}
+                      </Typography>
+                    </Box>
+                  ))}
+                </Box>
+              </Box>
+
+              {/* Job meta */}
+              <Box sx={{
+                backgroundColor: "#fff", borderRadius: "14px",
+                border: "1px solid #E8E8EC",
+                px: "16px", py: "14px",
+                boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
+                display: "flex", flexDirection: "column", gap: "8px",
+              }}>
+                {[
+                  { label: "Function", value: iv.function?.replace(/_/g, " ") },
+                  { label: "Sub-function", value: iv.sub_function?.replace(/_/g, " ") },
+                  { label: "Experience", value: `${iv.min_years}–${iv.max_years} years` },
+                  { label: "Work Mode", value: iv.mode_of_work },
+                  { label: "Location", value: iv.country },
+                ].map(({ label, value }) => (
+                  <Box key={label} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <Typography fontSize={12} color="#9696A6">{label}</Typography>
+                    <Typography fontSize={12} fontWeight={600} color="#111118" textTransform="capitalize">
+                      {value ?? "—"}
+                    </Typography>
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+
+            {/* ── Feedback banner ── */}
+            {!iv.feedback_submitted && iv.status?.toLowerCase() === "completed" && (
+              <Box sx={{
+                borderRadius: "12px", px: "16px", py: "12px",
+                backgroundColor: "#FEF3C7", border: "1px solid #F0C070",
+                display: "flex", alignItems: "center", justifyContent: "space-between",
+              }}>
+                <Typography fontSize={13} fontWeight={600} color="#92400E">
+                  ⚠️ Feedback not submitted yet
+                </Typography>
+                <Button size="small" sx={{
+                  textTransform: "none", fontSize: 12, fontWeight: 600,
+                  color: "#92400E", borderColor: "#F0C070", border: "1px solid",
+                  borderRadius: "8px", px: "12px",
+                  "&:hover": { backgroundColor: "#FDE68A" },
+                }}>
+                  Submit Feedback
+                </Button>
+              </Box>
+            )}
+          </Box>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
   accent: "#FF5F1F",
@@ -149,11 +585,11 @@ function StatusPill({ status }) {
 function OrgHeroHeader({ org, analytics }) {
   const initials = org.organisation_name
     ? org.organisation_name
-        .split(" ")
-        .map((w) => w[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase()
+      .split(" ")
+      .map((w) => w[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase()
     : "?";
 
   const statPills = [
@@ -522,30 +958,30 @@ function OrgOverviewTab({ org, orgId }) {
 
   const funnelData = analytics
     ? [
-        { name: "Matched", value: analytics.candidate_stage_breakdown.matched },
-        {
-          name: "Shortlisted",
-          value: analytics.candidate_stage_breakdown.shortlisted,
-        },
-        {
-          name: "Interviewing",
-          value:
-            analytics.candidate_stage_breakdown.interview_scheduled +
-            analytics.candidate_stage_breakdown.interview_rescheduled,
-        },
-        {
-          name: "Selected",
-          value: analytics.candidate_stage_breakdown.selected,
-        },
-        {
-          name: "Rejected",
-          value: analytics.candidate_stage_breakdown.rejected,
-        },
-        {
-          name: "Onboarded",
-          value: analytics.candidate_stage_breakdown.onboarded,
-        },
-      ].filter((d) => d.value > 0)
+      { name: "Matched", value: analytics.candidate_stage_breakdown.matched },
+      {
+        name: "Shortlisted",
+        value: analytics.candidate_stage_breakdown.shortlisted,
+      },
+      {
+        name: "Interviewing",
+        value:
+          analytics.candidate_stage_breakdown.interview_scheduled +
+          analytics.candidate_stage_breakdown.interview_rescheduled,
+      },
+      {
+        name: "Selected",
+        value: analytics.candidate_stage_breakdown.selected,
+      },
+      {
+        name: "Rejected",
+        value: analytics.candidate_stage_breakdown.rejected,
+      },
+      {
+        name: "Onboarded",
+        value: analytics.candidate_stage_breakdown.onboarded,
+      },
+    ].filter((d) => d.value > 0)
     : [];
 
   const candidateTrendData =
@@ -570,31 +1006,31 @@ function OrgOverviewTab({ org, orgId }) {
 
   const overviewCards = analytics
     ? [
-        {
-          label: "Total Jobs",
-          value: analytics.job_overview.total_jobs,
-          color: C.accent,
-          soft: C.accentSoft,
-        },
-        {
-          label: "Open Jobs",
-          value: analytics.job_overview.open_jobs,
-          color: C.green,
-          soft: C.greenSoft,
-        },
-        {
-          label: "Closed Jobs",
-          value: analytics.job_overview.closed_jobs,
-          color: "#6B7280",
-          soft: "#F3F4F6",
-        },
-        {
-          label: "Total Candidates",
-          value: analytics.total_candidates,
-          color: C.indigo,
-          soft: C.indigoSoft,
-        },
-      ]
+      {
+        label: "Total Jobs",
+        value: analytics.job_overview.total_jobs,
+        color: C.accent,
+        soft: C.accentSoft,
+      },
+      {
+        label: "Open Jobs",
+        value: analytics.job_overview.open_jobs,
+        color: C.green,
+        soft: C.greenSoft,
+      },
+      {
+        label: "Closed Jobs",
+        value: analytics.job_overview.closed_jobs,
+        color: "#6B7280",
+        soft: "#F3F4F6",
+      },
+      {
+        label: "Total Candidates",
+        value: analytics.total_candidates,
+        color: C.indigo,
+        soft: C.indigoSoft,
+      },
+    ]
     : [];
 
   return (
@@ -1281,7 +1717,7 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
     orgId,
     status: "all",
   });
-  console.log("orgId",orgId)
+  console.log("orgId", orgId)
   const reqColumns = useMemo(
     () => [
       {
@@ -1384,10 +1820,10 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
             <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
                 : "—"}
             </Typography>
           );
@@ -1425,17 +1861,17 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
     );
   });
   const goToReq = (job) =>
-  navigate(
-    `/account-manager/org/${orgId}/requisitions/${job.job_id ?? job.id}`,
-    {
-      state: {
-        jobTitle: job.job_title,
-        orgName,
-        job,
-        previousTab: 1, // Requisitions tab index
+    navigate(
+      `/account-manager/org/${orgId}/requisitions/${job.job_id ?? job.id}`,
+      {
+        state: {
+          jobTitle: job.job_title,
+          orgName,
+          job,
+          previousTab: 1, // Requisitions tab index
+        },
       },
-    },
-  );
+    );
 
   return (
     <Box>
@@ -1505,26 +1941,26 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
     statusFilter === "all"
       ? candidates
       : candidates.filter((c) =>
-          c.jobs?.some((j) => j.current_stage === statusFilter),
-        );
+        c.jobs?.some((j) => j.current_stage === statusFilter),
+      );
 
- const goToCandidate = (candidate, matchedCandidateId, job) =>
-  navigate(`/account-manager/candidate/${candidate.candidate_id}`, {
-    state: {
-      orgId,
-      orgName,
-      matched_candidate_id: matchedCandidateId,
-      previousTab: 2,
+  const goToCandidate = (candidate, matchedCandidateId, job) =>
+    navigate(`/account-manager/candidate/${candidate.candidate_id}`, {
+      state: {
+        orgId,
+        orgName,
+        matched_candidate_id: matchedCandidateId,
+        previousTab: 2,
 
-      // important
-      from: "org-candidates",
-      previousPath: location.pathname,
+        // important
+        from: "org-candidates",
+        previousPath: location.pathname,
 
-      // modal/job context
-      jobId: job?.job_id,
-      jobTitle: job?.job_title,
-    },
-  });
+        // modal/job context
+        jobId: job?.job_id,
+        jobTitle: job?.job_title,
+      },
+    });
 
   const candColumns = useMemo(
     () => [
@@ -1856,6 +2292,7 @@ function OrgInterviewsTab({ orgId }) {
   const [view, setView] = useState("list");
   const [statusFilter, setStatusFilter] = useState("all");
   const [search, setSearch] = useState("");
+  const [selectedInterviewId, setSelectedInterviewId] = useState(null); // ← NEW
 
   const { data, isLoading, isError } = useGetOrganisationInterviewsQuery(orgId);
   const interviews = data?.data ?? [];
@@ -1869,13 +2306,12 @@ function OrgInterviewsTab({ orgId }) {
     { key: "not_conducted", value: "Not Conducted" },
   ];
 
-  const filtered =
-    statusFilter === "all"
-      ? interviews
-      : interviews.filter((iv) => (iv.status ?? "scheduled") === statusFilter);
+  const filtered = statusFilter === "all"
+    ? interviews
+    : interviews.filter((iv) => (iv.status ?? "scheduled") === statusFilter);
+
   const searchedInterviews = filtered.filter((iv) => {
     const value = search.toLowerCase();
-
     return (
       iv.job_title?.toLowerCase().includes(value) ||
       iv.job_position_id?.toLowerCase().includes(value) ||
@@ -1886,6 +2322,8 @@ function OrgInterviewsTab({ orgId }) {
       iv.status?.toLowerCase().includes(value)
     );
   });
+
+  // ivColumns stays exactly the same as your existing code — no changes needed
   const ivColumns = useMemo(
     () => [
       {
@@ -1893,7 +2331,7 @@ function OrgInterviewsTab({ orgId }) {
         header: "Job",
         size: 200,
         Cell: ({ row }) => (
-           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             <Box
               sx={{
                 width: 36,
@@ -1910,13 +2348,13 @@ function OrgInterviewsTab({ orgId }) {
             </Box>
             <Box>
               <Typography
-              sx={{ fontSize: 13, fontWeight: 700, color: C.textPrimary }}
-            >
-              {row.original.job_title}
-            </Typography>
-            <Typography sx={{ fontSize: 12 }} color={C.textSecondary}>
-              {row.original.job_position_id}
-            </Typography>
+                sx={{ fontSize: 13, fontWeight: 700, color: C.textPrimary }}
+              >
+                {row.original.job_title}
+              </Typography>
+              <Typography sx={{ fontSize: 12 }} color={C.textSecondary}>
+                {row.original.job_position_id}
+              </Typography>
             </Box>
           </Box>
         ),
@@ -1972,10 +2410,10 @@ function OrgInterviewsTab({ orgId }) {
             <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
                 : "—"}
             </Typography>
           );
@@ -2058,131 +2496,18 @@ function OrgInterviewsTab({ orgId }) {
 
   return (
     <Box>
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 2,
-          mb: "16px",
-          flexWrap: "wrap",
-        }}
-      >
-        <Box
-          sx={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 1,
-            px: 1.8,
-            // py: 0.8,
-            borderRadius: "8px",
-            background: "rgba(255, 95, 31, 0.08)",
-            border: "1px solid rgba(255, 95, 31, 0.2)",
-            transition: "0.3s ease",
-            "&:hover": {
-              background: "rgba(255, 95, 31, 0.14)",
-              transform: "translateY(-1px)",
-            },
-          }}
-        >
-          <Box
-            sx={{
-              minWidth: 28,
-              height: 28,
-              borderRadius: "8px",
-              background: "#FF5F1F",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              px: 1,
-              boxShadow: "0 4px 12px rgba(255,95,31,0.35)",
-            }}
-          >
-            <Typography
-              sx={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#fff",
-                lineHeight: 1,
-              }}
-            >
-              {searchedInterviews.length}
-            </Typography>
-          </Box>
-
-          <Box sx={{ padding: 1, borderRadius: 0 }}>
-            <Typography
-              sx={{
-                fontSize: 10,
-                fontWeight: 600,
-                color: "#FF5F1F",
-                textTransform: "uppercase",
-                letterSpacing: 1,
-                lineHeight: 1,
-              }}
-            >
-              Total
-            </Typography>
-
-            <Typography
-              sx={{
-                fontSize: 10,
-                fontWeight: 600,
-                color: C.textPrimary,
-                lineHeight: 1,
-              }}
-            >
-              Candidate{searchedInterviews.length !== 1 ? "s" : ""}
-            </Typography>
-          </Box>
-        </Box>
-        {/* <Typography fontSize={13} color={C.textSecondary}>
-          {searchedInterviews.length} interview
-          {searchedInterviews.length !== 1 ? "s" : ""}
-        </Typography> */}
-        <FormControl size="small" sx={{ minWidth: 180 }}>
-          <InputLabel sx={{ fontSize: 12 }}>Filter by status</InputLabel>
-          <Select
-            value={statusFilter}
-            label="Filter by status"
-            onChange={(e) => setStatusFilter(e.target.value)}
-            sx={{ fontSize: 12, borderRadius: "8px" }}
-          >
-            <MenuItem value="all">All Statuses</MenuItem>
-            {interviewStatuses.map(({ key, value }) => (
-              <MenuItem key={key} value={key}>
-                {value}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <Box
-          sx={{
-            ml: "auto",
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-          }}
-        >
-          <SearchFilter
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search interviews..."
-          />
-
-          <ViewToggle view={view} onChange={setView} />
-        </Box>
-      </Box>
+      {/* ...your existing toolbar JSX unchanged... */}
 
       {searchedInterviews.length === 0 ? (
-        <StaticPlaceholder
-          label="No Interviews"
-          description="No interviews match the selected filter."
-        />
+        <StaticPlaceholder label="No Interviews" description="No interviews match the selected filter." />
       ) : view === "grid" ? (
         <Grid container spacing={2}>
           {searchedInterviews.map((iv) => (
             <Grid size={{ xs: 12, sm: 6, md: 4, xl: 3 }} key={iv.interview_id}>
-              <InterviewCard interview={iv} />
+              <InterviewCard
+                interview={iv}
+                onClick={() => setSelectedInterviewId(iv.interview_id)} // ← NEW
+              />
             </Grid>
           ))}
         </Grid>
@@ -2194,12 +2519,19 @@ function OrgInterviewsTab({ orgId }) {
           enableRowSelection={false}
           enableGlobalFilter={true}
           height="calc(100vh - 260px)"
+          onRowClick={(row) => setSelectedInterviewId(row.interview_id)} // ← NEW
         />
       )}
+
+      {/* ── Detail Dialog ── */}
+      <InterviewDetailDialog
+        open={!!selectedInterviewId}
+        onClose={() => setSelectedInterviewId(null)}
+        interviewId={selectedInterviewId}
+      />
     </Box>
   );
 }
-
 /* ═══════════════════════════════════════════════
    TAB 4 — Employees
 ═══════════════════════════════════════════════ */
@@ -2485,10 +2817,10 @@ function OrgEmployeesTab({ orgId }) {
             <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
                 : "—"}
             </Typography>
           );
@@ -2507,10 +2839,10 @@ function OrgEmployeesTab({ orgId }) {
             <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
                 : "—"}
             </Typography>
           );
@@ -2529,10 +2861,10 @@ function OrgEmployeesTab({ orgId }) {
             <Typography sx={{ fontSize: 12 }} color={C.textSecondary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
                 : "—"}
             </Typography>
           );
@@ -2634,7 +2966,7 @@ function OrgEmployeesTab({ orgId }) {
             </Typography>
           </Box>
         </Box>
-        
+
 
         <SearchFilter
           value={search}
@@ -2674,10 +3006,10 @@ function RequisitionCard({ job, onOpen }) {
   const chip = statusChip(status);
   const closingDate = job.closing_date
     ? new Date(job.closing_date).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
     : null;
 
   return (
@@ -3117,304 +3449,304 @@ function AssignedCandidateCard({ candidate, primaryJob, orgJobCount, onView }) {
       </Card>
 
       {/* Jobs Dialog */}
-     <Dialog
-  open={jobsDialogOpen}
-  onClose={() => setJobsDialogOpen(false)}
-  maxWidth="sm"
-  fullWidth
-  PaperProps={{
-    sx: {
-      borderRadius: "20px",
-      overflow: "hidden",
-      background: "#FFFFFF",
-      boxShadow: "0 10px 40px rgba(0,0,0,0.08)",
-    },
-  }}
->
-  {/* HEADER */}
-  <DialogTitle
-    sx={{
-      px: 2.5,
-      py: 2,
-      borderBottom: `1px solid ${C.border}`,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "space-between",
-      background:
-        "linear-gradient(180deg, rgba(255,95,31,0.04), rgba(255,95,31,0.01))",
-    }}
-  >
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-      <Avatar
-        sx={{
-          width: 44,
-          height: 44,
-          bgcolor: "#FF5F1F",
-          fontWeight: 700,
-          fontSize: 16,
-          boxShadow: "0 4px 14px rgba(255,95,31,0.35)",
+      <Dialog
+        open={jobsDialogOpen}
+        onClose={() => setJobsDialogOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: "20px",
+            overflow: "hidden",
+            background: "#FFFFFF",
+            boxShadow: "0 10px 40px rgba(0,0,0,0.08)",
+          },
         }}
       >
-        {candidate.candidate_name?.charAt(0).toUpperCase()}
-      </Avatar>
-
-      <Box>
-        <Typography
-          sx={{
-            fontSize: 15,
-            fontWeight: 700,
-            color: C.textPrimary,
-            lineHeight: 1.2,
-          }}
-        >
-          {candidate.candidate_name}
-        </Typography>
-
-        <Typography
-          sx={{
-            fontSize: 11,
-            fontWeight: 600,
-            color: "#FF5F1F",
-            mt: 0.4,
-            textTransform: "uppercase",
-            letterSpacing: 0.7,
-          }}
-        >
-          {orgJobCount} Job{orgJobCount !== 1 ? "s" : ""} Matched
-        </Typography>
-      </Box>
-    </Box>
-
-    <IconButton
-      size="small"
-      onClick={() => setJobsDialogOpen(false)}
-      sx={{
-        color: "#9CA3AF",
-        background: "#F9FAFB",
-        border: "1px solid #F3F4F6",
-        "&:hover": {
-          backgroundColor: "#F3F4F6",
-        },
-      }}
-    >
-      <CloseIcon fontSize="small" />
-    </IconButton>
-  </DialogTitle>
-
-  {/* BODY */}
-  <DialogContent sx={{ p: 0 }}>
-    {orgJobs.map((job, idx) => {
-      const jsc = stageColor(job.current_stage);
-      const isLast = idx === orgJobs.length - 1;
-
-      return (
-        <Box
-          key={job.matched_candidate_id}
+        {/* HEADER */}
+        <DialogTitle
           sx={{
             px: 2.5,
             py: 2,
-            borderBottom: isLast ? "none" : `1px solid ${C.border}`,
-            backgroundColor: idx % 2 === 0 ? "#fff" : "#FCFCFC",
-            transition: "0.2s ease",
-            "&:hover": {
-              backgroundColor: "#FFF8F5",
-            },
+            borderBottom: `1px solid ${C.border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background:
+              "linear-gradient(180deg, rgba(255,95,31,0.04), rgba(255,95,31,0.01))",
           }}
         >
-          {/* TOP */}
-          <Box
-            sx={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "flex-start",
-              gap: 1.5,
-              mb: 1.5,
-            }}
-          >
-            <Box sx={{ flex: 1 }}>
-              <Typography
-                sx={{
-                  fontSize: 14,
-                  fontWeight: 700,
-                  color: C.textPrimary,
-                  lineHeight: 1.4,
-                  mb: 1,
-                }}
-              >
-                {job.job_title}
-              </Typography>
-
-              {/* FUNCTION */}
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.8,
-                  mb: 0.7,
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: "#FF5F1F",
-                    textTransform: "uppercase",
-                    letterSpacing: 0.8,
-                    minWidth: 65,
-                  }}
-                >
-                  Function
-                </Typography>
-
-                <Typography
-                  sx={{
-                    fontSize: 12,
-                    fontWeight: 600,
-                    color: C.textPrimary,
-                  }}
-                >
-                  {job.function} · {job.sub_function}
-                </Typography>
-              </Box>
-
-              {/* DATE */}
-              <Box
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 0.8,
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    color: "#FF5F1F",
-                    textTransform: "uppercase",
-                    letterSpacing: 0.8,
-                    minWidth: 65,
-                  }}
-                >
-                  Matched
-                </Typography>
-
-                <Typography
-                  sx={{
-                    fontSize: 11,
-                    fontWeight: 500,
-                    color: C.textSecondary,
-                  }}
-                >
-                  {new Date(job.matched_at).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })}
-                </Typography>
-              </Box>
-            </Box>
-
-            {/* SCORE */}
-            <Box
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
+            <Avatar
               sx={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                px: 1.5,
-                py: 1,
-                minWidth: 70,
-                borderRadius: "14px",
-                background: "rgba(255,95,31,0.08)",
-                border: "1px solid rgba(255,95,31,0.15)",
+                width: 44,
+                height: 44,
+                bgcolor: "#FF5F1F",
+                fontWeight: 700,
+                fontSize: 16,
+                boxShadow: "0 4px 14px rgba(255,95,31,0.35)",
               }}
             >
+              {candidate.candidate_name?.charAt(0).toUpperCase()}
+            </Avatar>
+
+            <Box>
               <Typography
                 sx={{
-                  fontSize: 9,
+                  fontSize: 15,
                   fontWeight: 700,
+                  color: C.textPrimary,
+                  lineHeight: 1.2,
+                }}
+              >
+                {candidate.candidate_name}
+              </Typography>
+
+              <Typography
+                sx={{
+                  fontSize: 11,
+                  fontWeight: 600,
                   color: "#FF5F1F",
+                  mt: 0.4,
                   textTransform: "uppercase",
-                  letterSpacing: 1,
-                  mb: 0.2,
+                  letterSpacing: 0.7,
                 }}
               >
-                Score
-              </Typography>
-
-              <Typography
-                sx={{
-                  fontSize: 18,
-                  fontWeight: 800,
-                  color: C.textPrimary,
-                  lineHeight: 1,
-                }}
-              >
-                {job.match_score}
+                {orgJobCount} Job{orgJobCount !== 1 ? "s" : ""} Matched
               </Typography>
             </Box>
           </Box>
 
-          {/* BOTTOM */}
-          <Box
+          <IconButton
+            size="small"
+            onClick={() => setJobsDialogOpen(false)}
             sx={{
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-              gap: 1,
-              flexWrap: "wrap",
+              color: "#9CA3AF",
+              background: "#F9FAFB",
+              border: "1px solid #F3F4F6",
+              "&:hover": {
+                backgroundColor: "#F3F4F6",
+              },
             }}
           >
-            {/* STAGE */}
-            <Box
-              component="span"
-              sx={{
-                fontSize: 10,
-                fontWeight: 700,
-                px: "10px",
-                py: "5px",
-                borderRadius: "999px",
-                backgroundColor: jsc.bg,
-                color: jsc.color,
-                textTransform: "capitalize",
-                letterSpacing: 0.3,
-              }}
-            >
-              {job.current_stage}
-            </Box>
+            <CloseIcon fontSize="small" />
+          </IconButton>
+        </DialogTitle>
 
-            {/* BUTTON */}
-            <Button
-              size="small"
-              variant="contained"
-              onClick={() => {
-                setJobsDialogOpen(false);
-                onView(job.matched_candidate_id);
-              }}
-              sx={{
-                background: "#FF5F1F",
-                color: "#fff",
-                textTransform: "none",
-                fontWeight: 700,
-                borderRadius: "10px",
-                px: 2,
-                py: 0.7,
-                fontSize: 11,
-                boxShadow: "0 4px 14px rgba(255,95,31,0.3)",
-                "&:hover": {
-                  background: "#E65317",
-                  boxShadow: "0 6px 18px rgba(255,95,31,0.4)",
-                },
-              }}
-            >
-              View Profile
-            </Button>
-          </Box>
-        </Box>
-      );
-    })}
-  </DialogContent>
-</Dialog>
+        {/* BODY */}
+        <DialogContent sx={{ p: 0 }}>
+          {orgJobs.map((job, idx) => {
+            const jsc = stageColor(job.current_stage);
+            const isLast = idx === orgJobs.length - 1;
+
+            return (
+              <Box
+                key={job.matched_candidate_id}
+                sx={{
+                  px: 2.5,
+                  py: 2,
+                  borderBottom: isLast ? "none" : `1px solid ${C.border}`,
+                  backgroundColor: idx % 2 === 0 ? "#fff" : "#FCFCFC",
+                  transition: "0.2s ease",
+                  "&:hover": {
+                    backgroundColor: "#FFF8F5",
+                  },
+                }}
+              >
+                {/* TOP */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start",
+                    gap: 1.5,
+                    mb: 1.5,
+                  }}
+                >
+                  <Box sx={{ flex: 1 }}>
+                    <Typography
+                      sx={{
+                        fontSize: 14,
+                        fontWeight: 700,
+                        color: C.textPrimary,
+                        lineHeight: 1.4,
+                        mb: 1,
+                      }}
+                    >
+                      {job.job_title}
+                    </Typography>
+
+                    {/* FUNCTION */}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.8,
+                        mb: 0.7,
+                      }}
+                    >
+                      <Typography
+                        sx={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: "#FF5F1F",
+                          textTransform: "uppercase",
+                          letterSpacing: 0.8,
+                          minWidth: 65,
+                        }}
+                      >
+                        Function
+                      </Typography>
+
+                      <Typography
+                        sx={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: C.textPrimary,
+                        }}
+                      >
+                        {job.function} · {job.sub_function}
+                      </Typography>
+                    </Box>
+
+                    {/* DATE */}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 0.8,
+                      }}
+                    >
+                      <Typography
+                        sx={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                          color: "#FF5F1F",
+                          textTransform: "uppercase",
+                          letterSpacing: 0.8,
+                          minWidth: 65,
+                        }}
+                      >
+                        Matched
+                      </Typography>
+
+                      <Typography
+                        sx={{
+                          fontSize: 11,
+                          fontWeight: 500,
+                          color: C.textSecondary,
+                        }}
+                      >
+                        {new Date(job.matched_at).toLocaleDateString("en-GB", {
+                          day: "2-digit",
+                          month: "short",
+                          year: "numeric",
+                        })}
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  {/* SCORE */}
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      px: 1.5,
+                      py: 1,
+                      minWidth: 70,
+                      borderRadius: "14px",
+                      background: "rgba(255,95,31,0.08)",
+                      border: "1px solid rgba(255,95,31,0.15)",
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: 9,
+                        fontWeight: 700,
+                        color: "#FF5F1F",
+                        textTransform: "uppercase",
+                        letterSpacing: 1,
+                        mb: 0.2,
+                      }}
+                    >
+                      Score
+                    </Typography>
+
+                    <Typography
+                      sx={{
+                        fontSize: 18,
+                        fontWeight: 800,
+                        color: C.textPrimary,
+                        lineHeight: 1,
+                      }}
+                    >
+                      {job.match_score}
+                    </Typography>
+                  </Box>
+                </Box>
+
+                {/* BOTTOM */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                    flexWrap: "wrap",
+                  }}
+                >
+                  {/* STAGE */}
+                  <Box
+                    component="span"
+                    sx={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      px: "10px",
+                      py: "5px",
+                      borderRadius: "999px",
+                      backgroundColor: jsc.bg,
+                      color: jsc.color,
+                      textTransform: "capitalize",
+                      letterSpacing: 0.3,
+                    }}
+                  >
+                    {job.current_stage}
+                  </Box>
+
+                  {/* BUTTON */}
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => {
+                      setJobsDialogOpen(false);
+                      onView(job.matched_candidate_id);
+                    }}
+                    sx={{
+                      background: "#FF5F1F",
+                      color: "#fff",
+                      textTransform: "none",
+                      fontWeight: 700,
+                      borderRadius: "10px",
+                      px: 2,
+                      py: 0.7,
+                      fontSize: 11,
+                      boxShadow: "0 4px 14px rgba(255,95,31,0.3)",
+                      "&:hover": {
+                        background: "#E65317",
+                        boxShadow: "0 6px 18px rgba(255,95,31,0.4)",
+                      },
+                    }}
+                  >
+                    View Profile
+                  </Button>
+                </Box>
+              </Box>
+            );
+          })}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
@@ -3430,10 +3762,10 @@ function InterviewCard({ interview }) {
 
   const formattedDate = interview.interview_date
     ? new Date(interview.interview_date).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
     : "—";
 
   return (
