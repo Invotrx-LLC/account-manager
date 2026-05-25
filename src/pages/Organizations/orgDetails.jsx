@@ -91,25 +91,46 @@ import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 /* ════════════════════════════════════════════════════════════════════════════
    INTERVIEW DETAIL DIALOG
 ════════════════════════════════════════════════════════════════════════════ */
+// import {
+//   Dialog, DialogContent, Box, Typography, Avatar,
+//   CircularProgress, IconButton, Button
+// } from "@mui/material";
+// import OpenInNewIcon from "@mui/icons-material/OpenInNew";
+// import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
+// import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
+// import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
+// import PersonOutlineOutlined from "@mui/icons-material/PersonOutlineOutlined";
+// import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
+// import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
+// import WorkspacePremiumOutlinedIcon from "@mui/icons-material/WorkspacePremiumOutlined";
+
+// Add this to your index.html or global CSS:
+// <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
 function InterviewDetailDialog({ open, onClose, interviewId }) {
   const { data, isLoading, isError } = useGetInterviewDetailsQuery(
     interviewId,
     { skip: !interviewId }
   );
   const iv = data?.data ?? null;
-  console.log("Interview details fetched:", iv);
+
   const statusColorMap = {
-    scheduled: { bg: "#EEF2FF", color: "#4338CA", border: "#C7D2FE" },
-    completed: { bg: "#E7F8EE", color: "#0F6E56", border: "#5DCAA5" },
-    cancelled: { bg: "#F3F4F6", color: "#6B7280", border: "#D1D5DB" },
-    rescheduled: { bg: "#FEF3C7", color: "#92400E", border: "#F0C070" },
-    no_show: { bg: "#FEE2E2", color: "#B91C1C", border: "#F09595" },
+    scheduled:     { bg: "#EEF2FF", color: "#4338CA", border: "#C7D2FE" },
+    completed:     { bg: "#E7F8EE", color: "#0F6E56", border: "#5DCAA5" },
+    cancelled:     { bg: "#F3F4F6", color: "#6B7280", border: "#D1D5DB" },
+    rescheduled:   { bg: "#FEF3C7", color: "#92400E", border: "#F0C070" },
+    no_show:       { bg: "#FEE2E2", color: "#B91C1C", border: "#F09595" },
     not_conducted: { bg: "#F3F4F6", color: "#6B7280", border: "#D1D5DB" },
   };
-  const statusCfg = statusColorMap[(iv?.status ?? "").toLowerCase()] ?? statusColorMap.scheduled;
+  const statusCfg =
+    statusColorMap[(iv?.status ?? "").toLowerCase()] ?? statusColorMap.scheduled;
 
   const formatDate = (d) =>
-    d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }) : "—";
+    d
+      ? new Date(d).toLocaleDateString("en-GB", {
+          day: "2-digit", month: "long", year: "numeric",
+        })
+      : "—";
 
   const formatTime = (t) => {
     if (!t) return "—";
@@ -124,112 +145,105 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
       onClose={onClose}
       maxWidth="md"
       fullWidth
-      scroll="paper"           // ← Important
+      scroll="paper"
       PaperProps={{
         sx: {
           borderRadius: "20px",
           overflow: "hidden",
           boxShadow: "0 24px 60px rgba(0,0,0,0.12)",
-          maxHeight: "92vh",     // ← Prevents going out of screen
+          maxHeight: "92vh",
+          fontFamily: "'DM Sans', sans-serif",
         },
       }}
     >
-      {/* ── Header band ── */}
-<Box
-  sx={{
- background: "linear-gradient(135deg, #FF5F1F 0%, #FF8C5A 100%)",
-     px: "24px",
-    pt: "22px",
-    pb: "20 px",
-    position: "relative",
-    flexShrink: 0,
-  }}
->
-  <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-    
-    {/* Left Side */}
-    <Box>
-      <Typography 
-        fontSize={11} 
-        fontWeight={700} 
-        color="rgba(255,255,255,0.75)" 
-        letterSpacing="0.1em" 
-        textTransform="uppercase" 
-        mb="4px"
+      {/* ── Header ── */}
+      <Box
+        sx={{
+          background: "linear-gradient(135deg, #FF5F1F 0%, #FF8C5A 100%)",
+          px: "24px",
+          pt: "22px",
+          pb: "30px",
+          flexShrink: 0,
+        }}
       >
-        Interview Details
-      </Typography>
+        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
 
-      {isLoading ? (
-        <Box sx={{ width: 260, height: 28, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.2)" }} />
-      ) : (
-        <Typography fontSize={20} fontWeight={700} color="#fff" lineHeight={1.2}>
-          {iv?.interview_step_name ?? "—"}
-        </Typography>
-      )}
-    </Box>
-
-    {/* Right Side - Two Values in Flex */}
-    <Box sx={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap", justifyContent: "flex-end" }}>
-      {iv && (
-        <>
-          {/* Step Info */}
-          <Box sx={{
-            px: "12px",
-            py: "6px",
-            borderRadius: "999px",
-            backgroundColor: "rgba(255,255,255,0.15)",
-            border: "1px solid rgba(255,255,255,0.3)",
-            display: "flex",
-            alignItems: "center",
-            gap: "6px"
-          }}>
-            <Typography fontSize={11} fontWeight={600} color="#fff">
-              Step {iv.interview_step_number} • {iv.interview_step_type}
+          {/* Left — label + title */}
+          <Box>
+            <Typography
+              sx={{
+                fontFamily: "'DM Sans', sans-serif",
+                fontSize: 11,
+                fontWeight: 700,
+                color: "rgba(255,255,255,0.55)",
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                mb: "4px",
+              }}
+            >
+              Interview Details
             </Typography>
+
+            {isLoading ? (
+              <Box sx={{ width: 260, height: 28, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.2)" }} />
+            ) : (
+              <Typography
+                sx={{
+                  fontFamily: "'DM Serif Display', serif",
+                  fontSize: 22,
+                  fontWeight: 400,
+                  color: "#fff",
+                  lineHeight: 1.2,
+                }}
+              >
+                {iv?.interview_step_name ?? "—"}
+              </Typography>
+            )}
           </Box>
 
-          {/* Second Value - You can change this as needed */}
-          {iv.status && (
-            <Box sx={{
-              px: "12px",
-              py: "6px",
-              borderRadius: "999px",
-              backgroundColor: "rgba(255,255,255,0.18)",
-              border: "1px solid rgba(255,255,255,0.35)",
-            }}>
-              <Typography 
-                fontSize={11} 
-                fontWeight={700} 
-                color="#fff" 
-                textTransform="uppercase"
-                letterSpacing="0.5px"
-              >
-                {iv.status}
-              </Typography>
+          {/* Right — pills */}
+          {iv && (
+            <Box sx={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end", pt: "4px" }}>
+              <Box sx={{
+                px: "12px", py: "5px", borderRadius: "999px",
+                backgroundColor: "rgba(255,255,255,0.15)",
+                border: "1px solid rgba(255,255,255,0.3)",
+                display: "flex", alignItems: "center", gap: "5px",
+              }}>
+                <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 600, color: "#fff" }}>
+                  Step {iv.interview_step_number} · {iv.interview_step_type}
+                </Typography>
+              </Box>
+
+              {iv.status && (
+                <Box sx={{
+                  px: "12px", py: "5px", borderRadius: "999px",
+                  backgroundColor: "rgba(255,255,255,0.18)",
+                  border: "1px solid rgba(255,255,255,0.35)",
+                }}>
+                  <Typography sx={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 11, fontWeight: 700, color: "#fff",
+                    textTransform: "uppercase", letterSpacing: "0.5px",
+                  }}>
+                    {iv.status}
+                  </Typography>
+                </Box>
+              )}
+
+              {iv.is_final && (
+                <Box sx={{ px: "12px", py: "5px", borderRadius: "999px", backgroundColor: "#FBBF24" }}>
+                  <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 700, color: "#1F2937" }}>
+                    ⭐ Final Round
+                  </Typography>
+                </Box>
+              )}
             </Box>
           )}
+        </Box>
+      </Box>
 
-          {iv.is_final && (
-            <Box sx={{
-              px: "12px",
-              py: "6px",
-              borderRadius: "999px",
-              backgroundColor: "#FBBF24",
-              color: "#1F2937",
-            }}>
-              <Typography fontSize={11} fontWeight={700}>
-                ⭐ Final Round
-              </Typography>
-            </Box>
-          )}
-        </>
-      )}
-    </Box>
-  </Box>
-</Box>
-
-      {/* ── Scrollable Content Area ── */}
+      {/* ── Scrollable Content ── */}
       <DialogContent
         dividers
         sx={{
@@ -238,7 +252,7 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
           mt: "-28px",
           backgroundColor: "#f8fafc",
           overflowY: "auto",
-          maxHeight: "calc(92vh - 180px)",   // Adjust if needed
+          maxHeight: "calc(92vh - 180px)",
         }}
       >
         {isLoading ? (
@@ -247,22 +261,25 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
             border: "1px solid #E8E8EC",
             display: "flex", alignItems: "center", justifyContent: "center",
             py: 10, gap: 2, flexDirection: "column",
-            
           }}>
             <CircularProgress sx={{ color: "#FF5F1F" }} />
-            <Typography fontSize={13} color="#5C5C70">Loading interview details…</Typography>
+            <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#5C5C70" }}>
+              Loading interview details…
+            </Typography>
           </Box>
         ) : isError || !iv ? (
           <Box sx={{
             backgroundColor: "#fff", borderRadius: "16px",
             border: "1px solid #E8E8EC", py: 8, textAlign: "center",
           }}>
-            <Typography fontSize={14} color="#B91C1C" fontWeight={600}>Failed to load details</Typography>
+            <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "#B91C1C", fontWeight: 600 }}>
+              Failed to load details
+            </Typography>
           </Box>
         ) : (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: "12px",   mt: "30px", }}>
+          <Box sx={{ display: "flex", flexDirection: "column", gap: "12px", mt: "30px" }}>
 
-            {/* ── Status + Candidate row ── */}
+            {/* ── Candidate row ── */}
             <Box sx={{
               backgroundColor: "#fff", borderRadius: "16px",
               border: "1px solid #E8E8EC",
@@ -272,66 +289,50 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
               boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
             }}>
               <Box sx={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                <Avatar sx={{ width: 44, height: 44, bgcolor: "#FF5F1F", fontWeight: 700, fontSize: 16 }}>
+                <Avatar sx={{ width: 44, height: 44, bgcolor: "#FFF0E8", color: "#FF5F1F", fontWeight: 700, fontSize: 16 }}>
                   {iv.candidate_name?.charAt(0).toUpperCase()}
                 </Avatar>
                 <Box>
-                  <Typography fontSize={15} fontWeight={700} color="#111118">{iv.candidate_name}</Typography>
-                  <Typography fontSize={12} color="#5C5C70">{iv.candidate_experience} experience</Typography>
+                  <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 700, color: "#111118" }}>
+                    {iv.candidate_name}
+                  </Typography>
+                  <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#5C5C70", mt: "2px" }}>
+                    {iv.candidate_experience} experience
+                  </Typography>
                 </Box>
               </Box>
               <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                {/* Skill intel score */}
                 <Box sx={{
-               
-                  px: "12px", py: "10px", borderRadius: "10px",
-                  backgroundColor: "#F0FDF4", border: "1px solid #BBF7D0",
+                  px: "12px", py: "6px", borderRadius: "10px",
+                  backgroundColor: "#E7F8EE", border: "1px solid #5DCAA5",
                   display: "flex", alignItems: "center", gap: "5px",
                 }}>
                   <WorkspacePremiumOutlinedIcon sx={{ fontSize: 14, color: "#0F6E56" }} />
-                  <Typography fontSize={12} fontWeight={700} color="#0F6E56">
+                  <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 700, color: "#0F6E56" }}>
                     {iv.skill_intel_score}% match
                   </Typography>
                 </Box>
-                {/* Status badge */}
                 <Box sx={{
-                  px: "12px", py: "5px", borderRadius: "10px",
-                  backgroundColor: statusCfg.bg,
-                  border: `1px solid ${statusCfg.border}`,
+                  px: "12px", py: "6px", borderRadius: "10px",
+                  backgroundColor: statusCfg.bg, border: `1px solid ${statusCfg.border}`,
                 }}>
-                  <Typography fontSize={12} fontWeight={700} color={statusCfg.color} textTransform="capitalize">
+                  <Typography sx={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 12, fontWeight: 700, color: statusCfg.color, textTransform: "capitalize",
+                  }}>
                     {iv.status}
                   </Typography>
                 </Box>
               </Box>
             </Box>
 
-            {/* ── Date / Time / Platform row ── */}
-            <Box sx={{
-              display: "grid", gridTemplateColumns: "1fr 1fr 1fr",
-              gap: "12px",
-            }}>
+            {/* ── Date / Time / Platform ── */}
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
               {[
-                {
-                  Icon: CalendarMonthOutlinedIcon,
-                  label: "Date",
-                  value: formatDate(iv.date),
-                  accent: false,
-                },
-                {
-                  Icon: AccessTimeOutlinedIcon,
-                  label: "Time",
-                  value: `${formatTime(iv.start_time)} – ${formatTime(iv.end_time)} · ${iv.duration} min`,
-                  accent: false,
-                },
-                {
-                  Icon: VideocamOutlinedIcon,
-                  label: "Platform",
-                  value: iv.platform,
-                  accent: true,
-                  link: iv.meeting_url,
-                },
-              ].map(({ Icon, label, value, accent, link }) => (
+                { Icon: CalendarMonthOutlinedIcon, label: "Date",     value: formatDate(iv.date) },
+                { Icon: AccessTimeOutlinedIcon,    label: "Time",     value: `${formatTime(iv.start_time)} – ${formatTime(iv.end_time)} · ${iv.duration} min` },
+                { Icon: VideocamOutlinedIcon,      label: "Platform", value: iv.platform, link: iv.meeting_url },
+              ].map(({ Icon, label, value, link }) => (
                 <Box key={label} sx={{
                   backgroundColor: "#fff", borderRadius: "14px",
                   border: "1px solid #E8E8EC",
@@ -340,13 +341,19 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
                   boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
                 }}>
                   <Box sx={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <Icon sx={{ fontSize: 14, color: "#9696A6" }} />
-                    <Typography fontSize={10} fontWeight={700} color="#9696A6" textTransform="uppercase" letterSpacing="0.08em">
+                    <Icon sx={{ fontSize: 13, color: "#9696A6" }} />
+                    <Typography sx={{
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: 10, fontWeight: 700, color: "#9696A6",
+                      textTransform: "uppercase", letterSpacing: "0.08em",
+                    }}>
                       {label}
                     </Typography>
                   </Box>
                   <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <Typography fontSize={13} fontWeight={600} color="#111118">{value}</Typography>
+                    <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: "#111118" }}>
+                      {value}
+                    </Typography>
                     {link && (
                       <IconButton
                         size="small"
@@ -354,10 +361,7 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
                         target="_blank"
                         rel="noopener noreferrer"
                         component="a"
-                        sx={{
-                          color: "#FF5F1F", p: "4px",
-                          "&:hover": { backgroundColor: "#FFF0E8" },
-                        }}
+                        sx={{ color: "#FF5F1F", p: "4px", "&:hover": { backgroundColor: "#FFF0E8" } }}
                       >
                         <OpenInNewIcon sx={{ fontSize: 14 }} />
                       </IconButton>
@@ -367,21 +371,20 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
               ))}
             </Box>
 
-            {/* ── Interviewers row ── */}
-            <Box sx={{
-              display: "grid", gridTemplateColumns: "1fr 1fr",
-              gap: "12px",
-            }}>
-              {/* Primary interviewer */}
+            {/* ── Interviewers ── */}
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               <Box sx={{
                 backgroundColor: "#fff", borderRadius: "14px",
-                border: "1px solid #E8E8EC",
-                px: "16px", py: "14px",
+                border: "1px solid #E8E8EC", px: "16px", py: "14px",
                 boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
               }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: "6px", mb: "10px" }}>
-                  <PersonOutlineOutlined sx={{ fontSize: 14, color: "#9696A6" }} />
-                  <Typography fontSize={10} fontWeight={700} color="#9696A6" textTransform="uppercase" letterSpacing="0.08em">
+                  <PersonOutlineOutlined sx={{ fontSize: 13, color: "#9696A6" }} />
+                  <Typography sx={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 10, fontWeight: 700, color: "#9696A6",
+                    textTransform: "uppercase", letterSpacing: "0.08em",
+                  }}>
                     Primary Interviewer
                   </Typography>
                 </Box>
@@ -390,25 +393,29 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
                     <Avatar sx={{ width: 32, height: 32, fontSize: 12, fontWeight: 700, bgcolor: "#EEF2FF", color: "#4338CA" }}>
                       {iv.primary_interviewer.name.charAt(0).toUpperCase()}
                     </Avatar>
-                    <Typography fontSize={13} fontWeight={600} color="#111118">
+                    <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: "#111118" }}>
                       {iv.primary_interviewer.name}
                     </Typography>
                   </Box>
                 ) : (
-                  <Typography fontSize={12} color="#9696A6">Not assigned</Typography>
+                  <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#9696A6" }}>
+                    Not assigned
+                  </Typography>
                 )}
               </Box>
 
-              {/* Panel members */}
               <Box sx={{
                 backgroundColor: "#fff", borderRadius: "14px",
-                border: "1px solid #E8E8EC",
-                px: "16px", py: "14px",
+                border: "1px solid #E8E8EC", px: "16px", py: "14px",
                 boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
               }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: "6px", mb: "10px" }}>
-                  <GroupOutlinedIcon sx={{ fontSize: 14, color: "#9696A6" }} />
-                  <Typography fontSize={10} fontWeight={700} color="#9696A6" textTransform="uppercase" letterSpacing="0.08em">
+                  <GroupOutlinedIcon sx={{ fontSize: 13, color: "#9696A6" }} />
+                  <Typography sx={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 10, fontWeight: 700, color: "#9696A6",
+                    textTransform: "uppercase", letterSpacing: "0.08em",
+                  }}>
                     Panel Members
                   </Typography>
                 </Box>
@@ -419,31 +426,34 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
                         <Avatar sx={{ width: 28, height: 28, fontSize: 11, fontWeight: 700, bgcolor: "#FFF0E8", color: "#FF5F1F" }}>
                           {p.name.charAt(0).toUpperCase()}
                         </Avatar>
-                        <Typography fontSize={13} fontWeight={500} color="#111118">{p.name}</Typography>
+                        <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, color: "#111118" }}>
+                          {p.name}
+                        </Typography>
                       </Box>
                     ))}
                   </Box>
                 ) : (
-                  <Typography fontSize={12} color="#9696A6">No panel members</Typography>
+                  <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#9696A6" }}>
+                    No panel members
+                  </Typography>
                 )}
               </Box>
             </Box>
 
-            {/* ── Skills + Job details row ── */}
-            <Box sx={{
-              display: "grid", gridTemplateColumns: "1fr 1fr",
-              gap: "12px",
-            }}>
-              {/* Skills */}
+            {/* ── Skills + Job Meta ── */}
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
               <Box sx={{
                 backgroundColor: "#fff", borderRadius: "14px",
-                border: "1px solid #E8E8EC",
-                px: "16px", py: "14px",
+                border: "1px solid #E8E8EC", px: "16px", py: "14px",
                 boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
               }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: "6px", mb: "10px" }}>
-                  <PsychologyOutlinedIcon sx={{ fontSize: 14, color: "#9696A6" }} />
-                  <Typography fontSize={10} fontWeight={700} color="#9696A6" textTransform="uppercase" letterSpacing="0.08em">
+                  <PsychologyOutlinedIcon sx={{ fontSize: 13, color: "#9696A6" }} />
+                  <Typography sx={{
+                    fontFamily: "'DM Sans', sans-serif",
+                    fontSize: 10, fontWeight: 700, color: "#9696A6",
+                    textTransform: "uppercase", letterSpacing: "0.08em",
+                  }}>
                     Required Skills
                   </Typography>
                 </Box>
@@ -453,7 +463,10 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
                       px: "8px", py: "3px", borderRadius: "6px",
                       backgroundColor: "#F3F4F6", border: "1px solid #E8E8EC",
                     }}>
-                      <Typography fontSize={11} fontWeight={500} color="#5C5C70" textTransform="capitalize">
+                      <Typography sx={{
+                        fontFamily: "'DM Sans', sans-serif",
+                        fontSize: 11, fontWeight: 500, color: "#5C5C70", textTransform: "capitalize",
+                      }}>
                         {skill}
                       </Typography>
                     </Box>
@@ -461,24 +474,27 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
                 </Box>
               </Box>
 
-              {/* Job meta */}
               <Box sx={{
                 backgroundColor: "#fff", borderRadius: "14px",
-                border: "1px solid #E8E8EC",
-                px: "16px", py: "14px",
+                border: "1px solid #E8E8EC", px: "16px", py: "14px",
                 boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
                 display: "flex", flexDirection: "column", gap: "8px",
               }}>
                 {[
-                  { label: "Function", value: iv.function?.replace(/_/g, " ") },
-                  { label: "Sub-function", value: iv.sub_function?.replace(/_/g, " ") },
-                  { label: "Experience", value: `${iv.min_years}–${iv.max_years} years` },
-                  { label: "Work Mode", value: iv.mode_of_work },
-                  { label: "Location", value: iv.country },
+                  { label: "Function",    value: iv.function?.replace(/_/g, " ") },
+                  { label: "Sub-function",value: iv.sub_function?.replace(/_/g, " ") },
+                  { label: "Experience",  value: `${iv.min_years}–${iv.max_years} years` },
+                  { label: "Work Mode",   value: iv.mode_of_work },
+                  { label: "Location",    value: iv.country },
                 ].map(({ label, value }) => (
                   <Box key={label} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <Typography fontSize={12} color="#9696A6">{label}</Typography>
-                    <Typography fontSize={12} fontWeight={600} color="#111118" textTransform="capitalize">
+                    <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#9696A6" }}>
+                      {label}
+                    </Typography>
+                    <Typography sx={{
+                      fontFamily: "'DM Sans', sans-serif",
+                      fontSize: 12, fontWeight: 600, color: "#111118", textTransform: "capitalize",
+                    }}>
                       {value ?? "—"}
                     </Typography>
                   </Box>
@@ -486,17 +502,18 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
               </Box>
             </Box>
 
-            {/* ── Feedback banner ── */}
+            {/* ── Feedback Banner ── */}
             {!iv.feedback_submitted && iv.status?.toLowerCase() === "completed" && (
               <Box sx={{
                 borderRadius: "12px", px: "16px", py: "12px",
                 backgroundColor: "#FEF3C7", border: "1px solid #F0C070",
                 display: "flex", alignItems: "center", justifyContent: "space-between",
               }}>
-                <Typography fontSize={13} fontWeight={600} color="#92400E">
+                <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: "#92400E" }}>
                   ⚠️ Feedback not submitted yet
                 </Typography>
                 <Button size="small" sx={{
+                  fontFamily: "'DM Sans', sans-serif",
                   textTransform: "none", fontSize: 12, fontWeight: 600,
                   color: "#92400E", borderColor: "#F0C070", border: "1px solid",
                   borderRadius: "8px", px: "12px",
@@ -506,6 +523,7 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
                 </Button>
               </Box>
             )}
+
           </Box>
         )}
       </DialogContent>
@@ -2329,7 +2347,7 @@ function OrgInterviewsTab({ orgId }) {
       {
         accessorKey: "job_title",
         header: "Job",
-        size: 200,
+        size: 240,
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
             <Box
@@ -2518,7 +2536,7 @@ function OrgInterviewsTab({ orgId }) {
           enableRowActions={false}
           enableRowSelection={false}
           enableGlobalFilter={true}
-          height="calc(100vh - 260px)"
+          height="calc(100vh - 230px)"
           onRowClick={(row) => setSelectedInterviewId(row.interview_id)} // ← NEW
         />
       )}

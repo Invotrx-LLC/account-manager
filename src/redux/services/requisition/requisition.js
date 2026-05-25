@@ -179,7 +179,7 @@ getResumeView: builder.query({
         { type: "JobDetails", id: jobId },
       ],
   }),
-  getInterviewDetails: builder.query({
+ getInterviewDetails: builder.query({
   query: (interviewId) => `/acc/get_interview-details/${interviewId}`,
 }),
   }),
