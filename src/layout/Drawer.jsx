@@ -41,6 +41,7 @@ import {
   AccessTimeOutlined,
   CheckCircle,
   TaskAlt,
+  MoveToInboxOutlined,
 } from "@mui/icons-material";
 import NavigateNextIcon from "@mui/icons-material/NavigateNextRounded";
 import HomeRoundedIcon from "@mui/icons-material/HomeRounded";
@@ -48,7 +49,7 @@ import CloseIcon from "@mui/icons-material/Close";
 import { getTrailForPath, resolveTrail } from "../components/Breadcrumbconf";
 import { selectDynamicLabels } from "../redux/slices/breadcrumbSlice";
 import { useLazyLogoutQuery } from "../redux/services/auth/auth";
-import { candidateClearLocalStorage } from "../utils/constants";
+import { candidateClearLocalStorage, getItem } from "../utils/constants";
 import { toast } from "react-toastify";
 import {
   useGetMyAssignedRequestsQuery,
@@ -63,21 +64,42 @@ const sidebarSections = [
   {
     title: "Main",
     items: [
-      { label: "Dashboard", icon: <Dashboard />, path: "/account-manager/dashboard" },
+      {
+        label: "Dashboard",
+        icon: <Dashboard />,
+        path: "/account-manager/dashboard",
+      },
     ],
   },
   {
     title: "Workspace",
     items: [
-      { label: "Organization", icon: <Business />, path: "/account-manager/organization" },
-      { label: "User Management", icon: <ManageAccountsOutlined />, path: "/account-manager/user-management" },
-      { label: "Candidates", icon: <People />, path: "/account-manager/candidates" },
+      {
+        label: "Organization",
+        icon: <Business />,
+        path: "/account-manager/organization",
+      },
+      {
+        label: "User Management",
+        icon: <ManageAccountsOutlined />,
+        path: "/account-manager/user-management",
+      },
+      {
+        label: "Candidates",
+        icon: <People />,
+        path: "/account-manager/candidates",
+      },
     ],
   },
   {
     title: "Help",
     items: [
-      { label: "Settings", icon: <Work />, path: "/account-manager/settings", disabled: true },
+      {
+        label: "Settings",
+        icon: <Work />,
+        path: "/account-manager/settings",
+        disabled: true,
+      },
     ],
   },
 ];
@@ -87,7 +109,7 @@ const sidebarSections = [
 ───────────────────────────────────────────── */
 function ScoreRing({ score }) {
   const color = score >= 90 ? "#15803D" : score >= 75 ? "#A16207" : "#B91C1C";
-  const bg    = score >= 90 ? "#DCFCE7" : score >= 75 ? "#FEF9C3" : "#FEE2E2";
+  const bg = score >= 90 ? "#DCFCE7" : score >= 75 ? "#FEF9C3" : "#FEE2E2";
   return (
     <Box
       sx={{
@@ -103,10 +125,14 @@ function ScoreRing({ score }) {
         flexShrink: 0,
       }}
     >
-      <Typography sx={{ fontSize: "0.68rem", fontWeight: 700, color, lineHeight: 1 }}>
+      <Typography
+        sx={{ fontSize: "0.68rem", fontWeight: 700, color, lineHeight: 1 }}
+      >
         {score?.toFixed(0)}
       </Typography>
-      <Typography sx={{ fontSize: "0.5rem", color, lineHeight: 1.2, opacity: 0.75 }}>
+      <Typography
+        sx={{ fontSize: "0.5rem", color, lineHeight: 1.2, opacity: 0.75 }}
+      >
         score
       </Typography>
     </Box>
@@ -117,14 +143,22 @@ function ScoreRing({ score }) {
    Candidate status badge  (shown after confirm)
 ───────────────────────────────────────────── */
 const candidateStatusConfig = {
-  matched:  { label: "Matched",  bg: "#DCFCE7", color: "#15803D", icon: <TaskAlt sx={{ fontSize: 12 }} /> },
-  pending:  { label: "Pending",  bg: "#FEF9C3", color: "#A16207", icon: null },
+  matched: {
+    label: "Matched",
+    bg: "#DCFCE7",
+    color: "#15803D",
+    icon: <TaskAlt sx={{ fontSize: 12 }} />,
+  },
+  pending: { label: "Pending", bg: "#FEF9C3", color: "#A16207", icon: null },
   rejected: { label: "Rejected", bg: "#FEE2E2", color: "#B91C1C", icon: null },
 };
 
 function CandidateStatusBadge({ status = "" }) {
   const cfg = candidateStatusConfig[status.toLowerCase()] ?? {
-    label: status, bg: "#F3F4F6", color: "#374151", icon: null,
+    label: status,
+    bg: "#F3F4F6",
+    color: "#374151",
+    icon: null,
   };
   return (
     <Box
@@ -176,16 +210,20 @@ function CandidateModal({ open, onClose, requestUuid, jobTitle }) {
     if (open) setConfirmedMap({});
   }, [open, requestUuid]);
 
-  const candidates    = candidateData?.candidates || [];
-  const loading       = isLoading || isFetching;
+  const candidates = candidateData?.candidates || [];
+  const loading = isLoading || isFetching;
   const isFullyConfirmed =
-    candidates.length > 0 && candidates.every((c) => confirmedMap[c.candidate_id]);
+    candidates.length > 0 &&
+    candidates.every((c) => confirmedMap[c.candidate_id]);
 
   const handleConfirm = async () => {
     if (candidates.length === 0 || isConfirming) return;
     const allIds = candidates.map((c) => c.candidate_id);
     try {
-      const result = await closeRequest({ requestUuid, candidateIds: allIds }).unwrap();
+      const result = await closeRequest({
+        requestUuid,
+        candidateIds: allIds,
+      }).unwrap();
       // Build lookup from POST response  { candidateId: { score, status } }
       const newMap = {};
       (result.candidates || []).forEach((rc) => {
@@ -241,21 +279,39 @@ function CandidateModal({ open, onClose, requestUuid, jobTitle }) {
                 transition: "background-color 0.3s",
               }}
             >
-              {isFullyConfirmed
-                ? <CheckCircle sx={{ fontSize: 20, color: "#15803D" }} />
-                : <PeopleOutlineOutlined sx={{ fontSize: 20, color: "#3B6D11" }} />
-              }
+              {isFullyConfirmed ? (
+                <CheckCircle sx={{ fontSize: 20, color: "#15803D" }} />
+              ) : (
+                <PeopleOutlineOutlined
+                  sx={{ fontSize: 20, color: "#3B6D11" }}
+                />
+              )}
             </Box>
             <Box>
-              <Typography fontWeight={600} fontSize="0.95rem" color="text.primary" lineHeight={1.3}>
-                {isFullyConfirmed ? "Assignment Confirmed" : "Matched Candidates"}
+              <Typography
+                fontWeight={600}
+                fontSize="0.95rem"
+                color="text.primary"
+                lineHeight={1.3}
+              >
+                {isFullyConfirmed
+                  ? "Assignment Confirmed"
+                  : "Matched Candidates"}
               </Typography>
-              <Typography fontSize="0.72rem" color="text.secondary" lineHeight={1.4}>
+              <Typography
+                fontSize="0.72rem"
+                color="text.secondary"
+                lineHeight={1.4}
+              >
                 {jobTitle}
               </Typography>
             </Box>
           </Box>
-          <IconButton size="small" onClick={onClose} sx={{ color: "text.secondary" }}>
+          <IconButton
+            size="small"
+            onClick={onClose}
+            sx={{ color: "text.secondary" }}
+          >
             <CloseIcon fontSize="small" />
           </IconButton>
         </Box>
@@ -279,8 +335,18 @@ function CandidateModal({ open, onClose, requestUuid, jobTitle }) {
         )}
 
         {!loading && isError && (
-          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 6, gap: 1 }}>
-            <PeopleOutlineOutlined sx={{ fontSize: 44, color: "text.disabled" }} />
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              py: 6,
+              gap: 1,
+            }}
+          >
+            <PeopleOutlineOutlined
+              sx={{ fontSize: 44, color: "text.disabled" }}
+            />
             <Typography fontSize="0.85rem" color="error.main">
               Failed to load candidates. Please try again.
             </Typography>
@@ -288,8 +354,18 @@ function CandidateModal({ open, onClose, requestUuid, jobTitle }) {
         )}
 
         {!loading && !isError && candidates.length === 0 && (
-          <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 6, gap: 1.5 }}>
-            <PeopleOutlineOutlined sx={{ fontSize: 44, color: "text.disabled" }} />
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              py: 6,
+              gap: 1.5,
+            }}
+          >
+            <PeopleOutlineOutlined
+              sx={{ fontSize: 44, color: "text.disabled" }}
+            />
             <Typography fontSize="0.85rem" color="text.secondary">
               No matched candidates found
             </Typography>
@@ -298,7 +374,14 @@ function CandidateModal({ open, onClose, requestUuid, jobTitle }) {
 
         {/* ── Candidate cards ── */}
         {!loading && !isError && candidates.length > 0 && (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25, pt: 0.25 }}>
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: 1.25,
+              pt: 0.25,
+            }}
+          >
             {candidates.map((c, idx) => {
               const confirmed = confirmedMap[c.candidate_id]; // { score, status } | undefined
               return (
@@ -320,8 +403,10 @@ function CandidateModal({ open, onClose, requestUuid, jobTitle }) {
                     <Box
                       sx={{
                         position: "absolute",
-                        top: 0, left: 0,
-                        width: 3, height: "100%",
+                        top: 0,
+                        left: 0,
+                        width: 3,
+                        height: "100%",
                         backgroundColor: "#22C55E",
                         borderRadius: "3px 0 0 3px",
                       }}
@@ -339,41 +424,83 @@ function CandidateModal({ open, onClose, requestUuid, jobTitle }) {
                     }}
                   >
                     {/* Left: rank bubble + name/exp */}
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, minWidth: 0, flex: 1 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1.25,
+                        minWidth: 0,
+                        flex: 1,
+                      }}
+                    >
                       <Box
                         sx={{
-                          width: 30, height: 30,
+                          width: 30,
+                          height: 30,
                           borderRadius: "50%",
-                          backgroundColor: confirmed ? "#DCFCE7" : idx === 0 ? "#FEF9C3" : "#F3F4F6",
+                          backgroundColor: confirmed
+                            ? "#DCFCE7"
+                            : idx === 0
+                              ? "#FEF9C3"
+                              : "#F3F4F6",
                           border: `1.5px solid ${confirmed ? "#22C55E" : idx === 0 ? "#A16207" : "#D1D5DB"}`,
-                          display: "flex", alignItems: "center", justifyContent: "center",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
                           flexShrink: 0,
                           transition: "all 0.25s",
                         }}
                       >
-                        {confirmed
-                          ? <CheckCircle sx={{ fontSize: 16, color: "#15803D" }} />
-                          : (
-                            <Typography sx={{ fontSize: "0.65rem", fontWeight: 700, color: idx === 0 ? "#A16207" : "#6B7280" }}>
-                              #{idx + 1}
-                            </Typography>
-                          )
-                        }
+                        {confirmed ? (
+                          <CheckCircle
+                            sx={{ fontSize: 16, color: "#15803D" }}
+                          />
+                        ) : (
+                          <Typography
+                            sx={{
+                              fontSize: "0.65rem",
+                              fontWeight: 700,
+                              color: idx === 0 ? "#A16207" : "#6B7280",
+                            }}
+                          >
+                            #{idx + 1}
+                          </Typography>
+                        )}
                       </Box>
 
                       <Box sx={{ minWidth: 0 }}>
-                        <Typography fontWeight={600} fontSize="0.875rem" color="text.primary" lineHeight={1.35} noWrap>
+                        <Typography
+                          fontWeight={600}
+                          fontSize="0.875rem"
+                          color="text.primary"
+                          lineHeight={1.35}
+                          noWrap
+                        >
                           {c.candidate_name}
                         </Typography>
-                        <Typography fontSize="0.7rem" color="text.disabled" lineHeight={1.4} noWrap>
+                        <Typography
+                          fontSize="0.7rem"
+                          color="text.disabled"
+                          lineHeight={1.4}
+                          noWrap
+                        >
                           {c.experience}
                         </Typography>
                       </Box>
                     </Box>
 
                     {/* Right: matched status badge + score ring */}
-                    <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
-                      {confirmed && <CandidateStatusBadge status={confirmed.status} />}
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        flexShrink: 0,
+                      }}
+                    >
+                      {confirmed && (
+                        <CandidateStatusBadge status={confirmed.status} />
+                      )}
                       <ScoreRing score={c.skillintel_score} />
                     </Box>
                   </Box>
@@ -381,20 +508,38 @@ function CandidateModal({ open, onClose, requestUuid, jobTitle }) {
                   {/* Row 2: contact pills */}
                   <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
                     {[
-                      { icon: <EmailOutlined sx={{ fontSize: 13 }} />, text: c.email },
-                      { icon: <PhoneOutlined  sx={{ fontSize: 13 }} />, text: c.phone },
+                      {
+                        icon: <EmailOutlined sx={{ fontSize: 13 }} />,
+                        text: c.email,
+                      },
+                      {
+                        icon: <PhoneOutlined sx={{ fontSize: 13 }} />,
+                        text: c.phone,
+                      },
                       ...(c.availability
-                        ? [{ icon: <AccessTimeOutlined sx={{ fontSize: 13 }} />, text: c.availability }]
+                        ? [
+                            {
+                              icon: (
+                                <AccessTimeOutlined sx={{ fontSize: 13 }} />
+                              ),
+                              text: c.availability,
+                            },
+                          ]
                         : []),
                     ].map(({ icon, text }, i) => (
                       <Box
                         key={i}
                         sx={{
-                          display: "flex", alignItems: "center", gap: 0.5,
-                          backgroundColor: confirmed ? "#DCFCE7" : "action.hover",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 0.5,
+                          backgroundColor: confirmed
+                            ? "#DCFCE7"
+                            : "action.hover",
                           color: confirmed ? "#15803D" : "text.secondary",
                           fontSize: "0.72rem",
-                          px: 1.1, py: "4px",
+                          px: 1.1,
+                          py: "4px",
                           borderRadius: "20px",
                           whiteSpace: "nowrap",
                           lineHeight: 1,
@@ -417,7 +562,8 @@ function CandidateModal({ open, onClose, requestUuid, jobTitle }) {
       {!loading && !isError && candidates.length > 0 && (
         <Box
           sx={{
-            px: 2, py: 1.5,
+            px: 2,
+            py: 1.5,
             borderTop: "1px solid",
             borderColor: "divider",
             display: "flex",
@@ -432,7 +578,8 @@ function CandidateModal({ open, onClose, requestUuid, jobTitle }) {
               <Box sx={{ display: "flex", alignItems: "center", gap: 0.75 }}>
                 <CheckCircle sx={{ fontSize: 15, color: "#15803D" }} />
                 <Typography fontSize="0.78rem" fontWeight={600} color="#15803D">
-                  {candidates.length} candidate{candidates.length !== 1 ? "s" : ""} assigned · Request closed
+                  {candidates.length} candidate
+                  {candidates.length !== 1 ? "s" : ""} assigned · Request closed
                 </Typography>
               </Box>
             )}
@@ -463,9 +610,11 @@ function CandidateModal({ open, onClose, requestUuid, jobTitle }) {
                 onClick={handleConfirm}
                 disabled={isConfirming}
                 startIcon={
-                  isConfirming
-                    ? <CircularProgress size={13} sx={{ color: "#fff" }} />
-                    : <TaskAlt sx={{ fontSize: 16 }} />
+                  isConfirming ? (
+                    <CircularProgress size={13} sx={{ color: "#fff" }} />
+                  ) : (
+                    <TaskAlt sx={{ fontSize: 16 }} />
+                  )
                 }
                 sx={{
                   borderRadius: "8px",
@@ -474,7 +623,10 @@ function CandidateModal({ open, onClose, requestUuid, jobTitle }) {
                   fontWeight: 600,
                   backgroundColor: "#ff5722",
                   boxShadow: "none",
-                  "&:hover": { backgroundColor: "#e64a19", boxShadow: "0 2px 8px rgba(255,87,34,0.3)" },
+                  "&:hover": {
+                    backgroundColor: "#e64a19",
+                    boxShadow: "0 2px 8px rgba(255,87,34,0.3)",
+                  },
                   "&:disabled": { backgroundColor: "#ffccbc", color: "#fff" },
                 }}
               >
@@ -503,35 +655,64 @@ function NotificationModal({ open, onClose }) {
 
   const requests = data?.requests || [];
   console.log("getMyAssignedRequests data:", requests);
-  const total    = data?.total_requests || 0;
-  const loading  = isLoading || isFetching;
+  const total = data?.total_requests || 0;
+  const loading = isLoading || isFetching;
 
   const formatDate = (str) => {
     if (!str) return "—";
     return new Date(str.replace(" ", "T")).toLocaleDateString("en-IN", {
-      day: "2-digit", month: "short", year: "numeric",
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
     });
   };
 
   const statusMap = {
-    open:    { iconBg: "#EAF3DE", iconColor: "#3B6D11", badgeBg: "#EAF3DE", badgeColor: "#3B6D11", label: "Open"    },
-    closed:  { iconBg: "#FCEBEB", iconColor: "#A32D2D", badgeBg: "#FCEBEB", badgeColor: "#A32D2D", label: "Closed"  },
-    pending: { iconBg: "#FAEEDA", iconColor: "#854F0B", badgeBg: "#FAEEDA", badgeColor: "#854F0B", label: "Pending" },
+    open: {
+      iconBg: "#EAF3DE",
+      iconColor: "#3B6D11",
+      badgeBg: "#EAF3DE",
+      badgeColor: "#3B6D11",
+      label: "Open",
+    },
+    closed: {
+      iconBg: "#FCEBEB",
+      iconColor: "#A32D2D",
+      badgeBg: "#FCEBEB",
+      badgeColor: "#A32D2D",
+      label: "Closed",
+    },
+    pending: {
+      iconBg: "#FAEEDA",
+      iconColor: "#854F0B",
+      badgeBg: "#FAEEDA",
+      badgeColor: "#854F0B",
+      label: "Pending",
+    },
   };
 
   const getStatus = (s = "") =>
     statusMap[s.toLowerCase()] ?? {
-      iconBg: "#F1EFE8", iconColor: "#5F5E5A",
-      badgeBg: "#F1EFE8", badgeColor: "#5F5E5A", label: s,
+      iconBg: "#F1EFE8",
+      iconColor: "#5F5E5A",
+      badgeBg: "#F1EFE8",
+      badgeColor: "#5F5E5A",
+      label: s,
     };
 
   const metaItems = (req) => [
-    { icon: <PersonOutlineOutlined sx={{ fontSize: 14 }} />, text: req.requested_by },
+    {
+      icon: <PersonOutlineOutlined sx={{ fontSize: 14 }} />,
+      text: req.requested_by,
+    },
     {
       icon: <PeopleOutlineOutlined sx={{ fontSize: 14 }} />,
       text: `${req.exact_no_of_positions} position${req.exact_no_of_positions !== 1 ? "s" : ""}`,
     },
-    { icon: <CalendarTodayOutlined sx={{ fontSize: 13 }} />, text: formatDate(req.created_at) },
+    {
+      icon: <CalendarTodayOutlined sx={{ fontSize: 13 }} />,
+      text: formatDate(req.created_at),
+    },
   ];
 
   return (
@@ -558,7 +739,8 @@ function NotificationModal({ open, onClose }) {
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
-              px: 2.5, py: 1.75,
+              px: 2.5,
+              py: 1.75,
               borderBottom: "1px solid",
               borderColor: "divider",
             }}
@@ -566,23 +748,43 @@ function NotificationModal({ open, onClose }) {
             <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
               <Box
                 sx={{
-                  width: 36, height: 36, borderRadius: 2,
+                  width: 36,
+                  height: 36,
+                  borderRadius: 2,
                   backgroundColor: "#FAECE7",
-                  display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
                 }}
               >
                 <NotificationsNone sx={{ fontSize: 20, color: "#993C1D" }} />
               </Box>
               <Box>
-                <Typography fontWeight={600} fontSize="0.95rem" color="text.primary" lineHeight={1.3}>
+                <Typography
+                  fontWeight={600}
+                  fontSize="0.95rem"
+                  color="text.primary"
+                  lineHeight={1.3}
+                >
                   Notifications
                 </Typography>
-                <Typography fontSize="0.72rem" color="text.secondary" lineHeight={1.4}>
-                  {loading ? "Loading…" : `${total} assigned request${total !== 1 ? "s" : ""}`}
+                <Typography
+                  fontSize="0.72rem"
+                  color="text.secondary"
+                  lineHeight={1.4}
+                >
+                  {loading
+                    ? "Loading…"
+                    : `${total} assigned request${total !== 1 ? "s" : ""}`}
                 </Typography>
               </Box>
             </Box>
-            <IconButton size="small" onClick={onClose} sx={{ color: "text.secondary" }}>
+            <IconButton
+              size="small"
+              onClick={onClose}
+              sx={{ color: "text.secondary" }}
+            >
               <CloseIcon fontSize="small" />
             </IconButton>
           </Box>
@@ -591,33 +793,74 @@ function NotificationModal({ open, onClose }) {
         {/* Body */}
         <DialogContent
           sx={{
-            p: 1.5, maxHeight: "68vh", overflowY: "auto",
-            display: "flex", flexDirection: "column",
+            p: 1.5,
+            maxHeight: "68vh",
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
             "&.MuiDialogContent-root": { pt: 1.5 },
           }}
         >
           {loading && (
-            <Box sx={{ display: "flex", justifyContent: "center", alignItems: "center", py: 6 }}>
+            <Box
+              sx={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                py: 6,
+              }}
+            >
               <CircularProgress size={28} sx={{ color: "#D85A30" }} />
             </Box>
           )}
 
           {!loading && isError && (
-            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 6, gap: 1 }}>
-              <NotificationsNone sx={{ fontSize: 44, color: "text.disabled" }} />
-              <Typography fontSize="0.85rem" color="error.main">Failed to load notifications</Typography>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                py: 6,
+                gap: 1,
+              }}
+            >
+              <NotificationsNone
+                sx={{ fontSize: 44, color: "text.disabled" }}
+              />
+              <Typography fontSize="0.85rem" color="error.main">
+                Failed to load notifications
+              </Typography>
             </Box>
           )}
 
           {!loading && !isError && requests.length === 0 && (
-            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", py: 6, gap: 1.5 }}>
-              <NotificationsNone sx={{ fontSize: 44, color: "text.disabled" }} />
-              <Typography fontSize="0.85rem" color="text.secondary">No assigned requests</Typography>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                py: 6,
+                gap: 1.5,
+              }}
+            >
+              <NotificationsNone
+                sx={{ fontSize: 44, color: "text.disabled" }}
+              />
+              <Typography fontSize="0.85rem" color="text.secondary">
+                No assigned requests
+              </Typography>
             </Box>
           )}
 
           {!loading && !isError && requests.length > 0 && (
-            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.25, pt: 0.25 }}>
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                gap: 1.25,
+                pt: 0.25,
+              }}
+            >
               {requests.map((req) => {
                 const s = getStatus(req.status);
                 const isClosed = req.status?.toLowerCase() === "closed";
@@ -626,41 +869,84 @@ function NotificationModal({ open, onClose }) {
                   <Box
                     key={req.request_id}
                     sx={{
-                      display: "flex", flexDirection: "column", gap: 1.25,
-                      border: "1px solid", borderColor: "divider",
-                      borderRadius: 2.5, p: 1.75,
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: 1.25,
+                      border: "1px solid",
+                      borderColor: "divider",
+                      borderRadius: 2.5,
+                      p: 1.75,
                       backgroundColor: "background.paper",
                       transition: "box-shadow 0.15s",
                       "&:hover": { boxShadow: "0 2px 10px rgba(0,0,0,0.07)" },
                     }}
                   >
                     {/* Row 1: icon + title + status badge */}
-                    <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 1 }}>
-                      <Box sx={{ display: "flex", alignItems: "center", gap: 1.25, minWidth: 0, flex: 1 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        justifyContent: "space-between",
+                        gap: 1,
+                      }}
+                    >
+                      <Box
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1.25,
+                          minWidth: 0,
+                          flex: 1,
+                        }}
+                      >
                         <Box
                           sx={{
-                            width: 36, height: 36, borderRadius: 1.5,
+                            width: 36,
+                            height: 36,
+                            borderRadius: 1.5,
                             backgroundColor: s.iconBg,
-                            display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
                           }}
                         >
-                          <WorkOutlineOutlined sx={{ fontSize: 17, color: s.iconColor }} />
+                          <WorkOutlineOutlined
+                            sx={{ fontSize: 17, color: s.iconColor }}
+                          />
                         </Box>
                         <Box sx={{ minWidth: 0 }}>
-                          <Typography fontWeight={600} fontSize="0.875rem" color="text.primary" lineHeight={1.35} noWrap>
+                          <Typography
+                            fontWeight={600}
+                            fontSize="0.875rem"
+                            color="text.primary"
+                            lineHeight={1.35}
+                            noWrap
+                          >
                             {req.job_title}
                           </Typography>
-                          <Typography fontSize="0.7rem" color="text.disabled" lineHeight={1.4} noWrap>
+                          <Typography
+                            fontSize="0.7rem"
+                            color="text.disabled"
+                            lineHeight={1.4}
+                            noWrap
+                          >
                             {req.request_number}
                           </Typography>
                         </Box>
                       </Box>
                       <Box
                         sx={{
-                          flexShrink: 0, alignSelf: "center",
-                          backgroundColor: s.badgeBg, color: s.badgeColor,
-                          fontSize: "0.68rem", fontWeight: 600,
-                          px: 1.25, py: "3px", borderRadius: "20px", whiteSpace: "nowrap",
+                          flexShrink: 0,
+                          alignSelf: "center",
+                          backgroundColor: s.badgeBg,
+                          color: s.badgeColor,
+                          fontSize: "0.68rem",
+                          fontWeight: 600,
+                          px: 1.25,
+                          py: "3px",
+                          borderRadius: "20px",
+                          whiteSpace: "nowrap",
                         }}
                       >
                         {s.label}
@@ -668,15 +954,29 @@ function NotificationModal({ open, onClose }) {
                     </Box>
 
                     {/* Row 2: meta pills */}
-                    <Box sx={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 0.75 }}>
+                    <Box
+                      sx={{
+                        display: "flex",
+                        flexWrap: "wrap",
+                        alignItems: "center",
+                        gap: 0.75,
+                      }}
+                    >
                       {metaItems(req).map(({ icon, text }, i) => (
                         <Box
                           key={i}
                           sx={{
-                            display: "flex", alignItems: "center", gap: 0.5,
-                            backgroundColor: "action.hover", color: "text.secondary",
-                            fontSize: "0.72rem", px: 1.1, py: "4px",
-                            borderRadius: "20px", whiteSpace: "nowrap", lineHeight: 1,
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                            backgroundColor: "action.hover",
+                            color: "text.secondary",
+                            fontSize: "0.72rem",
+                            px: 1.1,
+                            py: "4px",
+                            borderRadius: "20px",
+                            whiteSpace: "nowrap",
+                            lineHeight: 1,
                           }}
                         >
                           {icon}
@@ -697,7 +997,9 @@ function NotificationModal({ open, onClose }) {
                       }}
                     >
                       {/* Debug: show raw status so you can verify the value */}
-                      <Typography sx={{ fontSize: "0.65rem", color: "text.disabled" }}>
+                      <Typography
+                        sx={{ fontSize: "0.65rem", color: "text.disabled" }}
+                      >
                         status: {req.status ?? "—"}
                       </Typography>
 
@@ -744,7 +1046,9 @@ function NotificationModal({ open, onClose }) {
       {/* Candidate Assignment Modal */}
       <CandidateModal
         open={assignModal.open}
-        onClose={() => setAssignModal({ open: false, requestUuid: null, jobTitle: "" })}
+        onClose={() =>
+          setAssignModal({ open: false, requestUuid: null, jobTitle: "" })
+        }
         requestUuid={assignModal.requestUuid}
         jobTitle={assignModal.jobTitle}
       />
@@ -766,12 +1070,24 @@ function TopBarBreadcrumb() {
   if (crumbs.length === 0) return null;
 
   return (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 0, overflow: "hidden", flexShrink: 1 }}>
+    <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        gap: 0,
+        overflow: "hidden",
+        flexShrink: 1,
+      }}
+    >
       <Box
         onClick={() => navigate("/account-manager/dashboard")}
         sx={{
-          display: "flex", alignItems: "center", cursor: "pointer",
-          px: 0.8, py: 0.4, borderRadius: "6px",
+          display: "flex",
+          alignItems: "center",
+          cursor: "pointer",
+          px: 0.8,
+          py: 0.4,
+          borderRadius: "6px",
           "&:hover": { backgroundColor: "#f5f5f0" },
         }}
       >
@@ -781,18 +1097,29 @@ function TopBarBreadcrumb() {
         const IconComp = c.icon;
         return (
           <React.Fragment key={idx}>
-            <NavigateNextIcon sx={{ fontSize: 15, color: "#ddd", flexShrink: 0 }} />
+            <NavigateNextIcon
+              sx={{ fontSize: 15, color: "#ddd", flexShrink: 0 }}
+            />
             <Box
               onClick={!c.isLast && c.path ? () => navigate(c.path) : undefined}
               sx={{
-                display: "flex", alignItems: "center", gap: 0.5,
-                px: 0.8, py: 0.4, borderRadius: "6px",
+                display: "flex",
+                alignItems: "center",
+                gap: 0.5,
+                px: 0.8,
+                py: 0.4,
+                borderRadius: "6px",
                 cursor: c.isLast || !c.path ? "default" : "pointer",
                 backgroundColor: c.isLast ? "#fff5f0" : "transparent",
-                "&:hover": !c.isLast && c.path ? { backgroundColor: "#f5f5f0" } : {},
+                "&:hover":
+                  !c.isLast && c.path ? { backgroundColor: "#f5f5f0" } : {},
               }}
             >
-              {IconComp && <IconComp sx={{ fontSize: 13, color: c.isLast ? "#FF5F1F" : "#aaa" }} />}
+              {IconComp && (
+                <IconComp
+                  sx={{ fontSize: 13, color: c.isLast ? "#FF5F1F" : "#aaa" }}
+                />
+              )}
               <Typography
                 sx={{
                   fontSize: "12.5px",
@@ -815,18 +1142,19 @@ function TopBarBreadcrumb() {
    DrawerLayout
 ───────────────────────────────────────────── */
 const DrawerLayout = () => {
-  const [open, setOpen]       = useState(true);
+  const [open, setOpen] = useState(true);
   const [notifOpen, setNotifOpen] = useState(false);
   const [triggerLogout] = useLazyLogoutQuery();
   const navigate = useNavigate();
+  const userData = getItem("employee_Name");
 
   const { data: notifData } = useGetMyAssignedRequestsQuery(undefined, {
     pollingInterval: 60_000,
   });
   const badgeCount =
-  notifData?.requests?.filter(
-    (req) => req.status?.toLowerCase() === "pending"
-  ).length || 0;
+    notifData?.requests?.filter(
+      (req) => req.status?.toLowerCase() === "pending",
+    ).length || 0;
 
   const handleLogout = async () => {
     try {
@@ -859,12 +1187,27 @@ const DrawerLayout = () => {
           },
         }}
       >
-        <Box sx={{ display: "flex", alignItems: "center", padding:"5px 1px 5px 20px", borderBottom: "1px solid #f0f0e8", minHeight: 52 }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            padding: "5px 1px 5px 20px",
+            borderBottom: "1px solid #f0f0e8",
+            minHeight: 52,
+          }}
+        >
           <IconButton onClick={() => setOpen(!open)} sx={{ mr: open ? 1 : 0 }}>
             <MenuIcon />
           </IconButton>
           {open && (
-            <Typography variant="h6" sx={{ fontWeight: 700, letterSpacing: "-0.5px", color: "#1a1a1a" }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 700,
+                letterSpacing: "-0.5px",
+                color: "#1a1a1a",
+              }}
+            >
               RI<span style={{ color: "#ff5722" }}>8</span>FIT
             </Typography>
           )}
@@ -874,7 +1217,17 @@ const DrawerLayout = () => {
           {sidebarSections.map((section, si) => (
             <Box key={si} sx={{ mb: 1.5 }}>
               {open && (
-                <Typography sx={{ px: 3, py: 1, fontSize: "10.5px", fontWeight: 600, color: "#bbb", textTransform: "uppercase", letterSpacing: "0.8px" }}>
+                <Typography
+                  sx={{
+                    px: 3,
+                    py: 1,
+                    fontSize: "10.5px",
+                    fontWeight: 600,
+                    color: "#bbb",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.8px",
+                  }}
+                >
                   {section.title}
                 </Typography>
               )}
@@ -886,21 +1239,43 @@ const DrawerLayout = () => {
                     to={item.path}
                     disabled={item.disabled}
                     className={
-                      location.pathname.includes("/org") && item.label === "Organization"
+                      location.pathname.includes("/org") &&
+                      item.label === "Organization"
                         ? "active"
-                        : location.pathname.startsWith(item.path) ? "active" : ""
+                        : location.pathname.startsWith(item.path)
+                          ? "active"
+                          : ""
                     }
                     sx={{
-                      mx: 1.5, my: 0.3, borderRadius: "8px", color: "#555",
-                      "&.active": { backgroundColor: "#fff0eb", color: "#ff5722", fontWeight: 500 },
-                      "&:hover": { backgroundColor: "#fff5f0", color: "#ff5722" },
+                      mx: 1.5,
+                      my: 0.3,
+                      borderRadius: "8px",
+                      color: "#555",
+                      "&.active": {
+                        backgroundColor: "#fff0eb",
+                        color: "#ff5722",
+                        fontWeight: 500,
+                      },
+                      "&:hover": {
+                        backgroundColor: "#fff5f0",
+                        color: "#ff5722",
+                      },
                     }}
                   >
-                    <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : "auto", color: "inherit" }}>
+                    <ListItemIcon
+                      sx={{
+                        minWidth: 0,
+                        mr: open ? 2 : "auto",
+                        color: "inherit",
+                      }}
+                    >
                       {item.icon}
                     </ListItemIcon>
                     {open && (
-                      <ListItemText primary={item.label} sx={{ "& .MuiTypography-root": { fontSize: "13.5px" } }} />
+                      <ListItemText
+                        primary={item.label}
+                        sx={{ "& .MuiTypography-root": { fontSize: "13.5px" } }}
+                      />
                     )}
                   </ListItemButton>
                 ))}
@@ -912,43 +1287,94 @@ const DrawerLayout = () => {
         <Box sx={{ p: 2, borderTop: "1px solid #f0f0e8" }}>
           <ListItemButton
             onClick={handleLogout}
-            sx={{ borderRadius: "8px", color: "#e03", "&:hover": { backgroundColor: "#fef0f0" } }}
+            sx={{
+              borderRadius: "8px",
+              color: "#e03",
+              "&:hover": { backgroundColor: "#fef0f0" },
+            }}
           >
-            <ListItemIcon sx={{ minWidth: 0, mr: open ? 2 : "auto", color: "inherit" }}>
+            <ListItemIcon
+              sx={{ minWidth: 0, mr: open ? 2 : "auto", color: "inherit" }}
+            >
               <Logout />
             </ListItemIcon>
             {open && (
-              <ListItemText primary="Logout" sx={{ "& .MuiTypography-root": { fontSize: "14px", fontWeight: 500 } }} />
+              <ListItemText
+                primary="Logout"
+                sx={{
+                  "& .MuiTypography-root": {
+                    fontSize: "14px",
+                    fontWeight: 500,
+                  },
+                }}
+              />
             )}
           </ListItemButton>
         </Box>
       </Drawer>
 
       {/* MAIN COLUMN */}
-      <Box sx={{ flexGrow: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+      <Box
+        sx={{
+          flexGrow: 1,
+          display: "flex",
+          flexDirection: "column",
+          minWidth: 0,
+        }}
+      >
         <AppBar
-          position="sticky" elevation={0}
-          sx={{ backgroundColor: "#fff", color: "#000", borderBottom: "1px solid #e8e8e0", height: "52px" }}
+          position="sticky"
+          elevation={0}
+          sx={{
+            backgroundColor: "#fff",
+            color: "#000",
+            borderBottom: "1px solid #e8e8e0",
+            height: "52px",
+          }}
         >
-          <Toolbar disableGutters sx={{ px: 2, height: "52px", minHeight: "52px", gap: 2 }}>
+          <Toolbar
+            disableGutters
+            sx={{ px: 2, height: "52px", minHeight: "52px", gap: 2,pb:1 }}
+          >
             <TopBarBreadcrumb />
             <Box sx={{ flexGrow: 1 }} />
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, flexShrink: 0 }}>
-              <Tooltip title="Notifications" arrow>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                flexShrink: 0,
+              }}
+            >
+              <Tooltip title="Hiring Requests" arrow>
                 <IconButton size="small" onClick={() => setNotifOpen(true)}>
                   <Badge badgeContent={badgeCount} color="error">
-                    <NotificationsNone sx={{ fontSize: 20 }} />
+                    <MoveToInboxOutlined sx={{ fontSize: 20 }} />
                   </Badge>
                 </IconButton>
               </Tooltip>
-              <Avatar sx={{ bgcolor: "#ff5722", width: 32, height: 32, fontSize: 13, fontWeight: 600 }}>
-                SK
+
+              <Typography
+                sx={{ fontSize: "0.875rem", color: "#333", fontWeight: 500 }}
+              >
+                {userData || "User"}
+              </Typography>
+              <Avatar
+                sx={{
+                  bgcolor: "#ff5722",
+                  width: 32,
+                  height: 32,
+                  fontSize: 13,
+                  fontWeight: 600,
+                }}
+              >
+                {userData ? userData.charAt(0).toUpperCase() : "U"}
               </Avatar>
             </Box>
           </Toolbar>
         </AppBar>
 
-        <Box sx={{ flex: 1, p: 2,backgroundColor: "#fff", overflow: "auto" }}>
+        <Box sx={{ flex: 1, p: 1, backgroundColor: "#fff", overflow: "auto" }}>
           <Outlet />
         </Box>
       </Box>

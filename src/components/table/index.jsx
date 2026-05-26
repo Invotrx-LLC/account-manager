@@ -330,7 +330,7 @@ export default function ReusableMRT({
                 },
               }}
             >
-              {[5, 10, 25, 50].map((size) => (
+              {[5, 10, 25, 50,100].map((size) => (
                 <MenuItem key={size} value={size} sx={{ fontSize: "12px" }}>
                   {size}
                 </MenuItem>
