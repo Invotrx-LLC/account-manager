@@ -79,6 +79,15 @@ export const authApi = api.injectEndpoints({
         method: "GET",
       }),
     }),
+    changePassword: builder.mutation({
+      query: (body) => ({
+        url: `/acc/account_manager_change-password?old_password=${encodeURIComponent(body.old_password)}&new_password=${encodeURIComponent(body.new_password)}`,
+        method: "POST",
+        headers: {
+          accept: "application/json",
+        },
+      }),
+    }),
   }),
 });
 
@@ -90,4 +99,5 @@ export const {
   useSignupVerifyOTPMutation,
   useForgotResendOTPMutation,
   useLazyLogoutQuery,
+  useChangePasswordMutation,
 } = authApi;

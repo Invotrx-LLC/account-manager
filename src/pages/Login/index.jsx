@@ -58,6 +58,7 @@ const AmLogin = () => {
         toast.success(res?.message || "Login successful ✅");
         setItem(AC_ACCESS_TOKEN,res?.data?.access_token);
         setItem(AC_REFRESH_TOKEN,res?.data?.refresh_token);
+        setItem("am_user", JSON.stringify(res?.data?.user));
         navigate("/account-manager/dashboard");
       }
     } catch (err) {

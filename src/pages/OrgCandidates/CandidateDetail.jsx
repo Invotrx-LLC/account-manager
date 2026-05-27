@@ -1228,16 +1228,16 @@ function EducationSection({ candidate }) {
 function ProfileTab({ candidate }) {
   return (
     <Box>
-      <Accordion icon={<TrendingUpIcon sx={{ fontSize: 18 }} />} iconColor={C.teal} title="Skill Info" defaultOpen={true}>
+      <Accordion icon={<TrendingUpIcon sx={{ fontSize: 18 }} />} iconColor={"#FF5F1F"} title="Skill Info" defaultOpen={true}>
         <SkillInfoSection candidate={candidate} />
       </Accordion>
-      <Accordion icon={<CodeIcon sx={{ fontSize: 18 }} />} iconColor={C.teal} title="Skills">
+      <Accordion icon={<CodeIcon sx={{ fontSize: 18 }} />} iconColor={"#FF5F1F"} title="Skills">
         <SkillsSection candidate={candidate} />
       </Accordion>
-      <Accordion icon={<WorkOutlineOutlined sx={{ fontSize: 18 }} />} iconColor={C.teal} title="Experience">
+      <Accordion icon={<WorkOutlineOutlined sx={{ fontSize: 18 }} />} iconColor={"#FF5F1F"} title="Experience">
         <ExperienceSection candidate={candidate} />
       </Accordion>
-      <Accordion icon={<SchoolOutlinedIcon sx={{ fontSize: 18 }} />} iconColor={C.teal} title="Education">
+      <Accordion icon={<SchoolOutlinedIcon sx={{ fontSize: 18 }} />} iconColor={"#FF5F1F"} title="Education">
         <EducationSection candidate={candidate} />
       </Accordion>
     </Box>
@@ -1333,7 +1333,7 @@ function TimelineTab({ candidate, onInterviewClick }) {
 
           {/* Circle colour legend */}
           <Box sx={{ display: "flex", gap: "14px", flexWrap: "wrap" }}>
-            {CIRCLE_LEGEND.map(({ state, label, color }) => (
+            {/* {CIRCLE_LEGEND.map(({ state, label, color }) => (
               <Box key={state} sx={{ display: "flex", alignItems: "center", gap: "5px" }}>
                 <Box
                   sx={{
@@ -1346,7 +1346,7 @@ function TimelineTab({ candidate, onInterviewClick }) {
                 />
                 <Typography fontSize={11} color={C.textSecondary}>{label}</Typography>
               </Box>
-            ))}
+            ))} */}
           </Box>
         </Box>
 

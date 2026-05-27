@@ -98,7 +98,7 @@ const sidebarSections = [
         label: "Settings",
         icon: <Work />,
         path: "/account-manager/settings",
-        disabled: true,
+        disabled: false,
       },
     ],
   },
@@ -767,7 +767,7 @@ function NotificationModal({ open, onClose }) {
                   color="text.primary"
                   lineHeight={1.3}
                 >
-                  Notifications
+                  Requests
                 </Typography>
                 <Typography
                   fontSize="0.72rem"
@@ -1146,8 +1146,8 @@ const DrawerLayout = () => {
   const [notifOpen, setNotifOpen] = useState(false);
   const [triggerLogout] = useLazyLogoutQuery();
   const navigate = useNavigate();
-  const userData = getItem("employee_Name");
-
+  const userData = getItem("am_user");
+  const userInfo = userData ? JSON.parse(userData) : null;
   const { data: notifData } = useGetMyAssignedRequestsQuery(undefined, {
     pollingInterval: 60_000,
   });
@@ -1357,7 +1357,7 @@ const DrawerLayout = () => {
               <Typography
                 sx={{ fontSize: "0.875rem", color: "#333", fontWeight: 500 }}
               >
-                {userData || "User"}
+                {userInfo?.name || "User"}
               </Typography>
               <Avatar
                 sx={{
@@ -1368,7 +1368,7 @@ const DrawerLayout = () => {
                   fontWeight: 600,
                 }}
               >
-                {userData ? userData.charAt(0).toUpperCase() : "U"}
+                {userInfo?.name ? userInfo.name.charAt(0).toUpperCase() : "U"}
               </Avatar>
             </Box>
           </Toolbar>

@@ -149,6 +149,38 @@ export const ROUTE_TRAILS = [
       { label: "Billing",       icon: SettingsIcon, path: null, isLast: true },
     ],
   },
+  // ── Settings ─────────────────────────────────────────
+{
+  match: "/account-manager/settings",
+  exact: true,
+  trail: [
+    {
+      label: "Settings",
+      icon: SettingsIcon,
+      path: "/account-manager/settings",
+      isLast: true,
+    },
+  ],
+},
+
+// ── Change Password ─────────────────────────────────
+{
+  match: "/account-manager/settings/change-password",
+  exact: true,
+  trail: [
+    {
+      label: "Settings",
+      icon: SettingsIcon,
+      path: "/account-manager/settings",
+    },
+    {
+      label: "Change Password",
+      icon: SettingsIcon,
+      path: null,
+      isLast: true,
+    },
+  ],
+},
 ];
 
 /**
