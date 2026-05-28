@@ -1239,8 +1239,9 @@ const DrawerLayout = () => {
                     to={item.path}
                     disabled={item.disabled}
                     className={
-                      location.pathname.includes("/org") &&
-                      item.label === "Organization"
+                      item.label === "Organization" &&
+                      (location.pathname.includes("/org") ||
+                        location.pathname.includes("/candidate"))
                         ? "active"
                         : location.pathname.startsWith(item.path)
                           ? "active"
@@ -1334,7 +1335,7 @@ const DrawerLayout = () => {
         >
           <Toolbar
             disableGutters
-            sx={{ px: 2, height: "52px", minHeight: "52px", gap: 2,pb:1 }}
+            sx={{ px: 2, height: "52px", minHeight: "52px", gap: 2, pb: 1 }}
           >
             <TopBarBreadcrumb />
             <Box sx={{ flexGrow: 1 }} />

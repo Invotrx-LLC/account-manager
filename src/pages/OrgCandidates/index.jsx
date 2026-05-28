@@ -3,20 +3,28 @@
 import React, { useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom"; // 👈 add useLocation
 import {
-  Box, Typography, CircularProgress, Alert,
-  Grid, Card, CardContent, Chip, Avatar, Button, Divider,
+  Box,
+  Typography,
+  CircularProgress,
+  Alert,
+  Grid,
+  Card,
+  CardContent,
+  Chip,
+  Avatar,
+  Button,
+  Divider,
 } from "@mui/material";
-import { useDispatch } from "react-redux";                               // 👈 add
-import { setDynamicLabels } from "../../redux/slices/breadcrumbSlice";  // 👈 add
+import { useDispatch } from "react-redux"; // 👈 add
+import { setDynamicLabels } from "../../redux/slices/breadcrumbSlice"; // 👈 add
 
 import { useGetJobMatchedCandidatesQuery } from "../../redux/services/requisition/requisition";
 
-
 export default function OrgCandidates() {
   const { orgId, jobId } = useParams();
-  const navigate  = useNavigate();
-  const location  = useLocation();  // 👈 add
-  const dispatch  = useDispatch();  // 👈 add
+  const navigate = useNavigate();
+  const location = useLocation(); // 👈 add
+  const dispatch = useDispatch(); // 👈 add
 
   const { data, isLoading, isError, error } =
     useGetJobMatchedCandidatesQuery(jobId);
@@ -25,11 +33,12 @@ export default function OrgCandidates() {
 
   // ✅ Read from router state first (passed from OrgRequisitions navigate call)
   const jobTitle = location.state?.jobTitle ?? candidates[0]?.job_title ?? null;
-  const orgName  = location.state?.orgName  ?? candidates[0]?.organisation_name ?? null;
+  const orgName =
+    location.state?.orgName ?? candidates[0]?.organisation_name ?? null;
 
   useEffect(() => {
     const labels = {};
-    if (orgName)  labels.orgId = orgName;
+    if (orgName) labels.orgId = orgName;
     if (jobTitle) labels.jobId = jobTitle;
     if (Object.keys(labels).length) dispatch(setDynamicLabels(labels)); // 👈 no cleanup — preserve for candidate page
   }, [orgName, jobTitle]);
@@ -51,14 +60,15 @@ export default function OrgCandidates() {
   }
 
   return (
-    <Box sx={{ p: 1,backgroundColor:"#fff" }}>
+    <Box sx={{ p: 1, backgroundColor: "#fff" }}>
       {/* ── Header ── */}
       <Typography variant="h5" fontWeight={600} mb={0.5}>
         Matched Candidates
       </Typography>
       {jobTitle && (
         <Typography fontSize={13} color="#9CA3AF" mb={3}>
-          {jobTitle} · {candidates.length} candidate{candidates.length !== 1 ? "s" : ""} matched
+          {jobTitle} · {candidates.length} candidate
+          {candidates.length !== 1 ? "s" : ""} matched
         </Typography>
       )}
 
@@ -72,13 +82,24 @@ export default function OrgCandidates() {
       ) : (
         <Grid container spacing={2.5} mt={2}>
           {candidates.map((candidate) => (
-            <Grid size={{ xs: 12, sm: 6, md: 4, lg: 4, xl: 3 }} key={candidate.matched_candidate_id}>
+            <Grid
+              size={{ xs: 12, sm: 6, md: 4, lg: 4, xl: 3 }}
+              key={candidate.matched_candidate_id}
+            >
               <CandidateCard
                 candidate={candidate}
-                onView={() => navigate(
-                  `/account-manager/candidate/${candidate.candidate_id}`, // ✅ use candidate_id not matched_candidate_id
-                  { state: { jobTitle, orgName } }
-                )}
+                onView={() =>
+                  navigate(
+                    `/account-manager/candidate/${candidate.candidate_id}`, // ✅ use candidate_id not matched_candidate_id
+                    {
+                      state: {
+                        jobTitle,
+                        orgName,
+                        previousTab: 2,
+                      },
+                    },
+                  )
+                }
               />
             </Grid>
           ))}
@@ -93,13 +114,16 @@ function CandidateCard({ candidate, onView }) {
   const [hovered, setHovered] = React.useState(false);
 
   const matchColor =
-    candidate.match_score >= 80 ? { bg: "#E7F8EE", color: "#0F6E56" } :
-    candidate.match_score >= 60 ? { bg: "#FFF8E1", color: "#B45309" } :
-                                  { bg: "#FEE2E2", color: "#B91C1C" };
+    candidate.match_score >= 80
+      ? { bg: "#E7F8EE", color: "#0F6E56" }
+      : candidate.match_score >= 60
+        ? { bg: "#FFF8E1", color: "#B45309" }
+        : { bg: "#FEE2E2", color: "#B91C1C" };
 
-  const availabilityLabel = candidate.availability === 0
-    ? "Immediate"
-    : `${candidate.availability} days`;
+  const availabilityLabel =
+    candidate.availability === 0
+      ? "Immediate"
+      : `${candidate.availability} days`;
 
   return (
     <Card
@@ -115,15 +139,42 @@ function CandidateCard({ candidate, onView }) {
         flexDirection: "column",
       }}
     >
-      <CardContent sx={{ p: "16px", flexGrow: 1, display: "flex", flexDirection: "column" }}>
-
+      <CardContent
+        sx={{
+          p: "16px",
+          flexGrow: 1,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         {/* ── Row 1: Avatar + Name + Match Score ── */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: "12px" }}>
-          <Avatar sx={{ width: 42, height: 42, fontWeight: 700, fontSize: 16, bgcolor: "#FF5F1F", flexShrink: 0 }}>
+        <Box
+          sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: "12px" }}
+        >
+          <Avatar
+            sx={{
+              width: 42,
+              height: 42,
+              fontWeight: 700,
+              fontSize: 16,
+              bgcolor: "#FF5F1F",
+              flexShrink: 0,
+            }}
+          >
             {candidate.full_name?.charAt(0).toUpperCase()}
           </Avatar>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#111827", lineHeight: 1.3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+            <Typography
+              sx={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: "#111827",
+                lineHeight: 1.3,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+              }}
+            >
               {candidate.full_name}
             </Typography>
             <Typography sx={{ fontSize: 11, color: "#9CA3AF" }}>
@@ -134,9 +185,13 @@ function CandidateCard({ candidate, onView }) {
             label={`${candidate.match_score}%`}
             size="small"
             sx={{
-              fontSize: 11, fontWeight: 700, height: 24,
-              backgroundColor: matchColor.bg, color: matchColor.color,
-              flexShrink: 0, "& .MuiChip-label": { px: "8px" },
+              fontSize: 11,
+              fontWeight: 700,
+              height: 24,
+              backgroundColor: matchColor.bg,
+              color: matchColor.color,
+              flexShrink: 0,
+              "& .MuiChip-label": { px: "8px" },
             }}
           />
         </Box>
@@ -146,17 +201,38 @@ function CandidateCard({ candidate, onView }) {
         {/* ── Row 2: Stage + Availability ── */}
         <Grid container spacing={1} sx={{ mb: "12px" }}>
           <Grid size={{ xs: 6 }}>
-            <Box sx={{ backgroundColor: "#F9FAFB", borderRadius: "8px", p: "8px" }}>
-              <Typography sx={{ fontSize: 10, color: "#6B7280", mb: "2px" }}>Stage</Typography>
-              <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#111827", textTransform: "capitalize" }}>
+            <Box
+              sx={{ backgroundColor: "#F9FAFB", borderRadius: "8px", p: "8px" }}
+            >
+              <Typography sx={{ fontSize: 10, color: "#6B7280", mb: "2px" }}>
+                Stage
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: "#111827",
+                  textTransform: "capitalize",
+                }}
+              >
                 {candidate.current_stage}
               </Typography>
             </Box>
           </Grid>
           <Grid size={{ xs: 6 }}>
-            <Box sx={{ backgroundColor: "#F9FAFB", borderRadius: "8px", p: "8px" }}>
-              <Typography sx={{ fontSize: 10, color: "#6B7280", mb: "2px" }}>Availability</Typography>
-              <Typography sx={{ fontSize: 12, fontWeight: 700, color: candidate.availability === 0 ? "#0F6E56" : "#111827" }}>
+            <Box
+              sx={{ backgroundColor: "#F9FAFB", borderRadius: "8px", p: "8px" }}
+            >
+              <Typography sx={{ fontSize: 10, color: "#6B7280", mb: "2px" }}>
+                Availability
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: 12,
+                  fontWeight: 700,
+                  color: candidate.availability === 0 ? "#0F6E56" : "#111827",
+                }}
+              >
                 {availabilityLabel}
               </Typography>
             </Box>
@@ -166,12 +242,33 @@ function CandidateCard({ candidate, onView }) {
         {/* ── Row 3–5: Experience, Email, Phone ── */}
         {[
           { label: "Experience", value: candidate.total_experience },
-          { label: "Email",      value: candidate.email },
-          { label: "Phone",      value: candidate.phone_number },
+          { label: "Email", value: candidate.email },
+          { label: "Phone", value: candidate.phone_number },
         ].map(({ label, value }) => (
-          <Box key={label} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: "6px" }}>
-            <Typography sx={{ fontSize: 11, color: "#6B7280" }}>{label}</Typography>
-            <Typography sx={{ fontSize: 11, fontWeight: label === "Experience" ? 600 : 500, color: "#111827", maxWidth: "60%", textAlign: "right", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <Box
+            key={label}
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: "6px",
+            }}
+          >
+            <Typography sx={{ fontSize: 11, color: "#6B7280" }}>
+              {label}
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: 11,
+                fontWeight: label === "Experience" ? 600 : 500,
+                color: "#111827",
+                maxWidth: "60%",
+                textAlign: "right",
+                overflow: "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace: "nowrap",
+              }}
+            >
               {value}
             </Typography>
           </Box>
@@ -185,16 +282,18 @@ function CandidateCard({ candidate, onView }) {
             size="small"
             onClick={onView}
             sx={{
-              borderColor: "#FF5F1F", color: "#FF5F1F",
-              textTransform: "none", fontWeight: 600,
-              borderRadius: "8px", fontSize: 12,
+              borderColor: "#FF5F1F",
+              color: "#FF5F1F",
+              textTransform: "none",
+              fontWeight: 600,
+              borderRadius: "8px",
+              fontSize: 12,
               "&:hover": { backgroundColor: "#FFF0E8", borderColor: "#FF5F1F" },
             }}
           >
             View Profile &amp; Timeline
           </Button>
         </Box>
-
       </CardContent>
     </Card>
   );
