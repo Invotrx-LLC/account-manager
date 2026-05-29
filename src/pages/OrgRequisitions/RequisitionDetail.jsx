@@ -50,32 +50,39 @@ import ReusableMRT from "../../components/table";
 import ViewToggle from "../../components/table/ViewToggle";
 import SearchFilter from "../../components/searchFilter";
 import {
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  IconButton,
-  TextField,
+  Dialog, DialogTitle, DialogContent, DialogActions,
+  IconButton, TextField,
 } from "@mui/material";
 import CloseIcon from "@mui/icons-material/Close";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import { toast } from "react-toastify";
 import { useUploadCandidateResumeMutation } from "../../redux/services/requisition/requisition";
+import { BusinessCenterOutlined, PeopleOutlineOutlined, WorkOutlined } from "@mui/icons-material";
+import AccountTreeOutlinedIcon from "@mui/icons-material/AccountTreeOutlined";
+import TrendingUpOutlinedIcon from "@mui/icons-material/TrendingUpOutlined";
+import GroupsOutlinedIcon from "@mui/icons-material/GroupsOutlined";
+
+import LaptopOutlinedIcon from "@mui/icons-material/LaptopOutlined";
+// import WorkOutlineIcon             from "@mui/icons-material/WorkOutline";
+import PublicOutlinedIcon from "@mui/icons-material/PublicOutlined";
+import ScienceOutlinedIcon from "@mui/icons-material/ScienceOutlined";
+import BuildOutlinedIcon from "@mui/icons-material/BuildOutlined";
+import TuneOutlinedIcon from "@mui/icons-material/TuneOutlined";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+// import PersonOutlineOutlinedIcon   from "@mui/icons-material/PersonOutlineOutlined";
+import VerifiedUserOutlinedIcon from "@mui/icons-material/VerifiedUserOutlined";
+// import PeopleOutlineIcon           from "@mui/icons-material/PeopleOutline";
+import KeyboardArrowDownIcon from "@mui/icons-material/KeyboardArrowDown";
 
 // Copy these constants from your CandidatesPage file:
 const DOMAIN_OPTIONS = ["clinical"];
-const FUNCTION_OPTIONS = ["biostatistics", "clinical_data_management"];
+const FUNCTION_OPTIONS = [
+  "biostatistics", "clinical_data_management"
+
+];
 const SUB_FUNCTION_MAP = {
-  biostatistics: [
-    "statistical_programmer",
-    "biostatistician",
-    "sas_programmer",
-  ],
-  clinical_data_management: [
-    "clinical_programmer",
-    "crf_developer",
-    "clinical_data_manager",
-  ],
+  biostatistics: ["statistical_programmer", "biostatistician", "sas_programmer"],
+  clinical_data_management: ["clinical_programmer", "crf_developer", "clinical_data_manager"],
   // clinical_operations:      ["clinical_research_associate", "clinical_trial_manager", "site_coordinator"],
   // medical_writing:          ["medical_writer", "regulatory_writer"],
   // pharmacovigilance:        ["safety_associate", "pv_specialist"],
@@ -84,194 +91,45 @@ const SUB_FUNCTION_MAP = {
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const C = {
   accent: "#FF5F1F",
-  accentSoft: "#FFF0E8",
-  green: "#0F6E56",
-  greenSoft: "#E7F8EE",
-  greenBorder: "#5DCAA5",
-  indigo: "#4338CA",
-  indigoSoft: "#EEF2FF",
-  amber: "#92400E",
-  amberSoft: "#FEF3C7",
-  amberBorder: "#F0C070",
-  red: "#B91C1C",
-  redSoft: "#FEE2E2",
-  redBorder: "#F09595",
-  purpleBg: "#EEEDFE",
-  purpleText: "#3C3489",
-  purpleBorder: "#AFA9EC",
+  accentSoft: "#FFF5F0",
+  accentBorder: "#FFD4BC",
+  bg: "#F7F7F9",
   surface: "#FFFFFF",
-  surfaceMuted: "#F9FAFB",
-  border: "#E8E8EC",
-  borderStrong: "#D1D5DB",
-  textPrimary: "#111118",
-  textSecondary: "#5C5C70",
-  textTertiary: "#9696A6",
+  surfaceAlt: "#FAFAFA",
+  border: "#EBEBF0",
+  borderStrong: "#D8D8E4",
+  text: "#0D0D12",
+  textSub: "#4A4A5E",
+  textMuted: "#8888A0",
+  green: "#059669", greenSoft: "#ECFDF5", greenBorder: "#6EE7B7",
+  blue: "#2563EB", blueSoft: "#EFF6FF", blueBorder: "#93C5FD",
+  amber: "#D97706", amberSoft: "#FFFBEB", amberBorder: "#FCD34D",
+  red: "#DC2626", redSoft: "#FEF2F2", redBorder: "#FCA5A5",
+  indigo: "#4F46E5", indigoSoft: "#EEF2FF", indigoBorder: "#C7D2FE",
+  purple: "#7C3AED", purpleSoft: "#F5F3FF", purpleBorder: "#DDD6FE",
 };
 
-const STATUS_CHIP = {
-  open: { bg: C.greenSoft, color: C.green },
-  active: { bg: C.greenSoft, color: C.green },
-  closed: { bg: "#F3F4F6", color: "#6B7280" },
-  filled: { bg: C.indigoSoft, color: C.indigo },
-  on_hold: { bg: C.amberSoft, color: C.amber },
-};
-const statusChip = (s = "") =>
-  STATUS_CHIP[s.toLowerCase().replace(/\s+/g, "_")] ?? {
-    bg: "#F3F4F6",
-    color: "#6B7280",
-  };
-
-const TAB_SX = {
-  borderBottom: "1px solid #E5E7EB",
-  mb: "24px",
-  "& .MuiTab-root": {
-    textTransform: "none",
-    fontSize: 13,
-    fontWeight: 500,
-    color: "#6B7280",
-    minWidth: "auto",
-    px: "4px",
-    mr: "24px",
-  },
-  "& .Mui-selected": { color: `${C.accent} !important`, fontWeight: 600 },
-  "& .MuiTabs-indicator": { backgroundColor: C.accent },
-};
-
-// ─── Shared sub-components ────────────────────────────────────────────────────
-function SectionLabel({ children }) {
-  return (
-    <Typography
-      sx={{
-        fontSize: 11,
-        fontWeight: 700,
-        letterSpacing: "0.08em",
-        textTransform: "uppercase",
-        color: C.textTertiary,
-        mb: "12px",
-      }}
-    >
-      {children}
-    </Typography>
-  );
+/* ═══════════════════════════════════════
+   TINY HELPERS
+═══════════════════════════════════════ */
+function avatarColor(name = "") {
+  const PALETTE = ["#FF5F1F", "#4F46E5", "#059669", "#7C3AED", "#0EA5E9", "#EC4899", "#F59E0B", "#14B8A6"];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return PALETTE[Math.abs(h) % PALETTE.length];
 }
 
-function DetailCard({ children }) {
-  return (
-    <Box
-      sx={{
-        background: C.surface,
-        border: `0.5px solid ${C.border}`,
-        borderRadius: "12px",
-        overflow: "hidden",
-      }}
-    >
-      {children}
-    </Box>
-  );
+function normalizeArray(v) {
+  if (!v) return [];
+  if (Array.isArray(v)) return v.filter(s => s && s.trim());
+  if (typeof v === "string") return v.split(",").map(s => s.trim()).filter(Boolean);
+  return [];
 }
 
-function DetailRow({ icon: Icon, label, value }) {
-  return (
-    <Box
-      sx={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        px: "16px",
-        py: "11px",
-        borderBottom: `0.5px solid ${C.border}`,
-        "&:last-child": { borderBottom: "none" },
-        gap: "12px",
-      }}
-    >
-      <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        {Icon && <Icon sx={{ fontSize: 15, color: C.textTertiary }} />}
-        <Typography fontSize={13} color={C.textSecondary}>
-          {label}
-        </Typography>
-      </Box>
-      <Typography
-        fontSize={13}
-        fontWeight={500}
-        color={C.textPrimary}
-        sx={{ textAlign: "right", textTransform: "capitalize" }}
-      >
-        {value}
-      </Typography>
-    </Box>
-  );
-}
 
-function StatusBadge({ status }) {
-  const map = {
-    approved: {
-      bg: C.greenSoft,
-      color: C.green,
-      border: C.greenBorder,
-      Icon: CheckCircle,
-      label: "Approved",
-    },
-    pending: {
-      bg: C.amberSoft,
-      color: C.amber,
-      border: C.amberBorder,
-      Icon: HourglassEmpty,
-      label: "Pending",
-    },
-    rejected: {
-      bg: C.redSoft,
-      color: C.red,
-      border: C.redBorder,
-      Icon: Cancel,
-      label: "Rejected",
-    },
-  };
-  const cfg = map[status?.toLowerCase()] ?? map.pending;
-  return (
-    <Box
-      sx={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "4px",
-        fontSize: 12,
-        fontWeight: 500,
-        px: "8px",
-        py: "3px",
-        borderRadius: "999px",
-        background: cfg.bg,
-        color: cfg.color,
-        border: `0.5px solid ${cfg.border}`,
-      }}
-    >
-      <cfg.Icon sx={{ fontSize: 13 }} />
-      {cfg.label}
-    </Box>
-  );
-}
 
-function MetaPill({ icon: Icon, children }) {
-  return (
-    <Box
-      sx={{
-        display: "inline-flex",
-        alignItems: "center",
-        gap: "5px",
-        fontSize: 12,
-        px: "10px",
-        py: "5px",
-        borderRadius: "8px",
-        background: C.surfaceMuted,
-        border: `0.5px solid ${C.border}`,
-        color: C.textSecondary,
-      }}
-    >
-      {Icon && <Icon sx={{ fontSize: 14 }} />}
-      {children}
-    </Box>
-  );
-}
 
-// ─── Main Page ────────────────────────────────────────────────────────────────
+
 export default function RequisitionDetail() {
   const { orgId, jobId } = useParams();
   const navigate = useNavigate();
@@ -310,416 +168,571 @@ export default function RequisitionDetail() {
     );
   }
 
+  const TAB_SX = {
+    borderBottom: "1px solid #E5E7EB",
+    mb: "24px",
+    "& .MuiTab-root": {
+      textTransform: "none",
+      fontSize: 13,
+      fontWeight: 500,
+      color: "#6B7280",
+      minWidth: "auto",
+      px: "4px",
+      mr: "24px",
+    },
+    "& .Mui-selected": { color: `${C.accent} !important`, fontWeight: 600 },
+    "& .MuiTabs-indicator": { backgroundColor: C.accent },
+  };
+
+  const STATUS_CHIP = {
+    open: { bg: C.greenSoft, color: C.green },
+    active: { bg: C.greenSoft, color: C.green },
+    closed: { bg: "#F3F4F6", color: "#6B7280" },
+    filled: { bg: C.indigoSoft, color: C.indigo },
+    on_hold: { bg: C.amberSoft, color: C.amber },
+  };
+  const statusChip = (s = "") =>
+    STATUS_CHIP[s.toLowerCase().replace(/\s+/g, "_")] ?? {
+      bg: "#F3F4F6",
+      color: "#6B7280",
+    };
   const chip = statusChip(job.status ?? jobDetail?.status);
-  return (
-    <Box sx={{ p: 1 }}>
-      {/* Header */}
+return (
+  <Box sx={{ p: 1 }}>
+    {/* ── Header with background ── */}
+    <Box
+      sx={{
+        background: "linear-gradient(135deg, #FFF7F4 0%, #FFF0E8 60%, #FEF3EE 100%)",
+        border: "1px solid #F9C4AE",
+        borderRadius: "12px",
+        px: "16px",
+        py: "14px",
+        mb: "5px",
+      }}
+    >
+      {/* Title row */}
       <Box
         sx={{
           display: "flex",
           alignItems: "center",
-          gap: "12px",
-          p: "14px 16px",
-          border: `0.5px solid ${C.border}`,
-          borderRadius: "14px",
-          backgroundColor: "#fff",
-          mb: "16px",
+          flexWrap: "wrap",
+          gap: 1,
+          mb: "6px",
         }}
       >
-        {/* Back */}
-        <Box
+        <ArrowBack
+          sx={{
+            fontSize: 28,
+            color: C.text,
+            padding: "5px",
+            borderRadius: "8px",
+            transition: "all 0.2s ease",
+            "&:hover": {
+              color: C.accent,
+              backgroundColor: "rgba(232,72,12,0.12)",
+              cursor: "pointer",
+              transform: "translateX(-2px)",
+            },
+          }}
           onClick={() =>
             navigate(`/account-manager/org/${orgId}`, {
               state: { activeTab: location.state?.previousTab ?? 1 },
             })
           }
-          sx={{
-            width: 30,
-            height: 30,
-            borderRadius: "50%",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            border: `0.5px solid ${C.border}`,
-            backgroundColor: "#F9FAFB",
-            cursor: "pointer",
-            flexShrink: 0,
-          }}
-        >
-          <ArrowBack sx={{ fontSize: 16, color: C.textSecondary }} />
-        </Box>
+        />
 
-        {/* Icon box */}
+        <Typography sx={{ fontSize: "18px", fontWeight: 700, color: C.textPrimary }}>
+          {jobDetail?.jobTitle ?? job.job_title}
+        </Typography>
+
+        {/* Status chip */}
         <Box
+          component="span"
           sx={{
-            width: 42,
-            height: 42,
-            borderRadius: "10px",
-            backgroundColor: C.accentSoft,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
+            fontSize: 11,
+            fontWeight: 700,
+            px: "10px",
+            py: "3px",
+            borderRadius: "6px",
+            backgroundColor: chip.bg,
+            color: chip.color,
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            border: `1px solid ${chip.border ?? chip.bg}`,
           }}
         >
-          <Business sx={{ fontSize: 20, color: C.accent }} />
+          {jobDetail?.status ?? job.status}
         </Box>
 
-        {/* Title + subtitle */}
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography
-            sx={{
-              fontSize: 15,
-              fontWeight: 600,
-              color: C.textPrimary,
-              lineHeight: 1.3,
-            }}
-          >
-            {jobDetail?.jobTitle ?? job.job_title}
-          </Typography>
-          <Typography sx={{ fontSize: 12, color: C.textSecondary, mt: "3px" }}>
-            {jobDetail?.positionId ?? job.job_position_id}
-            {(jobDetail?.jobType ?? job.job_type) &&
-              ` · ${jobDetail?.jobType ?? job.job_type}`}
-            {jobDetail?.workMode && ` · ${jobDetail.workMode}`}
-          </Typography>
-        </Box>
-
-        {/* Right: badges + position ID */}
-        <Box
-          sx={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-end",
-            gap: "5px",
-            flexShrink: 0,
-          }}
-        >
+        {/* Priority chip */}
+        {jobDetail?.rolePriority && (
           <Box
+            component="span"
             sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              flexWrap: "wrap",
-              justifyContent: "flex-end",
+              fontSize: 11,
+              fontWeight: 700,
+              px: "10px",
+              py: "3px",
+              borderRadius: "6px",
+              backgroundColor:
+                jobDetail.rolePriority?.toLowerCase() === "high"
+                  ? "#FEE2E2"
+                  : "#FEF3C7",
+              color:
+                jobDetail.rolePriority?.toLowerCase() === "high"
+                  ? C.red
+                  : C.amber,
+              border: `1px solid ${
+                jobDetail.rolePriority?.toLowerCase() === "high"
+                  ? "#FECACA"
+                  : "#FDE68A"
+              }`,
             }}
           >
-            {/* Status */}
-            <Box
-              sx={{
-                display: "inline-flex",
-                alignItems: "center",
-                gap: "4px",
-                fontSize: 11,
-                fontWeight: 500,
-                px: "10px",
-                py: "3px",
-                borderRadius: "999px",
-                backgroundColor: chip.bg,
-                color: chip.color,
-              }}
-            >
-              {jobDetail?.status ?? job.status}
-            </Box>
-
-            {/* Priority */}
-            {jobDetail?.rolePriority && (
-              <Box
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  fontSize: 11,
-                  fontWeight: 500,
-                  px: "10px",
-                  py: "3px",
-                  borderRadius: "999px",
-                  backgroundColor:
-                    jobDetail.rolePriority?.toLowerCase() === "high"
-                      ? "#FEE2E2"
-                      : "#FEF3C7",
-                  color:
-                    jobDetail.rolePriority?.toLowerCase() === "high"
-                      ? C.red
-                      : C.amber,
-                }}
-              >
-                {jobDetail.rolePriority} Priority
-              </Box>
-            )}
-
-            {/* Positions */}
-            {(jobDetail?.openPositions ?? job.no_of_positions) && (
-              <Box
-                sx={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "4px",
-                  fontSize: 11,
-                  fontWeight: 500,
-                  px: "10px",
-                  py: "3px",
-                  borderRadius: "999px",
-                  backgroundColor: "#E6F1FB",
-                  color: "#185FA5",
-                }}
-              >
-                {jobDetail?.openPositions ?? job.no_of_positions} Positions
-              </Box>
-            )}
+            {jobDetail.rolePriority} Priority
           </Box>
-
-          <Typography sx={{ fontSize: 11, color: "#9CA3AF" }}>
-            {jobDetail?.positionId ?? job.job_position_id}
-          </Typography>
-        </Box>
+        )}
       </Box>
 
-      {/* Subtitle — 13px → 11px */}
-      <Typography
-        color={C.textSecondary}
-        mb="16px"
-        sx={{ ml: 4, fontSize: "13px" }}
+      {/* Subtitle row */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: "6px", ml: "36px",color: C.textSecondary }}>
+        {[
+          jobDetail?.positionId ?? job.job_position_id,
+          jobDetail?.jobType ?? job.job_type,
+          jobDetail?.workMode,
+        ]
+          .filter(Boolean)
+          .map((item, i, arr) => (
+            <React.Fragment key={i}>
+              <Typography sx={{ fontSize: 12, color: C.textSecondary, fontWeight: 400 }}>
+                {item}
+              </Typography>
+              {i < arr.length - 1 && (
+                <Box
+                  sx={{
+                    width: 3,
+                    height: 3,
+                    borderRadius: "50%",
+                    backgroundColor: "#D1D5DB",
+                    flexShrink: 0,
+                  }}
+                />
+              )}
+            </React.Fragment>
+          ))}
+      </Box>
+    </Box>
+
+    {/* Tabs */}
+    <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={TAB_SX}>
+      <Tab label="Overview" />
+      <Tab label="Candidates" />
+      <Tab label="Interviews" />
+      <Tab label="Activity" />
+    </Tabs>
+
+    {/* Tab panels — unchanged */}
+    {tab === 0 && <ReqOverviewTab job={job} jobDetail={jobDetail} />}
+    {tab === 1 && (
+      <ReqCandidatesTab
+        jobId={jobId}
+        orgId={orgId}
+        navigate={navigate}
+        orgName={orgName}
+        jobTitle={jobDetail?.jobTitle ?? job.job_title}
+      />
+    )}
+    {tab === 2 && (
+      <ReqInterviewsTab
+        orgId={orgId}
+        jobId={jobId}
+        jobPositionId={jobDetail?.positionId ?? job.job_position_id}
+      />
+    )}
+    {tab === 3 && (
+      <Box
+        sx={{
+          textAlign: "center",
+          py: 10,
+          border: `1px solid ${C.border}`,
+          borderRadius: "12px",
+          backgroundColor: "#fff",
+        }}
       >
-        {jobDetail?.positionId ?? job.job_position_id}
-        {" · "}
-        {jobDetail?.jobType ?? job.job_type}
-        {jobDetail?.workMode && ` · ${jobDetail.workMode}`}
+        <Typography fontSize={15} fontWeight={600} color={C.textPrimary}>
+          Activity
+        </Typography>
+        <Typography fontSize={13} color={C.textSecondary} mt={0.5}>
+          Activity log coming soon.
+        </Typography>
+      </Box>
+    )}
+  </Box>
+);
+}
+
+/* ═══════════════════════════════════════
+   MAIN: ReqOverviewTab
+═══════════════════════════════════════ */
+/* ── Shared card shell ── */
+const CARD = {
+  backgroundColor: "#fff",
+  border: `0.5px solid ${C.border}`,
+  borderRadius: "10px",
+  p: "20px 22px",
+};
+
+const CARD_TITLE = {
+  fontSize: 14, fontWeight: 600, color: C.textPrimary,
+  mb: "16px", pb: "12px",
+  borderBottom: `0.5px solid ${C.border}`,
+};
+
+/* ── Field: label above value ── */
+function Field({ label, value }) {
+  if (!value && value !== 0) return null;
+  return (
+    <Box sx={{ mb: "16px", "&:last-child": { mb: 0 } }}>
+      <Typography sx={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.09em", textTransform: "uppercase", color: C.textMuted, mb: "3px" }}>
+        {label}
       </Typography>
-
-      <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={TAB_SX}>
-        <Tab label="Overview" />
-        <Tab label="Candidates" />
-        <Tab label="Interviews" />
-        <Tab label="Activity" />
-      </Tabs>
-
-      {tab === 0 && <ReqOverviewTab job={job} jobDetail={jobDetail} />}
-      {tab === 1 && (
-        <ReqCandidatesTab
-          jobId={jobId}
-          orgId={orgId}
-          navigate={navigate}
-          orgName={orgName}
-          jobTitle={jobDetail?.jobTitle ?? job.job_title}
-        />
-      )}
-      {tab === 2 && (
-        <ReqInterviewsTab
-          orgId={orgId}
-          jobId={jobId}
-          jobPositionId={jobDetail?.positionId ?? job.job_position_id}
-        />
-      )}
-      {tab === 3 && (
-        <Box
-          sx={{
-            textAlign: "center",
-            py: 10,
-            border: `1px solid ${C.border}`,
-            borderRadius: "12px",
-            backgroundColor: "#fff",
-          }}
-        >
-          <Typography fontSize={15} fontWeight={600} color={C.textPrimary}>
-            Activity
-          </Typography>
-          <Typography fontSize={13} color={C.textSecondary} mt={0.5}>
-            Activity log coming soon.
-          </Typography>
-        </Box>
-      )}
+      <Typography sx={{ fontSize: 14, fontWeight: 500, color: value === "Not specified" || value === "N/A" ? C.textMuted : C.textPrimary }}>
+        {value}
+      </Typography>
     </Box>
   );
 }
 
-function ReqOverviewTab({ job = {}, jobDetail = null }) {
-  const primarySkills   = (jobDetail?.primary   ?? []).filter(Boolean);
-  const secondarySkills = (jobDetail?.secondary ?? []).filter(Boolean);
-  const mandatorySkills = (jobDetail?.mandatory ?? []).filter(Boolean);
-  const fallbackSkills  = job.skills ? job.skills.split(",").map(s => s.trim()).filter(Boolean) : [];
-  const hasFallback     = !jobDetail && fallbackSkills.length > 0;
-  const fallbackPrimary   = hasFallback ? fallbackSkills.slice(0, Math.ceil(fallbackSkills.length / 2)) : [];
-  const fallbackSecondary = hasFallback ? fallbackSkills.slice(Math.ceil(fallbackSkills.length / 2)) : [];
-  const collaborators = jobDetail?.collaborators ?? [];
-  const approvals     = job.approvals ?? [];
+/* ── Skill chip ── */
+function SkillChip({ label, variant = "secondary" }) {
+  const styles = {
+    mandatory: {
+      bg: "#FFF1F1",
+      color: "#B42318",
+      border: "#F7B5B5",
+    },
 
-  const statSx = {
-    backgroundColor: "#F9FAFB",
-    borderRadius: "10px",
-    p: "12px 14px",
+    primary: {
+      bg: "#EEF4FF",
+      color: "#1849A9",
+      border: "#B2CCFF",
+    },
+
+    secondary: {
+      bg: "#F8F9FB",
+      color: "#344054",
+      border: "#E4E7EC",
+    },
   };
 
-  const cardSx = {
-    backgroundColor: "#fff",
-    border: `0.5px solid ${C.border}`,
-    borderRadius: "12px",
-    overflow: "hidden",
-  };
-
-  const secLabelSx = {
-    fontSize: 11, fontWeight: 500,
-    color: C.textTertiary,
-    textTransform: "uppercase",
-    letterSpacing: "0.08em",
-    mb: "8px",
-  };
-
-  const rowSx = {
-    display: "flex", alignItems: "center",
-    justifyContent: "space-between",
-    px: "14px", py: "8px",
-    borderBottom: `0.5px solid ${C.border}`,
-    "&:last-child": { borderBottom: "none" },
-    gap: "10px",
-  };
-
-  const detailRows = [
-    { icon: Business,    label: "Function",         value: jobDetail?.function       ?? job.function },
-    { icon: AccountTree, label: "Sub-function",      value: jobDetail?.subFunction    ?? job.sub_function },
-    { icon: Business,    label: "Domain",            value: jobDetail?.domain         ?? job.domain },
-    { icon: Business,    label: "Country",           value: jobDetail?.country        ?? job.country },
-    { icon: Business,    label: "Therapeutic area",  value: jobDetail?.therapeutic_area },
-    { icon: Business,    label: "EDC tools",         value: jobDetail?.edc_tools },
-  ].filter(r => r.value !== undefined && r.value !== null && r.value !== "");
-
-  const teamMembers = [
-    jobDetail?.creator  ? { person: jobDetail.creator,  role: "Creator",      avatarSx: { bgcolor: "#EEEDFE", color: "#534AB7" }, badgeSx: { bg: "#EEEDFE", color: "#534AB7" } } : null,
-    jobDetail?.approver ? { person: jobDetail.approver, role: "Approver",     avatarSx: { bgcolor: "#FAECE7", color: "#993C1D" }, badgeSx: { bg: "#FAECE7", color: "#993C1D" } } : null,
-    ...collaborators.map(p => ({ person: p, role: "Collaborator", avatarSx: { bgcolor: "#F3F4F6", color: C.textSecondary }, badgeSx: { bg: "#F3F4F6", color: C.textSecondary } })),
-  ].filter(Boolean);
-
-  const stats = [
-    { label: "Experience", value: (jobDetail?.min_years ?? job.min_years) != null ? `${jobDetail?.min_years ?? job.min_years} – ${jobDetail?.max_years ?? job.max_years} yrs` : "—" },
-    { label: "Positions",  value: `${jobDetail?.openPositions ?? job.no_of_positions ?? "—"} open` },
-    { label: "Work mode",  value: jobDetail?.workMode ?? "—" },
-    { label: "Job type",   value: jobDetail?.jobType ?? job.job_type ?? "—" },
-  ];
-
-  const skillGroups = [
-    { label: "Mandatory", color: "#A32D2D", dotColor: "#A32D2D", skills: mandatorySkills, chipSx: { bg: "#FCEBEB", border: "#F09595", color: "#A32D2D" } },
-    { label: "Primary",   color: "#0C447C", dotColor: "#185FA5", skills: primarySkills.length > 0 ? primarySkills : fallbackPrimary, chipSx: { bg: "#E6F1FB", border: "#85B7EB", color: "#0C447C" } },
-    { label: "Secondary", color: C.textSecondary, dotColor: C.border, skills: secondarySkills.length > 0 ? secondarySkills : fallbackSecondary, chipSx: { bg: "#F9FAFB", border: C.border, color: C.textSecondary } },
-  ].filter(g => g.skills.length > 0);
+  const s = styles[variant] ?? styles.secondary;
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+    <Box
+      sx={{
+        fontSize: 13,
+        fontWeight: 600,
+        px: "12px",
+        py: "6px",
+        borderRadius: "8px",
+        border: `1px solid ${s.border}`,
+        backgroundColor: s.bg,
+        color: s.color,
+        display: "inline-flex",
+        alignItems: "center",
+        lineHeight: 1.2,
+        transition: "all 0.2s ease",
 
-      {/* Stats strip */}
-      <Grid container spacing="10px">
-        {stats.map(({ label, value }) => value && value !== "—" && (
-          <Grid key={label} size={{ xs: 6, sm: 3 }}>
-            <Box sx={statSx}>
-              <Typography sx={{ fontSize: 11, color: C.textTertiary, textTransform: "uppercase", letterSpacing: "0.07em", mb: "4px" }}>{label}</Typography>
-              <Typography sx={{ fontSize: 15, fontWeight: 500, color: C.textPrimary, textTransform: "capitalize" }}>{value}</Typography>
-            </Box>
-          </Grid>
+        "&:hover": {
+          transform: "translateY(-1px)",
+          boxShadow: "0 2px 8px rgba(0,0,0,0.05)",
+        },
+      }}
+    >
+      {label}
+    </Box>
+  );
+}
+
+/* ── Skill group ── */
+function SkillGroup({ label, skills, variant }) {
+  if (!skills?.length) return null;
+
+  return (
+    <Box
+      sx={{
+        mb: "18px",
+        "&:last-child": { mb: 0 },
+      }}
+    >
+      <Typography
+        sx={{
+          fontSize: 11,
+          fontWeight: 800,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          color: "#667085",
+          mb: "10px",
+        }}
+      >
+        {label}
+      </Typography>
+
+      <Box
+        sx={{
+          display: "flex",
+          flexWrap: "wrap",
+          gap: "8px",
+        }}
+      >
+        {skills.map((s) => (
+          <SkillChip
+            key={s}
+            label={s}
+            variant={variant}
+          />
         ))}
-      </Grid>
+      </Box>
+    </Box>
+  );
+}
 
-      <Grid container spacing="16px">
+/* ══════════════════════════════════════════
+   ReqOverviewTab
+══════════════════════════════════════════ */
+export function ReqOverviewTab({ job = {}, jobDetail = null }) {
+  const primarySkills   = normalizeArray(jobDetail?.primary);
+  const secondarySkills = normalizeArray(jobDetail?.secondary);
+  const mandatorySkills = normalizeArray(jobDetail?.mandatory);
+  const edcTools        = normalizeArray(jobDetail?.edc_tools);
+  const collaborators   = jobDetail?.collaborators ?? [];
+  const approvals       = job?.approvals ?? [];
 
-        {/* LEFT — Job details */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Typography sx={secLabelSx}>Job details</Typography>
-          <Box sx={cardSx}>
-            {detailRows.map(({ icon: Icon, label, value }) => (
-              <Box key={label} sx={rowSx}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: "7px" }}>
-                  <Icon sx={{ fontSize: 14, color: C.textTertiary }} />
-                  <Typography sx={{ fontSize: 12, color: C.textSecondary }}>{label}</Typography>
+  const fallbackSkills    = normalizeArray(job?.skills);
+  const hasFallback       = !jobDetail && fallbackSkills.length > 0;
+  const fallbackPrimary   = hasFallback ? fallbackSkills.slice(0, Math.ceil(fallbackSkills.length / 2)) : [];
+  const fallbackSecondary = hasFallback ? fallbackSkills.slice(Math.ceil(fallbackSkills.length / 2)) : [];
+
+  const hasSkills = mandatorySkills.length > 0 || primarySkills.length > 0 || secondarySkills.length > 0 || hasFallback;
+  const hasDesc   = !!(jobDetail?.summary_final ?? jobDetail?.summary_initial ?? jobDetail?.jobDescription);
+  const descText  = jobDetail?.summary_final ?? jobDetail?.summary_initial ?? jobDetail?.jobDescription ?? "";
+
+  const expValue = (jobDetail?.min_years ?? job?.min_years) != null
+    ? `${jobDetail?.min_years ?? job?.min_years} – ${jobDetail?.max_years ?? job?.max_years} years`
+    : null;
+
+  return (
+    <Box sx={{ display: "flex", flexDirection: "column", gap: "14px" }}>
+
+      {/* ── Row 1: Basic Info + Experience & Positions / Team ── */}
+  {/* ── Row 1 ── */}
+<Grid container spacing="14px" sx={{ alignItems: "stretch" }}>
+
+  {/* Basic Information — left */}
+{/* Basic Information — left */}
+<Grid size={{ xs: 12, md: 6 }} sx={{ display: "flex" }}>
+  <Box sx={{ ...CARD, flex: 1 }}>
+    
+    <Typography sx={CARD_TITLE}>
+      Basic Information
+    </Typography>
+
+    <Box
+      sx={{
+        display: "grid",
+        textTransform: "capitalize",
+        gridTemplateColumns: {
+          xs: "1fr",
+          sm: "1fr 1fr",
+        },
+        gap: "14px",
+        mt: 2,
+      }}
+    >
+      <Field
+        label="Function"
+        value={jobDetail?.function ?? job?.function}
+      />
+
+      <Field
+        label="Sub-function"
+        value={jobDetail?.subFunction ?? job?.sub_function}
+      />
+
+      <Field
+        label="Work mode"
+        value={jobDetail?.workMode}
+      />
+
+      <Field
+        label="Job type"
+        value={jobDetail?.jobType ?? job?.job_type}
+      />
+
+      <Field
+        label="Domain"
+        value={jobDetail?.domain ?? job?.domain}
+      />
+
+      <Field
+        label="Country"
+        value={jobDetail?.country ?? job?.country}
+      />
+
+      {/* <Field
+        label="Therapeutic area"
+        value={jobDetail?.therapeutic_area}
+      /> */}
+
+      <Field
+        label="EDC tools"
+        value={edcTools.length ? edcTools.join(", ") : null}
+      />
+
+      <Field
+        label="Job location"
+        value={
+          jobDetail?.jobLocation ??
+          job?.location ??
+          "Not specified"
+        }
+      />
+    </Box>
+  </Box>
+</Grid>
+  {/* Right column — Experience + Team + Approvals */}
+  <Grid size={{ xs: 12, md: 6 }} sx={{ display: "flex" }}>
+    <Box sx={{ display: "flex", flexDirection: "column", gap: "14px", flex: 1 }}>
+
+   <Box sx={CARD}>
+  <Typography sx={CARD_TITLE}>
+    Experience &amp; Positions
+  </Typography>
+
+  <Box
+    sx={{
+      display: "flex",
+      gap: "16px",
+      flexWrap: "wrap",
+      mt: 2,
+    }}
+  >
+    <Box sx={{ flex: 1, minWidth: "180px" }}>
+      <Field
+        label="Minimum years"
+        value={jobDetail?.min_years ?? job?.min_years}
+      />
+    </Box>
+
+    <Box sx={{ flex: 1, minWidth: "180px" }}>
+      <Field
+        label="Maximum years"
+        value={jobDetail?.max_years ?? job?.max_years}
+      />
+    </Box>
+
+    <Box sx={{ flex: 1, minWidth: "180px" }}>
+      <Field
+        label="Open positions"
+        value={jobDetail?.openPositions ?? job?.no_of_positions}
+      />
+    </Box>
+  </Box>
+</Box>
+   {/* Ownership & Team */}
+{(jobDetail?.creator ||
+  jobDetail?.approver ||
+  collaborators.length > 0) && (
+  <Box sx={{ ...CARD, flex: 1 }}>
+    
+    <Typography sx={CARD_TITLE}>
+      Ownership &amp; Team
+    </Typography>
+
+    <Box
+      sx={{
+        display: "grid",
+        gridTemplateColumns: {
+          xs: "1fr",
+          sm: "1fr 1fr",
+        },
+        gap: "14px",
+        mt: 2,
+      }}
+    >
+      <Field
+        label="Created by"
+        value={jobDetail?.creator?.name}
+      />
+
+      <Field
+        label="Approver"
+        value={jobDetail?.approver?.name}
+      />
+
+      <Field
+        label="Collaborators"
+        value={
+          collaborators.length > 0
+            ? collaborators.map((c) => c.name).join(", ")
+            : "N/A"
+        }
+      />
+    </Box>
+  </Box>
+)}
+      {/* Approvals */}
+      {approvals.length > 0 && (
+        <Box sx={CARD}>
+          <Typography sx={CARD_TITLE}>Approvals</Typography>
+          {approvals.map(({ stage, status }, i) => {
+            const COLOR = {
+              approved: { color: C.green, bg: C.greenSoft, border: C.greenBorder },
+              pending:  { color: C.amber, bg: C.amberSoft, border: C.amberBorder },
+              rejected: { color: C.red,   bg: C.redSoft,   border: C.redBorder   },
+            };
+            const ac = COLOR[status?.toLowerCase()] ?? { color: C.textMuted, bg: "#F3F4F6", border: C.border };
+            return (
+              <Box key={stage} sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: i < approvals.length - 1 ? "12px" : 0 }}>
+                <Typography sx={{ fontSize: 13, color: C.textSub }}>{stage}</Typography>
+                <Box sx={{ px: "10px", py: "3px", borderRadius: "20px", backgroundColor: ac.bg, border: `0.5px solid ${ac.border}` }}>
+                  <Typography sx={{ fontSize: 11, fontWeight: 600, color: ac.color, textTransform: "capitalize" }}>{status}</Typography>
                 </Box>
-                <Typography sx={{ fontSize: 12, fontWeight: 500, color: C.textPrimary, textAlign: "right", maxWidth: "52%", textTransform: "capitalize" }}>
-                  {value}
-                </Typography>
               </Box>
-            ))}
-          </Box>
-        </Grid>
+            );
+          })}
+        </Box>
+      )}
 
-        {/* RIGHT — Skills + Team */}
-        <Grid size={{ xs: 12, md: 6 }}>
-          <Box sx={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-
-            {/* Skills */}
-            {skillGroups.length > 0 && (
-              <Box>
-                <Typography sx={secLabelSx}>Required skills</Typography>
-                <Box sx={{ ...cardSx, p: "14px" }}>
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                    {skillGroups.map(({ label, color, dotColor, skills, chipSx }) => (
-                      <Box key={label}>
-                        <Box sx={{ display: "flex", alignItems: "center", gap: "5px", mb: "6px" }}>
-                          <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: dotColor, flexShrink: 0 }} />
-                          <Typography sx={{ fontSize: 10, fontWeight: 500, color, textTransform: "uppercase", letterSpacing: "0.07em" }}>{label}</Typography>
-                        </Box>
-                        <Box sx={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
-                          {skills.map(skill => (
-                            <Box key={skill} sx={{ fontSize: 12, fontWeight: 500, px: "10px", py: "3px", borderRadius: "999px", backgroundColor: chipSx.bg, border: `0.5px solid ${chipSx.border}`, color: chipSx.color }}>
-                              {skill}
-                            </Box>
-                          ))}
-                        </Box>
-                      </Box>
-                    ))}
-                  </Box>
-                </Box>
-              </Box>
-            )}
-
-            {/* Team */}
-            {teamMembers.length > 0 && (
-              <Box>
-                <Typography sx={secLabelSx}>Team</Typography>
-                <Box sx={cardSx}>
-                  {teamMembers.map(({ person, role, avatarSx, badgeSx }, i) => (
-                    <Box key={i} sx={{ display: "flex", alignItems: "center", gap: "10px", px: "14px", py: "9px", borderBottom: i < teamMembers.length - 1 ? `0.5px solid ${C.border}` : "none" }}>
-                      <Avatar sx={{ width: 32, height: 32, fontSize: 12, fontWeight: 500, ...avatarSx }}>
-                        {person.name?.charAt(0).toUpperCase()}
-                      </Avatar>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography sx={{ fontSize: 13, fontWeight: 500, color: C.textPrimary }}>{person.name}</Typography>
-                        {person.email && <Typography sx={{ fontSize: 11, color: C.textSecondary }}>{person.email}</Typography>}
-                      </Box>
-                      <Box sx={{ fontSize: 10, fontWeight: 500, px: "8px", py: "2px", borderRadius: "999px", backgroundColor: badgeSx.bg, color: badgeSx.color, flexShrink: 0 }}>
-                        {role}
-                      </Box>
-                    </Box>
-                  ))}
-                </Box>
-              </Box>
-            )}
-
-            {/* Approvals */}
-            {approvals.length > 0 && (
-              <Box>
-                <Typography sx={secLabelSx}>Approvals</Typography>
-                <Box sx={cardSx}>
-                  {approvals.map(({ stage, status }) => (
-                    <Box key={stage} sx={rowSx}>
-                      <Typography sx={{ fontSize: 12, color: C.textSecondary }}>{stage}</Typography>
-                      <StatusBadge status={status} />
-                    </Box>
-                  ))}
-                </Box>
-              </Box>
-            )}
-          </Box>
-        </Grid>
-
-        {/* Full width — Job description */}
-        {(jobDetail?.summary_final ?? jobDetail?.summary_initial ?? jobDetail?.jobDescription) && (
-          <Grid size={{ xs: 12 }}>
-            <Typography sx={secLabelSx}>Job description</Typography>
-            <Box sx={cardSx}>
-              <Typography sx={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.8, p: "14px" }}>
-                {jobDetail.summary_final ?? jobDetail.summary_initial ?? jobDetail.jobDescription}
-              </Typography>
-            </Box>
+    </Box>
+  </Grid>
+</Grid>
+      {/* ── Row 2: Required Skills ── */}
+      {hasSkills && (
+        <Box sx={CARD}>
+          <Typography sx={CARD_TITLE}>Required Skills</Typography>
+          <Grid container spacing="20px">
+            <Grid size={{ xs: 12, md: 6 }}>
+              <SkillGroup label="Mandatory skills" skills={mandatorySkills}                                        variant="mandatory" />
+              <SkillGroup label="Primary skills"   skills={primarySkills.length   ? primarySkills   : fallbackPrimary}   variant="primary"   />
+            </Grid>
+            <Grid size={{ xs: 12, md: 6 }}>
+              <SkillGroup label="Secondary skills" skills={secondarySkills.length ? secondarySkills : fallbackSecondary} variant="secondary" />
+            </Grid>
           </Grid>
-        )}
+        </Box>
+      )}
 
-      </Grid>
+      {/* ── Row 3: Job Description ── */}
+      {hasDesc && (
+        <Box sx={CARD}>
+          <Typography sx={CARD_TITLE}>Job Description</Typography>
+          <Typography sx={{ fontSize: 13, color: C.textSecondary, lineHeight: 1.8 }}>
+            {descText}
+          </Typography>
+        </Box>
+      )}
+
     </Box>
   );
 }
@@ -728,35 +741,19 @@ function ReqOverviewTab({ job = {}, jobDetail = null }) {
 // ─── Add Candidate Dialog ─────────────────────────────────────────────────────
 function AddCandidateToJobDialog({ open, onClose, jobId, onSuccess }) {
   const [form, setForm] = useState({
-    domain: "",
-    function: "",
-    sub_function: "",
-    availability: "",
-    resume: null,
+    domain: "", function: "", sub_function: "", availability: "", resume: null,
   });
   const [uploading, setUploading] = useState(false);
   const [uploadCandidateResume] = useUploadCandidateResumeMutation();
 
   const handleClose = () => {
-    setForm({
-      domain: "",
-      function: "",
-      sub_function: "",
-      availability: "",
-      resume: null,
-    });
+    setForm({ domain: "", function: "", sub_function: "", availability: "", resume: null });
     onClose();
   };
 
   const handleSubmit = async () => {
-    if (!form.resume) {
-      toast.error("Resume is required");
-      return;
-    }
-    if (!form.availability?.trim()) {
-      toast.error("Availability is required");
-      return;
-    }
+    if (!form.resume) { toast.error("Resume is required"); return; }
+    if (!form.availability?.trim()) { toast.error("Availability is required"); return; }
 
     setUploading(true);
     try {
@@ -773,9 +770,7 @@ function AddCandidateToJobDialog({ open, onClose, jobId, onSuccess }) {
       onSuccess?.();
       handleClose();
     } catch (err) {
-      toast.error(
-        err?.data?.detail?.[0]?.msg || err?.data?.message || "Failed to upload",
-      );
+      toast.error(err?.data?.detail?.[0]?.msg || err?.data?.message || "Failed to upload");
     } finally {
       setUploading(false);
     }
@@ -791,44 +786,28 @@ function AddCandidateToJobDialog({ open, onClose, jobId, onSuccess }) {
     >
       <DialogTitle
         sx={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          fontWeight: 700,
-          fontSize: 18,
-          color: C.textPrimary,
-          pb: 1,
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          fontWeight: 700, fontSize: 18, color: C.textPrimary, pb: 1,
         }}
       >
         <Box sx={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          <Box
-            sx={{
-              width: 34,
-              height: 34,
-              borderRadius: "9px",
-              backgroundColor: "#FFF0E8",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
+          <Box sx={{
+            width: 34, height: 34, borderRadius: "9px",
+            backgroundColor: "#FFF0E8",
+            display: "flex", alignItems: "center", justifyContent: "center",
+          }}>
             <Person sx={{ fontSize: 18, color: C.accent }} />
           </Box>
           Add Candidate
         </Box>
-        <IconButton
-          size="small"
-          onClick={handleClose}
-          sx={{ color: "#9CA3AF" }}
-        >
+        <IconButton size="small" onClick={handleClose} sx={{ color: "#9CA3AF" }}>
           <CloseIcon fontSize="small" />
         </IconButton>
       </DialogTitle>
 
       <DialogContent>
-        <Box
-          sx={{ display: "flex", flexDirection: "column", gap: "14px", mt: 1 }}
-        >
+        <Box sx={{ display: "flex", flexDirection: "column", gap: "14px", mt: 1 }}>
+
           {/* Domain */}
           <FormControl fullWidth size="small">
             <InputLabel sx={{ fontSize: 13 }}>Domain</InputLabel>
@@ -839,11 +818,7 @@ function AddCandidateToJobDialog({ open, onClose, jobId, onSuccess }) {
               sx={{ borderRadius: "10px", fontSize: 13 }}
             >
               {DOMAIN_OPTIONS.map((d) => (
-                <MenuItem
-                  key={d}
-                  value={d}
-                  sx={{ fontSize: 13, textTransform: "capitalize" }}
-                >
+                <MenuItem key={d} value={d} sx={{ fontSize: 13, textTransform: "capitalize" }}>
                   {d.replace(/_/g, " ")}
                 </MenuItem>
               ))}
@@ -856,17 +831,11 @@ function AddCandidateToJobDialog({ open, onClose, jobId, onSuccess }) {
             <Select
               value={form.function}
               label="Function"
-              onChange={(e) =>
-                setForm({ ...form, function: e.target.value, sub_function: "" })
-              }
+              onChange={(e) => setForm({ ...form, function: e.target.value, sub_function: "" })}
               sx={{ borderRadius: "10px", fontSize: 13 }}
             >
               {FUNCTION_OPTIONS.map((f) => (
-                <MenuItem
-                  key={f}
-                  value={f}
-                  sx={{ fontSize: 13, textTransform: "capitalize" }}
-                >
+                <MenuItem key={f} value={f} sx={{ fontSize: 13, textTransform: "capitalize" }}>
                   {f.replace(/_/g, " ")}
                 </MenuItem>
               ))}
@@ -879,17 +848,11 @@ function AddCandidateToJobDialog({ open, onClose, jobId, onSuccess }) {
             <Select
               value={form.sub_function}
               label="Sub-function"
-              onChange={(e) =>
-                setForm({ ...form, sub_function: e.target.value })
-              }
+              onChange={(e) => setForm({ ...form, sub_function: e.target.value })}
               sx={{ borderRadius: "10px", fontSize: 13 }}
             >
               {(SUB_FUNCTION_MAP[form.function] ?? []).map((s) => (
-                <MenuItem
-                  key={s}
-                  value={s}
-                  sx={{ fontSize: 13, textTransform: "capitalize" }}
-                >
+                <MenuItem key={s} value={s} sx={{ fontSize: 13, textTransform: "capitalize" }}>
                   {s.replace(/_/g, " ")}
                 </MenuItem>
               ))}
@@ -926,18 +889,12 @@ function AddCandidateToJobDialog({ open, onClose, jobId, onSuccess }) {
               component="label"
               disableRipple
               sx={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "6px",
-                width: "100%",
-                textTransform: "none",
-                color: C.textPrimary,
+                display: "flex", flexDirection: "column", gap: "6px",
+                width: "100%", textTransform: "none", color: C.textPrimary,
                 "&:hover": { backgroundColor: "transparent" },
               }}
             >
-              <CloudUploadOutlinedIcon
-                sx={{ fontSize: 36, color: form.resume ? C.accent : "#9CA3AF" }}
-              />
+              <CloudUploadOutlinedIcon sx={{ fontSize: 36, color: form.resume ? C.accent : "#9CA3AF" }} />
               {form.resume ? (
                 <>
                   <Typography fontSize={13} fontWeight={700} color={C.accent}>
@@ -949,11 +906,7 @@ function AddCandidateToJobDialog({ open, onClose, jobId, onSuccess }) {
                 </>
               ) : (
                 <>
-                  <Typography
-                    fontSize={13}
-                    fontWeight={600}
-                    color={C.textPrimary}
-                  >
+                  <Typography fontSize={13} fontWeight={600} color={C.textPrimary}>
                     Browse Resume
                   </Typography>
                   <Typography fontSize={11} color={C.textSecondary}>
@@ -965,9 +918,7 @@ function AddCandidateToJobDialog({ open, onClose, jobId, onSuccess }) {
                 hidden
                 type="file"
                 accept=".pdf,.doc,.docx"
-                onChange={(e) =>
-                  setForm({ ...form, resume: e.target.files[0] })
-                }
+                onChange={(e) => setForm({ ...form, resume: e.target.files[0] })}
               />
             </Button>
           </Box>
@@ -977,13 +928,7 @@ function AddCandidateToJobDialog({ open, onClose, jobId, onSuccess }) {
       <DialogActions sx={{ px: "20px", pb: "20px", gap: "8px" }}>
         <Button
           onClick={handleClose}
-          sx={{
-            textTransform: "none",
-            fontSize: 13,
-            color: C.textSecondary,
-            borderRadius: "10px",
-            px: "16px",
-          }}
+          sx={{ textTransform: "none", fontSize: 13, color: C.textSecondary, borderRadius: "10px", px: "16px" }}
         >
           Cancel
         </Button>
@@ -991,19 +936,11 @@ function AddCandidateToJobDialog({ open, onClose, jobId, onSuccess }) {
           variant="contained"
           disabled={uploading}
           onClick={handleSubmit}
-          startIcon={
-            uploading ? (
-              <CircularProgress size={14} sx={{ color: "#fff" }} />
-            ) : null
-          }
+          startIcon={uploading ? <CircularProgress size={14} sx={{ color: "#fff" }} /> : null}
           sx={{
-            textTransform: "none",
-            fontSize: 13,
-            fontWeight: 600,
-            borderRadius: "10px",
-            backgroundColor: C.accent,
-            px: "24px",
-            boxShadow: "none",
+            textTransform: "none", fontSize: 13, fontWeight: 600,
+            borderRadius: "10px", backgroundColor: C.accent,
+            px: "24px", boxShadow: "none",
             "&:hover": { backgroundColor: "#E5541B", boxShadow: "none" },
             "&:disabled": { backgroundColor: "#FFCFB3", color: "#fff" },
           }}
@@ -1056,24 +993,11 @@ function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
         size: 250,
         Cell: ({ row }) => (
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5 }}>
-            <Avatar
-              sx={{
-                width: 34,
-                height: 34,
-                bgcolor: C.accent,
-                fontSize: 13,
-                fontWeight: 700,
-              }}
-            >
+            <Avatar sx={{ width: 34, height: 34, bgcolor: C.accent, fontSize: 13, fontWeight: 700 }}>
               {row.original.full_name?.charAt(0).toUpperCase()}
             </Avatar>
             <Box sx={{ minWidth: 0 }}>
-              <Typography
-                sx={{ fontSize: 14 }}
-                fontWeight={600}
-                color={C.textPrimary}
-                noWrap
-              >
+              <Typography sx={{ fontSize: 14 }} fontWeight={600} color={C.textPrimary} noWrap>
                 {row.original.full_name}
               </Typography>
               <Typography sx={{ fontSize: 12 }} color={C.textSecondary} noWrap>
@@ -1088,19 +1012,11 @@ function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
         header: "Stage",
         size: 140,
         Cell: ({ cell }) => (
-          <Box
-            component="span"
-            sx={{
-              fontSize: 11,
-              fontWeight: 700,
-              px: "8px",
-              py: "3px",
-              borderRadius: "8px",
-              backgroundColor: C.indigoSoft,
-              color: C.indigo,
-              textTransform: "capitalize",
-            }}
-          >
+          <Box component="span" sx={{
+            fontSize: 11, fontWeight: 700, px: "8px", py: "3px",
+            borderRadius: "8px", backgroundColor: C.indigoSoft,
+            color: C.indigo, textTransform: "capitalize",
+          }}>
             {cell.getValue()}
           </Box>
         ),
@@ -1166,78 +1082,32 @@ function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
   return (
     <Box>
       {/* Toolbar */}
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: 2,
-          mb: "20px",
-          mt: -2,
-          flexWrap: "wrap",
-        }}
-      >
+      <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: "20px", mt: -2, flexWrap: "wrap" }}>
+
         {/* Count badge */}
-        <Box
-          sx={{
-            display: "inline-flex",
-            alignItems: "center",
-            gap: 1,
-            px: 1.8,
-            borderRadius: "8px",
-            background: "rgba(255, 95, 31, 0.08)",
-            border: "1px solid rgba(255, 95, 31, 0.2)",
-            transition: "0.3s ease",
-            "&:hover": {
-              background: "rgba(255, 95, 31, 0.14)",
-              transform: "translateY(-1px)",
-            },
-          }}
-        >
-          <Box
-            sx={{
-              minWidth: 28,
-              height: 28,
-              borderRadius: "8px",
-              background: "#FF5F1F",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              px: 1,
-              boxShadow: "0 4px 12px rgba(255,95,31,0.35)",
-            }}
-          >
-            <Typography
-              sx={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: "#fff",
-                lineHeight: 1,
-              }}
-            >
+        <Box sx={{
+          display: "inline-flex", alignItems: "center", gap: 1,
+          px: 1.8, borderRadius: "8px",
+          background: "rgba(255, 95, 31, 0.08)",
+          border: "1px solid rgba(255, 95, 31, 0.2)",
+          transition: "0.3s ease",
+          "&:hover": { background: "rgba(255, 95, 31, 0.14)", transform: "translateY(-1px)" },
+        }}>
+          <Box sx={{
+            minWidth: 28, height: 28, borderRadius: "8px",
+            background: "#FF5F1F", display: "flex", alignItems: "center",
+            justifyContent: "center", px: 1,
+            boxShadow: "0 4px 12px rgba(255,95,31,0.35)",
+          }}>
+            <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#fff", lineHeight: 1 }}>
               {searchedCandidates.length}
             </Typography>
           </Box>
           <Box sx={{ padding: 1, borderRadius: 0 }}>
-            <Typography
-              sx={{
-                fontSize: 10,
-                fontWeight: 600,
-                color: "#FF5F1F",
-                textTransform: "uppercase",
-                letterSpacing: 1,
-                lineHeight: 1,
-              }}
-            >
+            <Typography sx={{ fontSize: 10, fontWeight: 600, color: "#FF5F1F", textTransform: "uppercase", letterSpacing: 1, lineHeight: 1 }}>
               Total
             </Typography>
-            <Typography
-              sx={{
-                fontSize: 10,
-                fontWeight: 600,
-                color: C.textPrimary,
-                lineHeight: 1,
-              }}
-            >
+            <Typography sx={{ fontSize: 10, fontWeight: 600, color: C.textPrimary, lineHeight: 1 }}>
               Candidate{searchedCandidates.length !== 1 ? "s" : ""}
             </Typography>
           </Box>
@@ -1254,9 +1124,7 @@ function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
           >
             <MenuItem value="all">All Stages</MenuItem>
             {stages.map((s) => (
-              <MenuItem key={s} value={s} sx={{ textTransform: "capitalize" }}>
-                {s}
-              </MenuItem>
+              <MenuItem key={s} value={s} sx={{ textTransform: "capitalize" }}>{s}</MenuItem>
             ))}
           </Select>
         </FormControl>
@@ -1275,15 +1143,9 @@ function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
             variant="contained"
             onClick={() => setAddDialogOpen(true)}
             sx={{
-              textTransform: "none",
-              fontSize: 12,
-              fontWeight: 600,
-              borderRadius: "8px",
-              px: "14px",
-              height: 36,
-              backgroundColor: C.accent,
-              boxShadow: "none",
-              whiteSpace: "nowrap",
+              textTransform: "none", fontSize: 12, fontWeight: 600,
+              borderRadius: "8px", px: "14px", height: 36,
+              backgroundColor: C.accent, boxShadow: "none", whiteSpace: "nowrap",
               "&:hover": { backgroundColor: "#E5541B", boxShadow: "none" },
             }}
           >
@@ -1302,25 +1164,13 @@ function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
       ) : view === "grid" ? (
         <Grid container spacing={2.5}>
           {searchedCandidates.map((candidate) => (
-            <Grid
-              size={{ xs: 12, sm: 6, md: 4, xl: 3 }}
-              key={candidate.matched_candidate_id}
-            >
+            <Grid size={{ xs: 12, sm: 6, md: 4, xl: 3 }} key={candidate.matched_candidate_id}>
               <CandidateCard
                 candidate={candidate}
                 onView={() =>
-                  navigate(
-                    `/account-manager/candidate/${candidate.matched_candidate_id}`,
-                    {
-                      state: {
-                        orgName,
-                        jobTitle,
-                        previousTab: 1,
-                        orgId,
-                        jobId,
-                      },
-                    },
-                  )
+                  navigate(`/account-manager/candidate/${candidate.matched_candidate_id}`, {
+                    state: { orgName, jobTitle, previousTab: 1, orgId, jobId },
+                  })
                 }
               />
             </Grid>
@@ -1443,10 +1293,10 @@ function ReqInterviewCard({ interview }) {
 
   const formattedDate = interview.interview_date
     ? new Date(interview.interview_date).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
     : "—";
 
   return (

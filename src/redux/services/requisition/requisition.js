@@ -58,7 +58,7 @@ export const requisitionApi = api.injectEndpoints({
         method: "GET",
       }),
     }),
-      getJobInterviews: builder.query({
+    getJobInterviews: builder.query({
       query: (jobId) => ({
         url: `/acc/interviews/by-job/${jobId}`,
         method: "GET",
@@ -140,15 +140,15 @@ export const requisitionApi = api.injectEndpoints({
       }),
     }),
 
-       uploadCandidateResume: builder.mutation({
-  query: (formData) => ({
-    url: "/acc/upload-resume-with-subfunction-or-job_id/",
-    method: "POST",
-    body: formData,
-  }),
-  invalidatesTags: ["ImportedCandidates"],
-}),
- 
+    uploadCandidateResume: builder.mutation({
+      query: (formData) => ({
+        url: "/acc/upload-resume-with-subfunction-or-job_id/",
+        method: "POST",
+        body: formData,
+      }),
+      invalidatesTags: ["ImportedCandidates"],
+    }),
+
 
     getCandidateDetails: builder.query({
       query: (candidateId) =>
@@ -156,19 +156,19 @@ export const requisitionApi = api.injectEndpoints({
     }),
 
     searchCandidates: builder.query({
-  query: (search) => ({
-    url: `/acc/search_candidates`,
-    params: { search },
-    method: "GET",
-  }),
-  // No providesTags — purely on-demand, managed by lazy query
-}),
-getResumeView: builder.query({
-    query: (candidateId) => ({
-      url: `/acc/resume_view_by_input/`,
-      params: { candidate_id: candidateId },
-      method: "GET",
+      query: (search) => ({
+        url: `/acc/search_candidates`,
+        params: { search },
+        method: "GET",
+      }),
+      // No providesTags — purely on-demand, managed by lazy query
     }),
+    getResumeView: builder.query({
+      query: (candidateId) => ({
+        url: `/acc/resume_view_by_input/`,
+        params: { candidate_id: candidateId },
+        method: "GET",
+      }),
     }),
     getJobDetails: builder.query({
       query: (jobId) => ({
@@ -178,10 +178,30 @@ getResumeView: builder.query({
       providesTags: (result, error, jobId) => [
         { type: "JobDetails", id: jobId },
       ],
-  }),
- getInterviewDetails: builder.query({
-  query: (interviewId) => `/acc/get_interview-details/${interviewId}`,
-}),
+    }),
+    getInterviewDetails: builder.query({
+      query: (interviewId) => `/acc/get_interview-details/${interviewId}`,
+    }),
+    getCandidateSkillInfo: builder.query({
+      query: (candidateId) => ({
+        url: `/acc/get_candidate_skills/${candidateId}/skills`,
+        method: "GET",
+      }),
+      transformResponse: (response) => response.data,  // gives { candidate_id, sub_function, skills }
+      providesTags: (result, error, candidateId) => [
+        { type: "CandidateSkillInfo", id: candidateId }
+      ],
+    }),
+    updateCandidateSkills: builder.mutation({
+      query: ({ candidateId, body }) => ({
+        url: `/acc/update_candidate_skills/${candidateId}`,
+        method: "PATCH",
+        body,
+      }),
+      invalidatesTags: (result, error, { candidateId }) => [
+        { type: "CandidateSkillInfo", id: candidateId }
+      ],
+    }),
   }),
 });
 
@@ -207,7 +227,9 @@ export const {
   useGetCandidateDetailsQuery,
   useUploadCandidateResumeMutation,
   useLazySearchCandidatesQuery,
-useLazyGetResumeViewQuery,
+  useLazyGetResumeViewQuery,
   useGetJobDetailsQuery,
   useGetInterviewDetailsQuery,
+  useGetCandidateSkillInfoQuery,
+  useUpdateCandidateSkillsMutation,
 } = requisitionApi;

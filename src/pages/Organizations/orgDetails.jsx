@@ -88,59 +88,112 @@ import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import WorkspacePremiumOutlinedIcon from "@mui/icons-material/WorkspacePremiumOutlined";
 import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 
-/* ════════════════════════════════════════════════════════════════════════════
-   INTERVIEW DETAIL DIALOG
-════════════════════════════════════════════════════════════════════════════ */
-// import {
-//   Dialog, DialogContent, Box, Typography, Avatar,
-//   CircularProgress, IconButton, Button
-// } from "@mui/material";
-// import OpenInNewIcon from "@mui/icons-material/OpenInNew";
-// import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
-// import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
-// import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
-// import PersonOutlineOutlined from "@mui/icons-material/PersonOutlineOutlined";
-// import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
-// import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
-// import WorkspacePremiumOutlinedIcon from "@mui/icons-material/WorkspacePremiumOutlined";
 
-// Add this to your index.html or global CSS:
-// <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
 
+
+const LABEL_SX = {
+  fontSize: 10, fontWeight: 700, letterSpacing: "0.08em",
+  textTransform: "uppercase", color: "#9696A6",
+};
+const CARD_SX = {
+  backgroundColor: "#fff", borderRadius: "14px",
+  border: "1px solid #E8E8EC", p: "14px 16px",
+};
+
+/* ── Helpers ── */
+const fmtDate = (d) =>
+  d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }) : "—";
+
+const fmtTime = (t) => {
+  if (!t) return "—";
+  const [h, m] = t.split(":");
+  const hr = parseInt(h, 10);
+  return `${hr % 12 || 12}:${m} ${hr >= 12 ? "PM" : "AM"}`;
+};
+
+const slugToTitle = (s = "") =>
+  s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+const STATUS_MAP = {
+  scheduled:     { bg: "#EEF2FF", color: "#3C3489", border: "#AFA9EC" },
+  completed:     { bg: "#E1F5EE", color: "#085041", border: "#5DCAA5" },
+  cancelled:     { bg: "#F3F4F6", color: "#5F5E5A", border: "#D3D1C7" },
+  rescheduled:   { bg: "#FAEEDA", color: "#633806", border: "#EF9F27" },
+  no_show:       { bg: "#FCEBEB", color: "#791F1F", border: "#F09595" },
+  not_conducted: { bg: "#F3F4F6", color: "#5F5E5A", border: "#D3D1C7" },
+};
+
+function initials(name = "") {
+  return name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+}
+
+const AVATAR_COLORS = [
+  { bg: "#FFF0E8", color: "#993C1D" },
+  { bg: "#EEF2FF", color: "#3C3489" },
+  { bg: "#E1F5EE", color: "#085041" },
+  { bg: "#FAEEDA", color: "#633806" },
+  { bg: "#F5F3FF", color: "#534AB7" },
+];
+function avatarColor(name = "") {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+/* ── Section heading ── */
+function SectionIcon({ icon: Icon, label }) {
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: "6px", mb: "12px" }}>
+      <Icon sx={{ fontSize: 14, color: "#9696A6" }} />
+      <Typography sx={LABEL_SX}>{label}</Typography>
+    </Box>
+  );
+}
+
+/* ── Person row ── */
+function PersonRow({ name, subtitle, size = 36 }) {
+  const ac = avatarColor(name);
+  return (
+    <Box sx={{ display: "flex", alignItems: "center", gap: "10px" }}>
+      <Avatar sx={{ width: size, height: size, fontSize: size * 0.35, fontWeight: 700, bgcolor: ac.bg, color: ac.color }}>
+        {initials(name)}
+      </Avatar>
+      <Box>
+        <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111118" }}>{name}</Typography>
+        {subtitle && <Typography sx={{ fontSize: 11, color: "#5C5C70", mt: "1px" }}>{subtitle}</Typography>}
+      </Box>
+    </Box>
+  );
+}
+
+/* ── Meta key-value row ── */
+function MetaRow({ label, value }) {
+  return (
+    <Box sx={{
+      display: "flex", justifyContent: "space-between", alignItems: "center",
+      py: "6px", borderBottom: "1px solid #F3F4F6",
+      "&:last-child": { borderBottom: "none", pb: 0 },
+      "&:first-of-type": { pt: 0 },
+    }}>
+      <Typography sx={{ fontSize: 12, color: "#9696A6" }}>{label}</Typography>
+      <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#111118", textTransform: "capitalize" }}>
+        {value ?? "—"}
+      </Typography>
+    </Box>
+  );
+}
 function InterviewDetailDialog({ open, onClose, interviewId }) {
+
   const { data, isLoading, isError } = useGetInterviewDetailsQuery(
-    interviewId,
-    { skip: !interviewId }
+    interviewId, { skip: !interviewId }
   );
   const iv = data?.data ?? null;
 
-  const statusColorMap = {
-    scheduled:     { bg: "#EEF2FF", color: "#4338CA", border: "#C7D2FE" },
-    completed:     { bg: "#E7F8EE", color: "#0F6E56", border: "#5DCAA5" },
-    cancelled:     { bg: "#F3F4F6", color: "#6B7280", border: "#D1D5DB" },
-    rescheduled:   { bg: "#FEF3C7", color: "#92400E", border: "#F0C070" },
-    no_show:       { bg: "#FEE2E2", color: "#B91C1C", border: "#F09595" },
-    not_conducted: { bg: "#F3F4F6", color: "#6B7280", border: "#D1D5DB" },
-  };
-  const statusCfg =
-    statusColorMap[(iv?.status ?? "").toLowerCase()] ?? statusColorMap.scheduled;
-
-  const formatDate = (d) =>
-    d
-      ? new Date(d).toLocaleDateString("en-GB", {
-          day: "2-digit", month: "long", year: "numeric",
-        })
-      : "—";
-
-  const formatTime = (t) => {
-    if (!t) return "—";
-    const [h, m] = t.split(":");
-    const hr = parseInt(h, 10);
-    return `${hr % 12 || 12}:${m} ${hr >= 12 ? "PM" : "AM"}`;
-  };
+  const statusKey = (iv?.status ?? "").toLowerCase();
+  const statusCfg = STATUS_MAP[statusKey] ?? STATUS_MAP.scheduled;
 
   return (
-    <Dialog
+   <Dialog
       open={open}
       onClose={onClose}
       maxWidth="md"
@@ -150,176 +203,92 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
         sx: {
           borderRadius: "20px",
           overflow: "hidden",
-          boxShadow: "0 24px 60px rgba(0,0,0,0.12)",
+          boxShadow: "0 24px 60px rgba(0,0,0,0.14)",
           maxHeight: "92vh",
-          fontFamily: "'DM Sans', sans-serif",
         },
       }}
     >
-      {/* ── Header ── */}
-      <Box
-        sx={{
-          background: "linear-gradient(135deg, #FF5F1F 0%, #FF8C5A 100%)",
-          px: "24px",
-          pt: "22px",
-          pb: "30px",
-          flexShrink: 0,
-        }}
-      >
+      {/* ══ Header band ══ */}
+      <Box sx={{ backgroundColor: "#FF5F1F", px: "24px", pt: "22px", pb: "52px" }}>
         <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
-
-          {/* Left — label + title */}
           <Box>
-            <Typography
-              sx={{
-                fontFamily: "'DM Sans', sans-serif",
-                fontSize: 11,
-                fontWeight: 700,
-                color: "rgba(255,255,255,0.55)",
-                letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                mb: "4px",
-              }}
-            >
-              Interview Details
+            <Typography sx={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)", mb: "5px" }}>
+              Interview details
             </Typography>
-
-            {isLoading ? (
-              <Box sx={{ width: 260, height: 28, borderRadius: 4, backgroundColor: "rgba(255,255,255,0.2)" }} />
-            ) : (
-              <Typography
-                sx={{
-                  fontFamily: "'DM Serif Display', serif",
-                  fontSize: 22,
-                  fontWeight: 400,
-                  color: "#fff",
-                  lineHeight: 1.2,
-                }}
-              >
-                {iv?.interview_step_name ?? "—"}
+            {isLoading
+              ? <Box sx={{ width: 240, height: 26, borderRadius: "6px", backgroundColor: "rgba(255,255,255,0.2)" }} />
+              : <Typography sx={{ fontSize: 20, fontWeight: 700, color: "#fff", lineHeight: 1.25 }}>
+                  {iv?.interview_step_name ?? "—"}
+                </Typography>
+            }
+            {iv && (
+              <Typography sx={{ fontSize: 12, color: "rgba(255,255,255,0.65)", mt: "4px" }}>
+                Step {iv.interview_step_number} · {iv.interview_step_type}
               </Typography>
             )}
           </Box>
 
-          {/* Right — pills */}
-          {iv && (
-            <Box sx={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap", justifyContent: "flex-end", pt: "4px" }}>
-              <Box sx={{
-                px: "12px", py: "5px", borderRadius: "999px",
-                backgroundColor: "rgba(255,255,255,0.15)",
-                border: "1px solid rgba(255,255,255,0.3)",
-                display: "flex", alignItems: "center", gap: "5px",
-              }}>
-                <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 600, color: "#fff" }}>
-                  Step {iv.interview_step_number} · {iv.interview_step_type}
+          <Box sx={{ display: "flex", alignItems: "center", gap: "7px", flexWrap: "wrap", justifyContent: "flex-end", pt: "2px" }}>
+            {iv?.status && (
+              <Box sx={{ px: "11px", py: "4px", borderRadius: "99px", backgroundColor: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)" }}>
+                <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#fff", textTransform: "capitalize" }}>
+                  {iv.status}
                 </Typography>
               </Box>
-
-              {iv.status && (
-                <Box sx={{
-                  px: "12px", py: "5px", borderRadius: "999px",
-                  backgroundColor: "rgba(255,255,255,0.18)",
-                  border: "1px solid rgba(255,255,255,0.35)",
-                }}>
-                  <Typography sx={{
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontSize: 11, fontWeight: 700, color: "#fff",
-                    textTransform: "uppercase", letterSpacing: "0.5px",
-                  }}>
-                    {iv.status}
-                  </Typography>
-                </Box>
-              )}
-
-              {iv.is_final && (
-                <Box sx={{ px: "12px", py: "5px", borderRadius: "999px", backgroundColor: "#FBBF24" }}>
-                  <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 11, fontWeight: 700, color: "#1F2937" }}>
-                    ⭐ Final Round
-                  </Typography>
-                </Box>
-              )}
-            </Box>
-          )}
+            )}
+            {iv?.is_final && (
+              <Box sx={{ display: "flex", alignItems: "center", gap: "4px", px: "11px", py: "4px", borderRadius: "99px", backgroundColor: "#FBBF24" }}>
+                <EmojiEventsOutlinedIcon sx={{ fontSize: 12, color: "#1F2937" }} />
+                <Typography sx={{ fontSize: 11, fontWeight: 700, color: "#1F2937" }}>Final round</Typography>
+              </Box>
+            )}
+            <IconButton size="small" onClick={onClose}
+              sx={{ color: "rgba(255,255,255,0.8)", backgroundColor: "rgba(255,255,255,0.12)", borderRadius: "8px", width: 28, height: 28, "&:hover": { backgroundColor: "rgba(255,255,255,0.2)" } }}>
+              <CloseIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Box>
         </Box>
       </Box>
 
-      {/* ── Scrollable Content ── */}
+      {/* ══ Scrollable body ══ */}
       <DialogContent
-        dividers
         sx={{
-          p: "24px",
-          pt: "0px",
-          mt: "-28px",
-          backgroundColor: "#f8fafc",
+          backgroundColor: "#F7F7F9",
+          p: "0 20px 20px",
+          mt: "-30px",
           overflowY: "auto",
           maxHeight: "calc(92vh - 180px)",
         }}
       >
         {isLoading ? (
-          <Box sx={{
-            backgroundColor: "#fff", borderRadius: "16px",
-            border: "1px solid #E8E8EC",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            py: 10, gap: 2, flexDirection: "column",
-          }}>
-            <CircularProgress sx={{ color: "#FF5F1F" }} />
-            <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, color: "#5C5C70" }}>
-              Loading interview details…
-            </Typography>
+          <Box sx={{ ...CARD_SX, mt: "30px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", py: 10, gap: 2 }}>
+            <CircularProgress sx={{ color: "#FF5F1F" }} size={28} />
+            <Typography sx={{ fontSize: 13, color: "#5C5C70" }}>Loading interview details…</Typography>
           </Box>
-        ) : isError || !iv ? (
-          <Box sx={{
-            backgroundColor: "#fff", borderRadius: "16px",
-            border: "1px solid #E8E8EC", py: 8, textAlign: "center",
-          }}>
-            <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 14, color: "#B91C1C", fontWeight: 600 }}>
-              Failed to load details
-            </Typography>
-          </Box>
-        ) : (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: "12px", mt: "30px" }}>
 
-            {/* ── Candidate row ── */}
+        ) : isError || !iv ? (
+          <Box sx={{ ...CARD_SX, mt: "30px", py: 8, textAlign: "center" }}>
+            <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#B91C1C" }}>Failed to load details</Typography>
+          </Box>
+
+        ) : (
+          <Box sx={{ display: "flex", flexDirection: "column", gap: "10px", mt: "30px" }}>
+
+            {/* ── Candidate strip ── */}
             <Box sx={{
-              backgroundColor: "#fff", borderRadius: "16px",
-              border: "1px solid #E8E8EC",
-              px: "20px", py: "16px",
+              ...CARD_SX,
               display: "flex", alignItems: "center",
               justifyContent: "space-between", flexWrap: "wrap", gap: "12px",
-              boxShadow: "0 2px 8px rgba(0,0,0,0.04)",
             }}>
-              <Box sx={{ display: "flex", alignItems: "center", gap: "14px" }}>
-                <Avatar sx={{ width: 44, height: 44, bgcolor: "#FFF0E8", color: "#FF5F1F", fontWeight: 700, fontSize: 16 }}>
-                  {iv.candidate_name?.charAt(0).toUpperCase()}
-                </Avatar>
-                <Box>
-                  <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 15, fontWeight: 700, color: "#111118" }}>
-                    {iv.candidate_name}
-                  </Typography>
-                  <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#5C5C70", mt: "2px" }}>
-                    {iv.candidate_experience} experience
-                  </Typography>
-                </Box>
-              </Box>
-              <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                <Box sx={{
-                  px: "12px", py: "6px", borderRadius: "10px",
-                  backgroundColor: "#E7F8EE", border: "1px solid #5DCAA5",
-                  display: "flex", alignItems: "center", gap: "5px",
-                }}>
-                  <WorkspacePremiumOutlinedIcon sx={{ fontSize: 14, color: "#0F6E56" }} />
-                  <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, fontWeight: 700, color: "#0F6E56" }}>
+              <PersonRow name={iv.candidate_name ?? ""} subtitle={`${iv.candidate_experience} experience`} size={42} />
+              <Box sx={{ display: "flex", alignItems: "center", gap: "7px" }}>
+                <Box sx={{ display: "flex", alignItems: "center", gap: "5px", px: "11px", py: "5px", borderRadius: "10px", backgroundColor: "#E1F5EE", border: "1px solid #5DCAA5" }}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#085041" }}>
                     {iv.skill_intel_score}% match
                   </Typography>
                 </Box>
-                <Box sx={{
-                  px: "12px", py: "6px", borderRadius: "10px",
-                  backgroundColor: statusCfg.bg, border: `1px solid ${statusCfg.border}`,
-                }}>
-                  <Typography sx={{
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontSize: 12, fontWeight: 700, color: statusCfg.color, textTransform: "capitalize",
-                  }}>
+                <Box sx={{ px: "11px", py: "5px", borderRadius: "10px", backgroundColor: statusCfg.bg, border: `1px solid ${statusCfg.border}` }}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 700, color: statusCfg.color, textTransform: "capitalize" }}>
                     {iv.status}
                   </Typography>
                 </Box>
@@ -327,199 +296,129 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
             </Box>
 
             {/* ── Date / Time / Platform ── */}
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
-              {[
-                { Icon: CalendarMonthOutlinedIcon, label: "Date",     value: formatDate(iv.date) },
-                { Icon: AccessTimeOutlinedIcon,    label: "Time",     value: `${formatTime(iv.start_time)} – ${formatTime(iv.end_time)} · ${iv.duration} min` },
-                { Icon: VideocamOutlinedIcon,      label: "Platform", value: iv.platform, link: iv.meeting_url },
-              ].map(({ Icon, label, value, link }) => (
-                <Box key={label} sx={{
-                  backgroundColor: "#fff", borderRadius: "14px",
-                  border: "1px solid #E8E8EC",
-                  px: "16px", py: "14px",
-                  display: "flex", flexDirection: "column", gap: "8px",
-                  boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-                }}>
-                  <Box sx={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <Icon sx={{ fontSize: 13, color: "#9696A6" }} />
-                    <Typography sx={{
-                      fontFamily: "'DM Sans', sans-serif",
-                      fontSize: 10, fontWeight: 700, color: "#9696A6",
-                      textTransform: "uppercase", letterSpacing: "0.08em",
-                    }}>
-                      {label}
-                    </Typography>
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+              {/* Date */}
+              <Box sx={CARD_SX}>
+                <SectionIcon icon={CalendarMonthOutlinedIcon} label="Date" />
+                <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111118" }}>
+                  {fmtDate(iv.date)}
+                </Typography>
+                <Typography sx={{ fontSize: 11, color: "#9696A6", mt: "2px" }}>
+                  {iv.date ? new Date(iv.date).toLocaleDateString("en-GB", { weekday: "long" }) : ""}
+                </Typography>
+              </Box>
+
+              {/* Time */}
+              <Box sx={CARD_SX}>
+                <SectionIcon icon={AccessTimeOutlinedIcon} label="Time" />
+                <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111118" }}>
+                  {fmtTime(iv.start_time)} – {fmtTime(iv.end_time)}
+                </Typography>
+                <Typography sx={{ fontSize: 11, color: "#9696A6", mt: "2px" }}>
+                  {iv.duration} minutes
+                </Typography>
+              </Box>
+
+              {/* Platform */}
+              <Box sx={CARD_SX}>
+                <SectionIcon icon={VideocamOutlinedIcon} label="Platform" />
+                <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111118" }}>
+                  {iv.platform ?? "—"}
+                </Typography>
+                {iv.meeting_url && (
+                  <Box component="a" href={iv.meeting_url} target="_blank" rel="noopener noreferrer"
+                    sx={{ display: "inline-flex", alignItems: "center", gap: "3px", fontSize: 11, color: "#185FA5", textDecoration: "none", mt: "3px", "&:hover": { textDecoration: "underline" } }}>
+                    Join meeting <OpenInNewIcon sx={{ fontSize: 11 }} />
                   </Box>
-                  <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                    <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: "#111118" }}>
-                      {value}
-                    </Typography>
-                    {link && (
-                      <IconButton
-                        size="small"
-                        href={link}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        component="a"
-                        sx={{ color: "#FF5F1F", p: "4px", "&:hover": { backgroundColor: "#FFF0E8" } }}
-                      >
-                        <OpenInNewIcon sx={{ fontSize: 14 }} />
-                      </IconButton>
-                    )}
-                  </Box>
-                </Box>
-              ))}
+                )}
+              </Box>
             </Box>
 
             {/* ── Interviewers ── */}
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              <Box sx={{
-                backgroundColor: "#fff", borderRadius: "14px",
-                border: "1px solid #E8E8EC", px: "16px", py: "14px",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-              }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: "6px", mb: "10px" }}>
-                  <PersonOutlineOutlined sx={{ fontSize: 13, color: "#9696A6" }} />
-                  <Typography sx={{
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontSize: 10, fontWeight: 700, color: "#9696A6",
-                    textTransform: "uppercase", letterSpacing: "0.08em",
-                  }}>
-                    Primary Interviewer
-                  </Typography>
-                </Box>
-                {iv.primary_interviewer?.name ? (
-                  <Box sx={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <Avatar sx={{ width: 32, height: 32, fontSize: 12, fontWeight: 700, bgcolor: "#EEF2FF", color: "#4338CA" }}>
-                      {iv.primary_interviewer.name.charAt(0).toUpperCase()}
-                    </Avatar>
-                    <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: "#111118" }}>
-                      {iv.primary_interviewer.name}
-                    </Typography>
-                  </Box>
-                ) : (
-                  <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#9696A6" }}>
-                    Not assigned
-                  </Typography>
-                )}
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              {/* Primary */}
+              <Box sx={CARD_SX}>
+                <SectionIcon icon={PersonOutlineOutlined} label="Primary interviewer" />
+                {iv.primary_interviewer?.name
+                  ? <PersonRow name={iv.primary_interviewer.name} subtitle={iv.primary_interviewer.designation ?? ""} />
+                  : <Typography sx={{ fontSize: 12, color: "#9696A6" }}>Not assigned</Typography>
+                }
               </Box>
 
-              <Box sx={{
-                backgroundColor: "#fff", borderRadius: "14px",
-                border: "1px solid #E8E8EC", px: "16px", py: "14px",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-              }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: "6px", mb: "10px" }}>
-                  <GroupOutlinedIcon sx={{ fontSize: 13, color: "#9696A6" }} />
-                  <Typography sx={{
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontSize: 10, fontWeight: 700, color: "#9696A6",
-                    textTransform: "uppercase", letterSpacing: "0.08em",
-                  }}>
-                    Panel Members
-                  </Typography>
-                </Box>
+              {/* Panel */}
+              <Box sx={CARD_SX}>
+                <SectionIcon icon={GroupOutlinedIcon} label="Panel members" />
                 {iv.panel_members?.length > 0 ? (
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <Box sx={{ display: "flex", flexDirection: "column", gap: "8px" }}>
                     {iv.panel_members.map((p) => (
-                      <Box key={p.id} sx={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <Avatar sx={{ width: 28, height: 28, fontSize: 11, fontWeight: 700, bgcolor: "#FFF0E8", color: "#FF5F1F" }}>
-                          {p.name.charAt(0).toUpperCase()}
-                        </Avatar>
-                        <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 500, color: "#111118" }}>
-                          {p.name}
-                        </Typography>
-                      </Box>
+                      <PersonRow key={p.id} name={p.name} size={28} />
                     ))}
                   </Box>
                 ) : (
-                  <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#9696A6" }}>
-                    No panel members
-                  </Typography>
+                  <Typography sx={{ fontSize: 12, color: "#9696A6" }}>No panel members</Typography>
                 )}
               </Box>
             </Box>
 
-            {/* ── Skills + Job Meta ── */}
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-              <Box sx={{
-                backgroundColor: "#fff", borderRadius: "14px",
-                border: "1px solid #E8E8EC", px: "16px", py: "14px",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-              }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: "6px", mb: "10px" }}>
-                  <PsychologyOutlinedIcon sx={{ fontSize: 13, color: "#9696A6" }} />
-                  <Typography sx={{
-                    fontFamily: "'DM Sans', sans-serif",
-                    fontSize: 10, fontWeight: 700, color: "#9696A6",
-                    textTransform: "uppercase", letterSpacing: "0.08em",
-                  }}>
-                    Required Skills
-                  </Typography>
-                </Box>
+            {/* ── Skills + Job meta ── */}
+            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              {/* Skills */}
+              <Box sx={CARD_SX}>
+                <SectionIcon icon={PsychologyOutlinedIcon} label="Required skills" />
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
-                  {(iv.skills ?? "").split(",").map((s) => s.trim()).filter(Boolean).map((skill) => (
-                    <Box key={skill} sx={{
-                      px: "8px", py: "3px", borderRadius: "6px",
-                      backgroundColor: "#F3F4F6", border: "1px solid #E8E8EC",
-                    }}>
-                      <Typography sx={{
-                        fontFamily: "'DM Sans', sans-serif",
-                        fontSize: 11, fontWeight: 500, color: "#5C5C70", textTransform: "capitalize",
+                  {(iv.skills ?? "")
+                    .split(",").map((s) => s.trim()).filter(Boolean)
+                    .map((skill) => (
+                      <Box key={skill} sx={{
+                        fontSize: 11, fontWeight: 500, px: "8px", py: "3px",
+                        borderRadius: "6px", backgroundColor: "#F3F4F6",
+                        border: "1px solid #E8E8EC", color: "#5C5C70",
+                        textTransform: "capitalize",
                       }}>
                         {skill}
-                      </Typography>
-                    </Box>
-                  ))}
+                      </Box>
+                    ))}
                 </Box>
               </Box>
 
-              <Box sx={{
-                backgroundColor: "#fff", borderRadius: "14px",
-                border: "1px solid #E8E8EC", px: "16px", py: "14px",
-                boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
-                display: "flex", flexDirection: "column", gap: "8px",
-              }}>
-                {[
-                  { label: "Function",    value: iv.function?.replace(/_/g, " ") },
-                  { label: "Sub-function",value: iv.sub_function?.replace(/_/g, " ") },
-                  { label: "Experience",  value: `${iv.min_years}–${iv.max_years} years` },
-                  { label: "Work Mode",   value: iv.mode_of_work },
-                  { label: "Location",    value: iv.country },
-                ].map(({ label, value }) => (
-                  <Box key={label} sx={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 12, color: "#9696A6" }}>
-                      {label}
-                    </Typography>
-                    <Typography sx={{
-                      fontFamily: "'DM Sans', sans-serif",
-                      fontSize: 12, fontWeight: 600, color: "#111118", textTransform: "capitalize",
-                    }}>
-                      {value ?? "—"}
-                    </Typography>
-                  </Box>
-                ))}
+              {/* Job meta */}
+              <Box sx={CARD_SX}>
+                <SectionIcon icon={WorkOutlineRoundedIcon} label="Job details" />
+                <MetaRow label="Function"     value={slugToTitle(iv.function ?? "")} />
+                <MetaRow label="Sub-function" value={slugToTitle(iv.sub_function ?? "")} />
+                <MetaRow label="Experience"   value={`${iv.min_years}–${iv.max_years} years`} />
+                <MetaRow label="Work mode"    value={iv.mode_of_work} />
+                <MetaRow label="Location"     value={iv.country} />
               </Box>
             </Box>
 
-            {/* ── Feedback Banner ── */}
-            {!iv.feedback_submitted && iv.status?.toLowerCase() === "completed" && (
+            {/* ── Feedback banner (conditional) ── */}
+            {!iv.feedback_submitted && statusKey === "completed" && (
               <Box sx={{
-                borderRadius: "12px", px: "16px", py: "12px",
-                backgroundColor: "#FEF3C7", border: "1px solid #F0C070",
                 display: "flex", alignItems: "center", justifyContent: "space-between",
+                gap: "12px", px: "16px", py: "13px",
+                borderRadius: "12px", backgroundColor: "#FAEEDA",
+                border: "1px solid #EF9F27",
               }}>
-                <Typography sx={{ fontFamily: "'DM Sans', sans-serif", fontSize: 13, fontWeight: 600, color: "#92400E" }}>
-                  ⚠️ Feedback not submitted yet
-                </Typography>
+                <Box sx={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <WarningAmberOutlinedIcon sx={{ fontSize: 16, color: "#633806", flexShrink: 0 }} />
+                  <Box>
+                    <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#633806" }}>
+                      Feedback not submitted
+                    </Typography>
+                    <Typography sx={{ fontSize: 11, color: "#854F0B", mt: "1px" }}>
+                      Interview completed — awaiting interviewer feedback
+                    </Typography>
+                  </Box>
+                </Box>
                 <Button size="small" sx={{
-                  fontFamily: "'DM Sans', sans-serif",
                   textTransform: "none", fontSize: 12, fontWeight: 600,
-                  color: "#92400E", borderColor: "#F0C070", border: "1px solid",
-                  borderRadius: "8px", px: "12px",
-                  "&:hover": { backgroundColor: "#FDE68A" },
+                  color: "#633806", borderColor: "#EF9F27",
+                  border: "1px solid", borderRadius: "8px", px: "14px",
+                  whiteSpace: "nowrap", flexShrink: 0,
+                  "&:hover": { backgroundColor: "#FCD34D22" },
                 }}>
-                  Submit Feedback
+                  Submit feedback
                 </Button>
               </Box>
             )}
@@ -527,6 +426,35 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
           </Box>
         )}
       </DialogContent>
+
+      {/* ══ Footer ══ */}
+      <Box sx={{
+        px: "20px", py: "14px",
+        borderTop: "1px solid #E8E8EC",
+        display: "flex", alignItems: "center", justifyContent: "space-between",
+        backgroundColor: "#fff",
+      }}>
+        <Typography sx={{ fontSize: 11, color: "#9696A6" }}>
+          ID #{iv?.id?.slice(0, 8).toUpperCase() ?? "—"}
+        </Typography>
+        <Box sx={{ display: "flex", gap: "8px" }}>
+          <Button onClick={onClose} sx={{
+            textTransform: "none", fontWeight: 500, fontSize: 13,
+            color: "#5C5C70", border: "1px solid #E8E8EC",
+            borderRadius: "10px", px: "18px",
+          }}>
+            Close
+          </Button>
+          <Button variant="contained" sx={{
+            textTransform: "none", fontWeight: 600, fontSize: 13,
+            backgroundColor: "#111118", borderRadius: "10px", px: "18px",
+            boxShadow: "none",
+            "&:hover": { backgroundColor: "#222", boxShadow: "none" },
+          }}>
+            Reschedule
+          </Button>
+        </Box>
+      </Box>
     </Dialog>
   );
 }
@@ -1829,6 +1757,26 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
         ),
       },
       {
+        accessorKey: "created_at",
+        header: "Created",
+        size: 120,
+        Cell: ({ cell }) => {
+          const v = cell.getValue();
+          return (
+            <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
+              {v
+                ? new Date(v).toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
+                : "—"}
+            </Typography>
+          );
+        },
+
+      },
+      {
         accessorKey: "closing_date",
         header: "Closing Date",
         size: 120,
@@ -2315,6 +2263,7 @@ function OrgInterviewsTab({ orgId }) {
   const { data, isLoading, isError } = useGetOrganisationInterviewsQuery(orgId);
   const interviews = data?.data ?? [];
 
+  console.log("interviews", interviews);
   const interviewStatuses = [
     { key: "scheduled", value: "Scheduled" },
     { key: "completed", value: "Completed" },
@@ -2326,7 +2275,7 @@ function OrgInterviewsTab({ orgId }) {
 
   const filtered = statusFilter === "all"
     ? interviews
-    : interviews.filter((iv) => (iv.status ?? "scheduled") === statusFilter);
+    : interviews.filter((iv) => (iv.interview_status ?? "scheduled") === statusFilter);
 
   const searchedInterviews = filtered.filter((iv) => {
     const value = search.toLowerCase();
@@ -2337,7 +2286,7 @@ function OrgInterviewsTab({ orgId }) {
       iv.interview_type?.toLowerCase().includes(value) ||
       iv.sub_function?.toLowerCase().includes(value) ||
       iv.created_by?.toLowerCase().includes(value) ||
-      iv.status?.toLowerCase().includes(value)
+      iv.interview_status?.toLowerCase().includes(value)
     );
   });
 
@@ -2380,7 +2329,7 @@ function OrgInterviewsTab({ orgId }) {
       {
         accessorKey: "interview_step_name",
         header: "Round",
-        size: 160,
+        size: 150,
         Cell: ({ row }) => (
           <Box>
             <Typography sx={{ fontSize: 14 }} color={C.textPrimary}>
@@ -2440,7 +2389,7 @@ function OrgInterviewsTab({ orgId }) {
       {
         id: "time_slot",
         header: "Time",
-        size: 250,
+        size: 200,
         Cell: ({ row }) => (
           <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
             {row.original.start_time} – {row.original.end_time} ·{" "}
@@ -2451,7 +2400,7 @@ function OrgInterviewsTab({ orgId }) {
       {
         accessorKey: "sub_function",
         header: "Sub-function",
-        size: 300,
+        size: 200,
         Cell: ({ cell }) => (
           <Typography
             color={C.textSecondary}
@@ -2472,7 +2421,7 @@ function OrgInterviewsTab({ orgId }) {
         ),
       },
       {
-        accessorKey: "status",
+        accessorKey: "interview_status",
         header: "Status",
         size: 110,
         Cell: ({ cell }) => {
@@ -2536,7 +2485,7 @@ function OrgInterviewsTab({ orgId }) {
           enableRowActions={false}
           enableRowSelection={false}
           enableGlobalFilter={true}
-          height="calc(100vh - 230px)"
+          height="calc(100vh - 200px)"
           onRowClick={(row) => setSelectedInterviewId(row.interview_id)} // ← NEW
         />
       )}
@@ -3022,6 +2971,11 @@ function RequisitionCard({ job, onOpen }) {
   const skills = job.skills ? job.skills.split(",").map((s) => s.trim()) : [];
   const status = job.status ?? "open";
   const chip = statusChip(status);
+  const Created = job.created_at    ? new Date(job.created_at).toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }) : null;
   const closingDate = job.closing_date
     ? new Date(job.closing_date).toLocaleDateString("en-GB", {
       day: "2-digit",
@@ -3156,7 +3110,20 @@ function RequisitionCard({ job, onOpen }) {
             </Grid>
           )}
         </Grid>
-
+{Created && (
+          <Box
+            sx={{ display: "flex", justifyContent: "space-between", mb: "6px" }}
+          >
+            <Typography sx={{ fontSize: 11, color: C.textSecondary }}>
+              Created
+            </Typography>
+            <Typography
+              sx={{ fontSize: 11, fontWeight: 600, color: C.textPrimary }}
+            >
+              {Created}
+            </Typography>
+          </Box>
+        )}
         {closingDate && (
           <Box
             sx={{ display: "flex", justifyContent: "space-between", mb: "6px" }}

@@ -404,7 +404,7 @@ function CompanyCard({ org, onOpen }) {
           value={`${org.success_rate ?? 0}%`}
         />
         <InfoRow
-          label="Active employer companies"
+          label="Total Requisitions"
           value={org.total_jobs ?? 0}
         />
       </Box>

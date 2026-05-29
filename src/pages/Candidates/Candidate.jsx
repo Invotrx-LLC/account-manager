@@ -78,8 +78,6 @@ const FUNCTION_OPTIONS = ["biostatistics", "clinical_data_management"];
 const SUB_FUNCTION_MAP = {
   biostatistics: [
     "statistical_programmer",
-    "biostatistician",
-    "sas_programmer",
   ],
   clinical_data_management: [
     "clinical_programmer",
@@ -452,30 +450,6 @@ function buildColumns(handleToggleActive, navigate, openResume, onDelete) {
         ),
     },
     {
-      accessorKey: "is_active",
-      header: "Status",
-      size: 100,
-      Cell: ({ row }) => {
-        const active = row.original.is_active;
-        return (
-          <Box
-            component="span"
-            sx={{
-              fontSize: 10,
-              fontWeight: 700,
-              px: "8px",
-              py: "3px",
-              borderRadius: "10px",
-              backgroundColor: active ? C.greenSoft : "#F3F4F6",
-              color: active ? C.green : "#6B7280",
-            }}
-          >
-            {active ? "Active" : "Inactive"}
-          </Box>
-        );
-      },
-    },
-    {
       accessorKey: "resume_url",
       header: "Resume",
       size: 100,
@@ -514,18 +488,51 @@ function buildColumns(handleToggleActive, navigate, openResume, onDelete) {
           </Typography>
         ),
     },
-    {
-      id: "toggle",
-      header: "Active",
-      size: 72,
-      enableColumnFilter: false,
-      Cell: ({ row }) => (
+{
+  id: "status",
+  header: "Status",
+  size: 160,
+  enableColumnFilter: false,
+
+  Cell: ({ row }) => {
+    const candidate = row.original;
+    const active = candidate.is_active;
+
+    return (
+      <Box
+        sx={{
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+        }}
+      >
+        {/* Status Badge */}
+        <Box
+          component="span"
+          sx={{
+            fontSize: 10,
+            fontWeight: 700,
+            px: "8px",
+            py: "3px",
+            borderRadius: "10px",
+            backgroundColor: active ? C.greenSoft : "#F3F4F6",
+            color: active ? C.green : "#6B7280",
+            minWidth: "64px",
+            textAlign: "center",
+          }}
+        >
+          {active ? "Active" : "Inactive"}
+        </Box>
+
+        {/* Toggle */}
         <ActiveToggleCell
-          candidate={row.original}
+          candidate={candidate}
           onStatusChange={handleToggleActive}
         />
-      ),
-    },
+      </Box>
+    );
+  },
+},
     {
       id: "delete",
       header: "Delete",
