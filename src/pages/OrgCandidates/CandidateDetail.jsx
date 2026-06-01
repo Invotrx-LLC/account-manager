@@ -1,6 +1,6 @@
 // src/pages/OrgCandidates/CandidateDetail.jsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import {
   Box,
@@ -13,6 +13,10 @@ import {
   Chip,
   Button,
   Avatar,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails,
+  LinearProgress,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
@@ -35,6 +39,7 @@ import {
 import {
   useGetCandidateDetailQuery,
   useGetCandidateStageTimelineQuery,
+  useLazyGetResumeViewQuery,
 } from "../../redux/services/requisition/requisition";
 import {
   PersonOutlineOutlined,
@@ -43,6 +48,14 @@ import {
   PhoneOutlined,
   AccessTimeOutlined,
 } from "@mui/icons-material";
+import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
+import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
+import RateReviewOutlinedIcon from "@mui/icons-material/RateReviewOutlined";
+import EditOutlinedIcon from "@mui/icons-material/EditOutlined";
+import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
+import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
+import PublicOutlinedIcon from "@mui/icons-material/PublicOutlined";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 
 /* ═══════════════════════════════════════════════
    CONSTANTS
@@ -100,14 +113,16 @@ const C = {
 };
 
 const T = {
-  labelFontWeight: 600,
-  labelSize: 14,
-  valueSize: 14,
+  stageTitle: 15,
+  metaLabel: 11,
+  metaValue: 12,
+  subTitle: 12,
+  subDate: 11,
 };
 
 const TAB_SX = {
-  borderBottom: "1px solid #E5E7EB",
-  mb: "16px",
+  // borderBottom: "1px solid #E5E7EB",
+  mb: "0px",
   minHeight: 38,
   "& .MuiTabs-flexContainer": { gap: "4px" },
   "& .MuiTab-root": {
@@ -116,9 +131,9 @@ const TAB_SX = {
     fontWeight: 500,
     color: "#6B7280",
     minWidth: "auto",
-    minHeight: 38,
+    minHeight: 28,
     px: "6px",
-    py: "2px",
+    py: "0px",
     mr: "14px",
   },
   "& .MuiTab-iconWrapper": { marginRight: "6px" },
@@ -371,15 +386,25 @@ function ConnectorLine({ state, minHeight }) {
 /* ═══════════════════════════════════════════════
    RADAR CHART
 ═══════════════════════════════════════════════ */
-function RadarChart({ scoreIntel, size = 380 }) {
+
+function RadarChart({ scoreIntel, size = 400 }) {
   if (!scoreIntel?.length) return null;
 
-  const [hoveredIndex, setHoveredIndex] = useState(null);
+  const [tooltip, setTooltip] = useState({
+    visible: false,
+    x: 0,
+    y: 0,
+    data: null,
+  });
+  const svgRef = useRef(null);
+  const wrapRef = useRef(null);
+
   const cx = size / 2;
   const cy = size / 2;
-  const R = size * 0.25;
+  const R = size * 0.28;
   const levels = 5;
   const n = scoreIntel.length;
+
   const angle = (i) => (Math.PI * 2 * i) / n - Math.PI / 2;
   const polar = (val, i) => {
     const r = (val / 100) * R;
@@ -396,157 +421,622 @@ function RadarChart({ scoreIntel, size = 380 }) {
 
   const candidatePts = scoreIntel.map((d, i) => polar(d.candidate, i));
   const desiredPts = scoreIntel.map((d, i) => polar(d.desired, i));
-  const hovered = hoveredIndex !== null ? scoreIntel[hoveredIndex] : null;
-  const hoveredPt = hoveredIndex !== null ? candidatePts[hoveredIndex] : null;
-  const getTooltipPos = (pt) => {
-    if (!pt) return { x: 0, y: 0 };
-    let tx = pt.x + 12;
-    let ty = pt.y - 36;
-    if (tx + 150 > size) tx = pt.x - 160;
-    if (ty < 4) ty = pt.y + 12;
-    return { x: tx, y: ty };
-  };
+
+  function distToSegment(px, py, ax, ay, bx, by) {
+    const dx = bx - ax,
+      dy = by - ay;
+    const len2 = dx * dx + dy * dy;
+    if (len2 === 0) return Math.hypot(px - ax, py - ay);
+    const t = Math.max(
+      0,
+      Math.min(1, ((px - ax) * dx + (py - ay) * dy) / len2),
+    );
+    return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+  }
+
+  function isInsidePolygon(px, py, pts) {
+    let inside = false;
+    for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+      const xi = pts[i].x,
+        yi = pts[i].y;
+      const xj = pts[j].x,
+        yj = pts[j].y;
+      const intersect =
+        yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi;
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  function closestSkill(mx, my) {
+    let bestIdx = -1,
+      bestDist = Infinity;
+    for (let i = 0; i < n; i++) {
+      const end = polar(100, i);
+      const dist = distToSegment(mx, my, cx, cy, end.x, end.y);
+      if (dist < bestDist) {
+        bestDist = dist;
+        bestIdx = i;
+      }
+    }
+    if (bestDist <= 22) return bestIdx;
+
+    if (
+      isInsidePolygon(mx, my, candidatePts) ||
+      isInsidePolygon(mx, my, desiredPts)
+    ) {
+      let nearIdx = -1,
+        nearDist = Infinity;
+      candidatePts.forEach((p, i) => {
+        const d = Math.hypot(mx - p.x, my - p.y);
+        if (d < nearDist) {
+          nearDist = d;
+          nearIdx = i;
+        }
+      });
+      return nearIdx;
+    }
+    return -1;
+  }
+
+  const handleMouseMove = useCallback(
+    (e) => {
+      const svgEl = svgRef.current;
+      const wrapEl = wrapRef.current;
+      if (!svgEl || !wrapEl) return;
+
+      const svgRect = svgEl.getBoundingClientRect();
+      const wrapRect = wrapEl.getBoundingClientRect();
+      const scaleX = size / svgRect.width;
+      const scaleY = size / svgRect.height;
+      const mx = (e.clientX - svgRect.left) * scaleX;
+      const my = (e.clientY - svgRect.top) * scaleY;
+
+      const idx = closestSkill(mx, my);
+      if (idx !== -1) {
+        const ttW = 170,
+          ttH = 82;
+        let left = e.clientX - wrapRect.left + 14;
+        let top = e.clientY - wrapRect.top - 20;
+        if (left + ttW > wrapRect.width)
+          left = e.clientX - wrapRect.left - ttW - 10;
+        if (top + ttH > wrapRect.height)
+          top = e.clientY - wrapRect.top - ttH - 10;
+        if (top < 0) top = 4;
+
+        setTooltip({ visible: true, x: left, y: top, data: scoreIntel[idx] });
+      } else {
+        setTooltip((prev) => ({ ...prev, visible: false }));
+      }
+    },
+    [scoreIntel, size],
+  );
+
+  const handleMouseLeave = useCallback(() => {
+    setTooltip((prev) => ({ ...prev, visible: false }));
+  }, []);
 
   return (
-    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
-      <Box sx={{ display: "flex", gap: "16px", mb: "10px", alignSelf: "flex-end" }}>
+    <Box
+      sx={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        width: "100%",
+      }}
+    >
+      {/* Legend */}
+      <Box
+        sx={{ display: "flex", gap: "16px", mb: "10px", alignSelf: "flex-end" }}
+      >
         {[
           { dot: "#818CF8", label: "Candidate" },
           { dot: "#22C55E", label: "Desired" },
         ].map(({ dot, label }) => (
-          <Box key={label} sx={{ display: "flex", alignItems: "center", gap: "5px" }}>
-            <Box sx={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: dot }} />
-            <Typography sx={{ fontSize: 13, fontWeight: 500, color: C.textPrimary }}>{label}</Typography>
+          <Box
+            key={label}
+            sx={{ display: "flex", alignItems: "center", gap: "5px" }}
+          >
+            <Box
+              sx={{
+                width: 8,
+                height: 8,
+                borderRadius: "50%",
+                backgroundColor: dot,
+              }}
+            />
+            <Typography
+              sx={{ fontSize: 13, fontWeight: 500, color: "text.primary" }}
+            >
+              {label}
+            </Typography>
           </Box>
         ))}
       </Box>
 
-      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ overflow: "visible" }}>
-        {Array.from({ length: levels }, (_, i) => (
-          <polygon key={i} points={gridPoly(i + 1)} fill="none" stroke="#E5E7EB" strokeWidth="1" />
-        ))}
-        {scoreIntel.map((_, i) => {
-          const end = polar(100, i);
-          return <line key={i} x1={cx} y1={cy} x2={end.x} y2={end.y} stroke="#E5E7EB" strokeWidth="1" />;
-        })}
-        <path d={toPath(desiredPts)} fill="rgba(34,197,94,0.10)" stroke="#22C55E" strokeWidth="1.5" />
-        <path d={toPath(candidatePts)} fill="rgba(129,140,248,0.20)" stroke="#818CF8" strokeWidth="2" />
-        {scoreIntel.map((d, i) => {
-          const labelR = R + 58;
-          const lx = cx + labelR * Math.cos(angle(i));
-          const ly = cy + labelR * Math.sin(angle(i));
-          const anchor = Math.abs(lx - cx) < 5 ? "middle" : lx < cx ? "end" : "start";
-          const label = d.skill.length > 14 ? d.skill.slice(0, 13) + "…" : d.skill;
-          const isHovered = hoveredIndex === i;
-          return (
-            <text key={i} x={lx} y={ly} textAnchor={anchor} dominantBaseline="middle"
-              fontSize={isHovered ? "15" : "13"} fontWeight={isHovered ? "700" : "600"}
-              fill={isHovered ? "#6366F1" : "#475569"} style={{ cursor: "default", transition: "all 0.15s" }}>
-              {label}
-            </text>
-          );
-        })}
-        {Array.from({ length: levels }, (_, i) => {
-          const r = ((i + 1) / levels) * R;
-          return <text key={i} x={cx + 4} y={cy - r + 4} fontSize="8" fill="#9CA3AF">{(i + 1) * 20}</text>;
-        })}
-        {candidatePts.map((p, i) => (
-          <g key={i}>
-            <circle cx={p.x} cy={p.y} r={16} fill="transparent" style={{ cursor: "pointer" }}
-              onMouseEnter={() => setHoveredIndex(i)} onMouseLeave={() => setHoveredIndex(null)} />
-            <circle cx={p.x} cy={p.y} r={hoveredIndex === i ? 5.5 : 4}
-              fill={hoveredIndex === i ? "#6366F1" : "#818CF8"}
-              stroke={hoveredIndex === i ? "#fff" : "none"} strokeWidth="2"
-              style={{ transition: "all 0.15s ease", pointerEvents: "none" }} />
-          </g>
-        ))}
-        {hovered && hoveredPt && (() => {
-          const { x: tx, y: ty } = getTooltipPos(hoveredPt);
-          return (
-            <g style={{ pointerEvents: "none" }}>
-              <defs>
-                <filter id="tt-shadow" x="-20%" y="-20%" width="140%" height="140%">
-                  <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="rgba(0,0,0,0.15)" />
-                </filter>
-              </defs>
-              <rect x={tx} y={ty} width={150} height={58} rx="8" fill="#1E293B" filter="url(#tt-shadow)" />
-              <text x={tx + 10} y={ty + 16} fontSize="10" fontWeight="700" fill="#F1F5F9">{hovered.skill}</text>
-              <circle cx={tx + 10} cy={ty + 30} r="4" fill="#818CF8" />
-              <text x={tx + 18} y={ty + 34} fontSize="9" fill="#94A3B8">Candidate:</text>
-              <text x={tx + 80} y={ty + 34} fontSize="9" fontWeight="700" fill="#818CF8">{Math.round(hovered.candidate)}%</text>
-              <circle cx={tx + 10} cy={ty + 46} r="4" fill="#22C55E" />
-              <text x={tx + 18} y={ty + 50} fontSize="9" fill="#94A3B8">Desired:</text>
-              <text x={tx + 80} y={ty + 50} fontSize="9" fontWeight="700" fill="#22C55E">{Math.round(hovered.desired)}%</text>
-            </g>
-          );
-        })()}
-      </svg>
+      {/* Chart + Tooltip wrapper */}
+      <Box
+        ref={wrapRef}
+        sx={{ position: "relative", width: size, height: size }}
+      >
+        <svg
+          ref={svgRef}
+          width={size}
+          height={size}
+          viewBox={`0 0 ${size} ${size}`}
+          style={{ overflow: "visible", display: "block" }}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
+        >
+          {/* Grid polygons */}
+          {Array.from({ length: levels }, (_, i) => (
+            <polygon
+              key={i}
+              points={gridPoly(i + 1)}
+              fill="none"
+              stroke="#E5E7EB"
+              strokeWidth="1"
+            />
+          ))}
+
+          {/* Axis lines */}
+          {scoreIntel.map((_, i) => {
+            const end = polar(100, i);
+            return (
+              <line
+                key={i}
+                x1={cx}
+                y1={cy}
+                x2={end.x}
+                y2={end.y}
+                stroke="#E5E7EB"
+                strokeWidth="1"
+              />
+            );
+          })}
+
+          {/* Desired polygon */}
+          <path
+            d={toPath(desiredPts)}
+            fill="rgba(34,197,94,0.10)"
+            stroke="#22C55E"
+            strokeWidth="1.5"
+          />
+
+          {/* Candidate polygon */}
+          <path
+            d={toPath(candidatePts)}
+            fill="rgba(129,140,248,0.20)"
+            stroke="#818CF8"
+            strokeWidth="2"
+          />
+
+          {/* Skill labels */}
+          {scoreIntel.map((d, i) => {
+            const labelR = R + 52;
+            const lx = cx + labelR * Math.cos(angle(i));
+            const ly = cy + labelR * Math.sin(angle(i));
+            const anchor =
+              Math.abs(lx - cx) < 5 ? "middle" : lx < cx ? "end" : "start";
+            const label =
+              d.skill.length > 14 ? d.skill.slice(0, 13) + "…" : d.skill;
+            return (
+              <text
+                key={i}
+                x={lx}
+                y={ly}
+                textAnchor={anchor}
+                dominantBaseline="middle"
+                fontSize="13"
+                fontWeight="600"
+                fill="#475569"
+              >
+                {label}
+              </text>
+            );
+          })}
+
+          {/* Level labels */}
+          {Array.from({ length: levels }, (_, i) => {
+            const r = ((i + 1) / levels) * R;
+            return (
+              <text
+                key={i}
+                x={cx + 4}
+                y={cy - r + 4}
+                fontSize="8"
+                fill="#9CA3AF"
+              >
+                {(i + 1) * 20}
+              </text>
+            );
+          })}
+
+          {/* Candidate data points */}
+          {candidatePts.map((p, i) => (
+            <circle
+              key={i}
+              cx={p.x}
+              cy={p.y}
+              r="4"
+              fill="#818CF8"
+              style={{ pointerEvents: "none" }}
+            />
+          ))}
+        </svg>
+
+        {/* Floating tooltip */}
+        {tooltip.visible && tooltip.data && (
+          <Box
+            sx={{
+              position: "absolute",
+              left: tooltip.x,
+              top: tooltip.y,
+              pointerEvents: "none",
+              background: "#1E293B",
+              borderRadius: "8px",
+              padding: "10px 12px",
+              minWidth: 160,
+              zIndex: 10,
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: 11,
+                fontWeight: 700,
+                color: "#F1F5F9",
+                mb: "6px",
+              }}
+            >
+              {tooltip.data.skill}
+            </Typography>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                mt: "4px",
+              }}
+            >
+              <Box
+                sx={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: "#818CF8",
+                  flexShrink: 0,
+                }}
+              />
+              <Typography sx={{ fontSize: 11, color: "#94A3B8" }}>
+                Candidate
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "#818CF8",
+                  ml: "auto",
+                }}
+              >
+                {Math.round(tooltip.data.candidate)}%
+              </Typography>
+            </Box>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                mt: "4px",
+              }}
+            >
+              <Box
+                sx={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: "50%",
+                  background: "#22C55E",
+                  flexShrink: 0,
+                }}
+              />
+              <Typography sx={{ fontSize: 11, color: "#94A3B8" }}>
+                Desired
+              </Typography>
+              <Typography
+                sx={{
+                  fontSize: 11,
+                  fontWeight: 700,
+                  color: "#22C55E",
+                  ml: "auto",
+                }}
+              >
+                {Math.round(tooltip.data.desired)}%
+              </Typography>
+            </Box>
+          </Box>
+        )}
+      </Box>
     </Box>
   );
 }
+
+// Usage example:
+// const data = [
+//   { skill: "JavaScript", candidate: 80, desired: 90 },
+//   { skill: "React",      candidate: 70, desired: 85 },
+//   { skill: "Node.js",    candidate: 65, desired: 75 },
+//   { skill: "CSS",        candidate: 90, desired: 80 },
+//   { skill: "Testing",    candidate: 55, desired: 70 },
+//   { skill: "TypeScript", candidate: 60, desired: 85 },
+// ];
+// <RadarChart scoreIntel={data} size={400} />
 
 /* ═══════════════════════════════════════════════
    PROFILE: EXPERIENCE LIST
 ═══════════════════════════════════════════════ */
 function ExperienceList({ candidate }) {
   const employment = candidate?.employment ?? [];
+  // Track which cards have "show all skills" expanded
+  const [expandedSkills, setExpandedSkills] = useState({});
 
   if (!employment.length)
-    return <Typography fontSize={15} color="#9CA3AF">No experience listed.</Typography>;
+    return (
+      <Typography fontSize={15} color="#9CA3AF">
+        No experience listed.
+      </Typography>
+    );
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
       {employment.map((emp, i) => {
         const isLast = i === employment.length - 1;
+        const isSkillsExpanded = !!expandedSkills[i];
+        const allSkills = emp.skills_used ?? [];
+        const LIMIT = 8;
+        const visibleSkills = isSkillsExpanded ? allSkills : allSkills.slice(0, LIMIT);
+        const hiddenCount = allSkills.length - LIMIT;
+
         return (
-          <Box key={emp.id ?? i} sx={{ display: "flex", gap: "16px" }}>
-            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-              <Box sx={{
-                width: 40, height: 40, borderRadius: "10px", backgroundColor: "#F3F4F6",
-                border: `1px solid ${C.border}`, display: "flex", alignItems: "center",
-                justifyContent: "center", flexShrink: 0,
-              }}>
-                <WorkOutlineOutlined sx={{ fontSize: 18, color: "#9CA3AF" }} />
+          <Box key={emp.id ?? i} sx={{ display: "flex", gap: "8px", mt: -2 }}>
+            {/* Left connector column */}
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 35,
+                  height: 35,
+                  borderRadius: "50%",
+                  backgroundColor: emp.is_current ? C.accent : "#F3F4F6",
+                  border: `1px solid ${emp.is_current ? C.accent : C.border}`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <BusinessOutlinedIcon
+                  sx={{
+                    fontSize: 15,
+                    color: emp.is_current ? "#FFFFFF" : "#9CA3AF",
+                  }}
+                />
               </Box>
               {!isLast && (
-                <Box sx={{ width: 1.5, flex: 1, minHeight: 24, backgroundColor: C.border, my: "6px" }} />
+                <Box
+                  sx={{
+                    width: 1.5,
+                    flex: 1,
+                    minHeight: 24,
+                    backgroundColor: C.border,
+                    my: "6px",
+                  }}
+                />
               )}
             </Box>
 
-            <Box sx={{ pb: isLast ? 0 : "24px", flex: 1, pt: "6px" }}>
-              <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "4px", mb: "2px" }}>
-                <Typography sx={{ fontSize: 14, fontWeight: 700, color: C.textPrimary }}>
-                  {emp.job_title}
-                </Typography>
-                <Typography sx={{ fontSize: 13, color: "#9CA3AF", whiteSpace: "nowrap" }}>
-                  {emp.joining_date ?? "—"} — {emp.is_current ? "Present" : (emp.end_date ?? "—")}
-                  {emp.duration ? `  ·  ${emp.duration}` : ""}
-                </Typography>
-              </Box>
-              <Typography sx={{ fontSize: 13, fontWeight: 600, color: C.accent, mb: "4px" }}>
-                {emp.company_name}
-                {emp.location ? `  ·  ${emp.location}${emp.country ? `, ${emp.country}` : ""}` : ""}
-              </Typography>
-              {emp.skills_used?.length > 0 && (
-                <Box sx={{ display: "flex", flexWrap: "wrap", gap: "6px", mt: "8px", alignItems: "center" }}>
-                  <Typography sx={{ fontSize: 10, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                    Skills used
+            {/* Card */}
+            <Box
+              sx={{
+                width: "100%",
+                border: "1px solid #FFD6C7",
+                borderRadius: "14px",
+                backgroundColor: "#FFFAF7",
+                p: "16px",
+                mb: 3,
+              }}
+            >
+              {/* Header */}
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "flex-start",
+                  gap: 2,
+                  mb: 0,
+                }}
+              >
+                <Box sx={{ flex: 1 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      flexWrap: "wrap",
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: 15,
+                        fontWeight: 700,
+                        color: "#0F172A",
+                        lineHeight: 1.3,
+                      }}
+                    >
+                      {emp.job_title}
+                    </Typography>
+                    {emp.is_current && (
+                      <Chip
+                        label="CURRENT"
+                        size="small"
+                        sx={{
+                          height: 18,
+                          backgroundColor: "#FFF0E8",
+                          color: "#FF5F1F",
+                          fontSize: 9,
+                          fontWeight: 700,
+                          borderRadius: "6px",
+                          "& .MuiChip-label": { px: 1 },
+                        }}
+                      />
+                    )}
+                  </Box>
+                  <Typography
+                    sx={{ mt: 0.25, fontSize: 14, fontWeight: 700, color: "#FF5F1F" }}
+                  >
+                    {emp.company_name}
                   </Typography>
-                  {emp.skills_used.slice(0, 10).map((sk) => (
-                    <Chip key={sk} label={sk} size="small" sx={{
-                      fontSize: 11, height: 22, backgroundColor: "#F3F4F6", color: "#374151",
-                      border: `1px solid ${C.border}`, borderRadius: "5px",
-                      "& .MuiChip-label": { px: "7px" },
-                    }} />
-                  ))}
-                  {emp.skills_used.length > 10 && (
-                    <Chip label={`+${emp.skills_used.length - 10} more`} size="small" sx={{
-                      fontSize: 11, height: 22, backgroundColor: C.accentSoft, color: C.accent,
-                      border: `1px solid #FFCFB3`, borderRadius: "5px",
-                      "& .MuiChip-label": { px: "7px" }, cursor: "pointer",
-                    }} />
+                </Box>
+
+                <Box sx={{ textAlign: "right" }}>
+                  <Box
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      px: 1.5,
+                      py: 0.5,
+                      borderRadius: "8px",
+                      border: "1px solid #E5E7EB",
+                      backgroundColor: "#F8FAFC",
+                    }}
+                  >
+                    <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#475569" }}>
+                      {emp.joining_date ?? "—"} —{" "}
+                      {emp.is_current ? "Present" : (emp.end_date ?? "—")}
+                    </Typography>
+                  </Box>
+                  {emp.duration && (
+                    <Typography sx={{ mt: 0.25, fontSize: 12, color: "#94A3B8" }}>
+                      {emp.duration}
+                    </Typography>
                   )}
                 </Box>
+              </Box>
+
+              {/* Location */}
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 2,
+                  flexWrap: "wrap",
+                  mt: 0,
+                  mb: 1,
+                }}
+              >
+                {emp.location && (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <LocationOnOutlinedIcon sx={{ fontSize: 14, color: "#8B8BA7" }} />
+                    <Typography sx={{ fontSize: 12, color: "#475569" }}>
+                      {emp.location}
+                    </Typography>
+                  </Box>
+                )}
+                {emp.country && (
+                  <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+                    <PublicOutlinedIcon sx={{ fontSize: 14, color: "#8B8BA7" }} />
+                    <Typography sx={{ fontSize: 12, color: "#475569" }}>
+                      {emp.country}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+
+              {/* Skills Used */}
+              {allSkills.length > 0 && (
+                <>
+                  <Typography
+                    sx={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: "#7C7C98",
+                      letterSpacing: "0.08em",
+                      textTransform: "uppercase",
+                      mb: 1,
+                    }}
+                  >
+                    Skills Used
+                  </Typography>
+
+                  <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+                    {visibleSkills.map((sk) => (
+                      <Chip
+                        key={sk}
+                        label={sk}
+                        size="small"
+                        sx={{
+                          height: 24,
+                          backgroundColor: "#EEF2FF",
+                          color: "#4338CA",
+                          border: "1px solid #DDE4FF",
+                          borderRadius: "8px",
+                          fontSize: 11,
+                          fontWeight: 500,
+                          "& .MuiChip-label": { px: 1 },
+                        }}
+                      />
+                    ))}
+
+                    {/* +N more / Show less toggle */}
+                    {!isSkillsExpanded && hiddenCount > 0 && (
+                      <Chip
+                        label={`+${hiddenCount} more`}
+                        size="small"
+                        onClick={() =>
+                          setExpandedSkills((prev) => ({ ...prev, [i]: true }))
+                        }
+                        sx={{
+                          height: 24,
+                          backgroundColor: "#FFF7ED",
+                          color: "#F97316",
+                          border: "1px solid #FDBA74",
+                          borderRadius: "8px",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          "& .MuiChip-label": { px: 1 },
+                          "&:hover": { backgroundColor: "#FFEDD5" },
+                        }}
+                      />
+                    )}
+
+                    {isSkillsExpanded && allSkills.length > LIMIT && (
+                      <Chip
+                        label="Show less"
+                        size="small"
+                        onClick={() =>
+                          setExpandedSkills((prev) => ({ ...prev, [i]: false }))
+                        }
+                        sx={{
+                          height: 24,
+                          backgroundColor: "#F3F4F6",
+                          color: "#6B7280",
+                          border: "1px solid #E5E7EB",
+                          borderRadius: "8px",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          "& .MuiChip-label": { px: 1 },
+                          "&:hover": { backgroundColor: "#E5E7EB" },
+                        }}
+                      />
+                    )}
+                  </Box>
+                </>
               )}
             </Box>
           </Box>
@@ -565,7 +1055,11 @@ function EducationList({ candidate }) {
   );
 
   if (!education.length)
-    return <Typography fontSize={15} color="#9CA3AF">No education listed.</Typography>;
+    return (
+      <Typography fontSize={15} color="#9CA3AF">
+        No education listed.
+      </Typography>
+    );
 
   return (
     <Box sx={{ display: "flex", flexDirection: "column" }}>
@@ -573,28 +1067,71 @@ function EducationList({ candidate }) {
         const isLast = i === education.length - 1;
         return (
           <Box key={edu.id ?? i} sx={{ display: "flex", gap: "16px" }}>
-            <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-              <Box sx={{
-                width: 40, height: 40, borderRadius: "10px", backgroundColor: C.tealSoft,
-                border: `1px solid #B2EBF2`, display: "flex", alignItems: "center",
-                justifyContent: "center", flexShrink: 0,
-              }}>
-                <SchoolOutlinedIcon sx={{ fontSize: 18, color: C.teal }} />
+            <Box
+              sx={{
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 40,
+                  height: 40,
+                  borderRadius: "10px",
+                  backgroundColor: C.tealSoft,
+                  border: `1px solid #B2EBF2`,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}
+              >
+                <SchoolOutlinedIcon sx={{ fontSize: 18, color: "#059669" }} />
               </Box>
               {!isLast && (
-                <Box sx={{ width: 1.5, flex: 1, minHeight: 24, backgroundColor: C.border, my: "6px" }} />
+                <Box
+                  sx={{
+                    width: 1.5,
+                    flex: 1,
+                    minHeight: 24,
+                    backgroundColor: C.border,
+                    my: "6px",
+                  }}
+                />
               )}
             </Box>
             <Box sx={{ pb: isLast ? 0 : "24px", flex: 1, pt: "6px" }}>
-              <Box sx={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "4px", mb: "2px" }}>
-                <Typography sx={{ fontSize: 14, fontWeight: 700, color: C.textPrimary }}>{edu.course}</Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  flexWrap: "wrap",
+                  gap: "4px",
+                  mb: "2px",
+                }}
+              >
+                <Typography
+                  sx={{ fontSize: 14, fontWeight: 700, color: C.textPrimary }}
+                >
+                  {edu.course}
+                </Typography>
                 {edu.end_year && (
-                  <Typography sx={{ fontSize: 13, color: "#9CA3AF" }}>{edu.end_year}</Typography>
+                  <Typography sx={{ fontSize: 13, color: "#9CA3AF" }}>
+                    {edu.end_year}
+                  </Typography>
                 )}
               </Box>
-              <Typography sx={{ fontSize: 13, color: C.textSecondary }}>{edu.university}</Typography>
+              <Typography
+                sx={{ fontSize: 13, color: "#059669", fontWeight: 600 }}
+              >
+                {edu.university}
+              </Typography>
               {edu.specialization && (
-                <Typography sx={{ fontSize: 13, color: "#9CA3AF", mt: "2px" }}>{edu.specialization}</Typography>
+                <Typography sx={{ fontSize: 13, color: "#9CA3AF", mt: "2px" }}>
+                  {edu.specialization}
+                </Typography>
               )}
             </Box>
           </Box>
@@ -610,12 +1147,21 @@ function EducationList({ candidate }) {
 function SkillsPanel({ candidate }) {
   const keySkills = candidate?.skill_info?.[0]?.key_skills ?? "";
   const skills = keySkills
-    ? keySkills.split(",").map((s) => s.trim()).filter(Boolean)
+    ? keySkills
+        .split(",")
+        .map((s) => s.trim())
+        .filter(Boolean)
     : [];
 
-  const matchedPrimary = (candidate?.matched_primary_skills ?? []).map((s) => s.toLowerCase());
-  const matchedSecondary = (candidate?.matched_secondary_skills ?? []).map((s) => s.toLowerCase());
-  const matchedMandatory = (candidate?.matched_mandatory_skills ?? []).map((s) => s.toLowerCase());
+  const matchedPrimary = (candidate?.matched_primary_skills ?? []).map((s) =>
+    s.toLowerCase(),
+  );
+  const matchedSecondary = (candidate?.matched_secondary_skills ?? []).map(
+    (s) => s.toLowerCase(),
+  );
+  const matchedMandatory = (candidate?.matched_mandatory_skills ?? []).map(
+    (s) => s.toLowerCase(),
+  );
 
   const getChipStyle = (skill) => {
     const sl = skill.toLowerCase();
@@ -629,18 +1175,48 @@ function SkillsPanel({ candidate }) {
   };
 
   if (!skills.length)
-    return <Typography fontSize={15} color="#9CA3AF">No skills listed.</Typography>;
+    return (
+      <Typography fontSize={15} color="#9CA3AF">
+        No skills listed.
+      </Typography>
+    );
 
   return (
     <Box>
       <Box sx={{ display: "flex", gap: "14px", mb: "16px", flexWrap: "wrap" }}>
         {[
-          { label: "Mandatory Match", bg: "#FFF0E8", color: C.accent, border: "#fa6007" },
-          { label: "Primary Match", bg: "#E0F2FE", color: "#1803ff", border: "#BAE6FD" },
-          { label: "Secondary Match", bg: "#F3F4F6", color: "#556c91", border: "#E5E7EB" },
+          {
+            label: "Mandatory Match",
+            bg: "#FFF0E8",
+            color: C.accent,
+            border: "#fa6007",
+          },
+          {
+            label: "Primary Match",
+            bg: "#E0F2FE",
+            color: "#1803ff",
+            border: "#BAE6FD",
+          },
+          {
+            label: "Secondary Match",
+            bg: "#F3F4F6",
+            color: "#556c91",
+            border: "#E5E7EB",
+          },
         ].map((l) => (
-          <Box key={l.label} sx={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <Box sx={{ width: 9, height: 9, borderRadius: "3px", backgroundColor: l.bg, border: `1px solid ${l.border}` }} />
+          <Box
+            key={l.label}
+            sx={{ display: "flex", alignItems: "center", gap: "6px" }}
+          >
+            <Box
+              sx={{
+                width: 9,
+                height: 9,
+                borderRadius: "3px",
+                backgroundColor: l.bg,
+                border: `1px solid ${l.border}`,
+              }}
+            />
             <Typography sx={{ fontSize: 13 }}>{l.label}</Typography>
           </Box>
         ))}
@@ -649,11 +1225,21 @@ function SkillsPanel({ candidate }) {
         {skills.map((skill) => {
           const style = getChipStyle(skill);
           return (
-            <Chip key={skill} label={skill} size="small" sx={{
-              fontSize: 12, height: 26, backgroundColor: style.bg, color: style.color,
-              border: `1px solid ${style.border}`, borderRadius: "6px", fontWeight: 500,
-              "& .MuiChip-label": { px: "9px" },
-            }} />
+            <Chip
+              key={skill}
+              label={skill}
+              size="small"
+              sx={{
+                fontSize: 12,
+                height: 26,
+                backgroundColor: style.bg,
+                color: style.color,
+                border: `1px solid ${style.border}`,
+                borderRadius: "6px",
+                fontWeight: 500,
+                "& .MuiChip-label": { px: "9px" },
+              }}
+            />
           );
         })}
       </Box>
@@ -664,6 +1250,306 @@ function SkillsPanel({ candidate }) {
 /* ═══════════════════════════════════════════════
    PROFILE: SKILL INTEL PANEL (radar + scores dialog)
 ═══════════════════════════════════════════════ */
+function SkillNotesAccordion({ skillNotes = {}, scoreIntel = [] }) {
+  const notesArray = Object.entries(skillNotes);
+
+  if (!notesArray.length) return null;
+
+  return (
+    <Box sx={{ mt: 2 }}>
+      <Typography
+        sx={{
+          fontSize: 16,
+          fontWeight: 700,
+          mb: 2,
+          color: "#111827",
+        }}
+      >
+        Skill Notes
+      </Typography>
+
+      {notesArray.map(([skill, note]) => {
+        const scoreData = scoreIntel.find(
+          (s) => s.skill?.toLowerCase() === skill?.toLowerCase(),
+        );
+
+        const score = scoreData?.candidate || 0;
+
+        const noteText = typeof note === "object" ? note.value : note;
+
+        return (
+          <Accordion
+            key={skill}
+            disableGutters
+            sx={{
+              mb: 1.5,
+              border: "1px solid #E5E7EB",
+              borderRadius: "14px !important",
+              overflow: "hidden",
+              boxShadow: "0 2px 10px rgba(0,0,0,0.04)",
+              "&:before": {
+                display: "none",
+              },
+            }}
+          >
+            <AccordionSummary expandIcon={<ExpandMoreIcon />}>
+              <Box
+                sx={{
+                  width: "100%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: 2,
+                }}
+              >
+                {/* Left Section */}
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 2,
+                    flex: 1,
+                  }}
+                >
+                  <Box sx={{ position: "relative" }}>
+                    <CircularProgress
+                      variant="determinate"
+                      value={score}
+                      size={42}
+                      thickness={5}
+                      sx={{
+                        color: "#10B981",
+                      }}
+                    />
+
+                    <Box
+                      sx={{
+                        position: "absolute",
+                        inset: 0,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                      }}
+                    >
+                      <Typography
+                        sx={{
+                          fontSize: 10,
+                          fontWeight: 700,
+                        }}
+                      >
+                        {Math.round(score)}%
+                      </Typography>
+                    </Box>
+                  </Box>
+
+                  <Typography
+                    sx={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: "#111827",
+                    }}
+                  >
+                    {skill}
+                  </Typography>
+                </Box>
+
+                {/* Right Section */}
+                <Box sx={{ width: 240 }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      mb: 1,
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        width: 20,
+                        fontSize: 10,
+                        fontWeight: 600,
+                      }}
+                    >
+                      AI
+                    </Typography>
+
+                    <LinearProgress
+                      variant="determinate"
+                      value={score}
+                      sx={{
+                        flex: 1,
+                        height: 4,
+                        borderRadius: 999,
+                        backgroundColor: "#E5E7EB",
+                        "& .MuiLinearProgress-bar": {
+                          borderRadius: 999,
+                          backgroundColor: "#10B981",
+                        },
+                      }}
+                    />
+
+                    <Chip
+                      label={`${score}%`}
+                      size="small"
+                      sx={{
+                        bgcolor: "#ECFDF5",
+                        color: "#059669",
+                        fontSize: 10,
+                        fontWeight: 700,
+                      }}
+                    />
+                  </Box>
+
+                  {/* <Box
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                    }}
+                  >
+                    <Typography
+                      sx={{
+                        width: 20,
+                        fontSize: 10,
+                        fontWeight: 600,
+                      }}
+                    >
+                      MNL
+                    </Typography>
+
+                    <LinearProgress
+                      variant="determinate"
+                      value={0}
+                      sx={{
+                        flex: 1,
+                        height: 4,
+                        borderRadius: 999,
+                        backgroundColor: "#E5E7EB",
+                      }}
+                    />
+
+                    <Chip
+                      label="—"
+                      size="small"
+                      sx={{
+                        bgcolor: "#F3F4F6",
+                      }}
+                    />
+                  </Box> */}
+                </Box>
+
+                {/* <IconButton size="small">
+                  <EditOutlinedIcon />
+                </IconButton> */}
+              </Box>
+            </AccordionSummary>
+
+            <AccordionDetails
+              sx={{
+                background: "#FAFAFA",
+                borderTop: "1px solid #F3F4F6",
+              }}
+            >
+              {/* AI Notes */}
+              <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: "#EEF2FF",
+                  mb: 2,
+                }}
+              >
+                {/* <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    mb: 1,
+                  }}
+                >
+                  <AutoAwesomeIcon
+                    sx={{
+                      fontSize: 18,
+                      color: "#4F46E5",
+                    }}
+                  />
+
+                  <Typography
+                    sx={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "#4F46E5",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    AI Skill Notes
+                  </Typography>
+                </Box> */}
+
+                <Typography
+                  sx={{
+                    fontSize: 14,
+                    lineHeight: 1.8,
+                    color: "#374151",
+                  }}
+                >
+                  {noteText}
+                </Typography>
+              </Box>
+
+              {/* Reviewer Notes */}
+              {/* <Box
+                sx={{
+                  p: 2,
+                  borderRadius: 2,
+                  bgcolor: "#FFFFFF",
+                  border: "1px dashed #D1D5DB",
+                }}
+              >
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    mb: 1,
+                  }}
+                >
+                  <RateReviewOutlinedIcon
+                    sx={{
+                      fontSize: 18,
+                      color: "#6B7280",
+                    }}
+                  />
+
+                  <Typography
+                    sx={{
+                      fontSize: 13,
+                      fontWeight: 700,
+                      color: "#6B7280",
+                      textTransform: "uppercase",
+                    }}
+                  >
+                    Reviewer Notes
+                  </Typography>
+                </Box>
+
+                <Typography
+                  sx={{
+                    fontSize: 14,
+                    color: "#9CA3AF",
+                    fontStyle: "italic",
+                  }}
+                >
+                  Not overridden — using AI Skill Notes.
+                </Typography>
+              </Box> */}
+            </AccordionDetails>
+          </Accordion>
+        );
+      })}
+    </Box>
+  );
+}
 function SkillIntelPanel({ candidate }) {
   const skillInfo = candidate?.skill_info?.[0] ?? {};
   const scoreIntel = candidate?.score_intel ?? [];
@@ -671,13 +1557,21 @@ function SkillIntelPanel({ candidate }) {
   const summary = skillInfo.summary ?? "";
   const [skillScoresOpen, setSkillScoresOpen] = React.useState(false);
 
-  const hasContent = scoreIntel.length > 0 || summary || Object.keys(skillNotes).length > 0;
+  const hasContent =
+    scoreIntel.length > 0 || summary || Object.keys(skillNotes).length > 0;
   if (!hasContent) return null;
 
   return (
     <Box>
       {scoreIntel.length > 0 && (
-        <Box sx={{ display: "flex", justifyContent: "center", mb: "20px", width: "100%" }}>
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "center",
+            mb: "20px",
+            width: "100%",
+          }}
+        >
           <RadarChart scoreIntel={scoreIntel} size={350} />
         </Box>
       )}
@@ -687,40 +1581,68 @@ function SkillIntelPanel({ candidate }) {
           <Box
             onClick={() => setSkillScoresOpen(true)}
             sx={{
-              display: "inline-flex", alignItems: "center", gap: "6px",
-              border: `1px solid ${C.border}`, borderRadius: "8px",
-              px: "12px", py: "6px", cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "6px",
+              border: `1px solid ${C.border}`,
+              borderRadius: "8px",
+              px: "12px",
+              py: "6px",
+              cursor: "pointer",
               "&:hover": { backgroundColor: C.accentSoft },
             }}
           >
             <TrendingUpIcon sx={{ fontSize: 14, color: C.accent }} />
-            <Typography sx={{ fontSize: 13, fontWeight: 600, color: C.accent }}>View all skill scores</Typography>
+            <Typography sx={{ fontSize: 13, fontWeight: 600, color: C.accent }}>
+              View all skill scores
+            </Typography>
           </Box>
         </Box>
       )}
 
       {summary && (
         <Box sx={{ mb: "16px" }}>
-          <Typography sx={{ fontSize: 15 }} lineHeight={1.75}>{summary}</Typography>
+          <Typography
+            sx={{ fontSize: 14, fontWeight: 600, color: "#000", mb: 1 }}
+          >
+            Skill Summary
+          </Typography>
+          <Typography sx={{ fontSize: 15 }} lineHeight={1.75}>
+            {summary}
+          </Typography>
         </Box>
       )}
 
-      {Object.keys(skillNotes).length > 0 && (
+      {/* {Object.keys(skillNotes).length > 0 && (
         <Box sx={{ display: "flex", flexDirection: "column", gap: "6px" }}>
           {Object.entries(skillNotes).map(([key, note]) => {
-            const noteText = typeof note === "object" && note !== null ? note.value : note;
+            const noteText =
+              typeof note === "object" && note !== null ? note.value : note;
             if (!noteText) return null;
             return (
               <Box key={key} sx={{ display: "flex", gap: "6px" }}>
-                <Typography color={C.textPrimary} sx={{ minWidth: "fit-content", fontWeight: T.labelFontWeight, fontSize: 14 }}>
+                <Typography
+                  color={C.textPrimary}
+                  sx={{
+                    minWidth: "fit-content",
+                    fontWeight: T.labelFontWeight,
+                    fontSize: 14,
+                  }}
+                >
                   {key} :
                 </Typography>
-                <Typography sx={{ fontSize: 14 }} lineHeight={1.65}>{noteText}</Typography>
+                <Typography sx={{ fontSize: 14 }} lineHeight={1.65}>
+                  {noteText}
+                </Typography>
               </Box>
             );
           })}
         </Box>
-      )}
+      )} */}
+      <SkillNotesAccordion
+        skillNotes={candidate?.skill_notes ?? {}}
+        scoreIntel={candidate?.score_intel ?? []}
+      />
 
       {/* Skill Scores Dialog */}
       <Dialog
@@ -729,90 +1651,353 @@ function SkillIntelPanel({ candidate }) {
         maxWidth="sm"
         fullWidth
         PaperProps={{
-          sx: { width: "500px", borderRadius: "14px", overflow: "hidden", boxShadow: "0 16px 50px rgba(0,0,0,0.14)" },
+          sx: {
+            width: "500px",
+            borderRadius: "14px",
+            overflow: "hidden",
+            boxShadow: "0 16px 50px rgba(0,0,0,0.14)",
+          },
         }}
       >
-        <DialogTitle sx={{
-          px: "16px", py: "12px", borderBottom: `1px solid ${C.border}`,
-          display: "flex", alignItems: "center", justifyContent: "space-between", background: "#fff",
-        }}>
+        <DialogTitle
+          sx={{
+            px: "16px",
+            py: "12px",
+            borderBottom: `1px solid ${C.border}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            background: "#fff",
+          }}
+        >
           <Box sx={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <Box sx={{ width: 32, height: 32, borderRadius: "8px", background: "#FFF7ED", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Box
+              sx={{
+                width: 32,
+                height: 32,
+                borderRadius: "8px",
+                background: "#FFF7ED",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
               <TrendingUpIcon sx={{ fontSize: 15, color: "#F97316" }} />
             </Box>
             <Box>
-              <Typography sx={{ fontSize: 13, fontWeight: 700, color: C.textPrimary, lineHeight: 1.1 }}>All Skill Scores</Typography>
-              <Typography sx={{ fontSize: 10, color: "#9CA3AF", mt: "2px" }}>{scoreIntel.length} skills evaluated</Typography>
+              <Typography
+                sx={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: C.textPrimary,
+                  lineHeight: 1.1,
+                }}
+              >
+                All Skill Scores
+              </Typography>
+              <Typography sx={{ fontSize: 10, color: "#9CA3AF", mt: "2px" }}>
+                {scoreIntel.length} skills evaluated
+              </Typography>
             </Box>
           </Box>
-          <IconButton size="small" onClick={() => setSkillScoresOpen(false)}
-            sx={{ width: 26, height: 26, borderRadius: "7px", backgroundColor: "#F3F4F6", "&:hover": { backgroundColor: "#E5E7EB" } }}>
+          <IconButton
+            size="small"
+            onClick={() => setSkillScoresOpen(false)}
+            sx={{
+              width: 26,
+              height: 26,
+              borderRadius: "7px",
+              backgroundColor: "#F3F4F6",
+              "&:hover": { backgroundColor: "#E5E7EB" },
+            }}
+          >
             <CloseIcon sx={{ fontSize: 12, color: "#6B7280" }} />
           </IconButton>
         </DialogTitle>
 
-        <Box sx={{ px: "16px", py: "9px", display: "flex", gap: "7px", borderBottom: `1px solid ${C.border}`, backgroundColor: "#FAFAFA" }}>
+        <Box
+          sx={{
+            px: "16px",
+            py: "9px",
+            display: "flex",
+            gap: "7px",
+            borderBottom: `1px solid ${C.border}`,
+            backgroundColor: "#FAFAFA",
+          }}
+        >
           {[
-            { label: "Strong", color: "#22C55E", bg: "#DCFCE7", count: scoreIntel.filter((s) => s.desired > 0 && s.candidate / s.desired >= 0.9).length },
-            { label: "Good", color: "#F97316", bg: "#FED7AA", count: scoreIntel.filter((s) => s.desired > 0 && s.candidate / s.desired >= 0.7 && s.candidate / s.desired < 0.9).length },
-            { label: "Gap", color: "#EF4444", bg: "#FECACA", count: scoreIntel.filter((s) => s.desired > 0 && s.candidate / s.desired < 0.7).length },
+            {
+              label: "Strong",
+              color: "#22C55E",
+              bg: "#DCFCE7",
+              count: scoreIntel.filter(
+                (s) => s.desired > 0 && s.candidate / s.desired >= 0.9,
+              ).length,
+            },
+            {
+              label: "Good",
+              color: "#F97316",
+              bg: "#FED7AA",
+              count: scoreIntel.filter(
+                (s) =>
+                  s.desired > 0 &&
+                  s.candidate / s.desired >= 0.7 &&
+                  s.candidate / s.desired < 0.9,
+              ).length,
+            },
+            {
+              label: "Gap",
+              color: "#EF4444",
+              bg: "#FECACA",
+              count: scoreIntel.filter(
+                (s) => s.desired > 0 && s.candidate / s.desired < 0.7,
+              ).length,
+            },
           ].map(({ label, color, bg, count }) => (
-            <Box key={label} sx={{ display: "flex", alignItems: "center", gap: "4px", px: "9px", py: "4px", borderRadius: "999px", backgroundColor: bg }}>
-              <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: color, flexShrink: 0 }} />
-              <Typography sx={{ fontSize: 10, fontWeight: 700, color, lineHeight: 1 }}>{count}</Typography>
-              <Typography sx={{ fontSize: 10, fontWeight: 600, color, lineHeight: 1 }}>{label}</Typography>
+            <Box
+              key={label}
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+                px: "9px",
+                py: "4px",
+                borderRadius: "999px",
+                backgroundColor: bg,
+              }}
+            >
+              <Box
+                sx={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: "50%",
+                  backgroundColor: color,
+                  flexShrink: 0,
+                }}
+              />
+              <Typography
+                sx={{ fontSize: 10, fontWeight: 700, color, lineHeight: 1 }}
+              >
+                {count}
+              </Typography>
+              <Typography
+                sx={{ fontSize: 10, fontWeight: 600, color, lineHeight: 1 }}
+              >
+                {label}
+              </Typography>
             </Box>
           ))}
         </Box>
 
-        <Box sx={{ display: "grid", gridTemplateColumns: "1fr 90px 90px 58px", px: "16px", py: "6px", backgroundColor: "#F9FAFB", borderBottom: `1px solid ${C.border}` }}>
+        <Box
+          sx={{
+            display: "grid",
+            gridTemplateColumns: "1fr 90px 90px 58px",
+            px: "16px",
+            py: "6px",
+            backgroundColor: "#F9FAFB",
+            borderBottom: `1px solid ${C.border}`,
+          }}
+        >
           {["Skill", "Candidate", "Desired", "Match"].map((h) => (
-            <Typography key={h} sx={{ fontSize: 8.5, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em" }}>{h}</Typography>
+            <Typography
+              key={h}
+              sx={{
+                fontSize: 8.5,
+                fontWeight: 700,
+                color: "#9CA3AF",
+                textTransform: "uppercase",
+                letterSpacing: "0.08em",
+              }}
+            >
+              {h}
+            </Typography>
           ))}
         </Box>
 
         <DialogContent sx={{ p: 0, maxHeight: 300, overflowY: "auto" }}>
           {scoreIntel.map((s, i) => {
-            const pct = s.desired > 0 ? Math.round((s.candidate / s.desired) * 100) : 0;
+            const pct =
+              s.desired > 0 ? Math.round((s.candidate / s.desired) * 100) : 0;
             const isStrong = pct >= 90;
             const isGood = pct >= 70 && pct < 90;
-            const barColor = isStrong ? "#22C55E" : isGood ? "#F97316" : "#EF4444";
-            const badgeBg = isStrong ? "#DCFCE7" : isGood ? "#FED7AA" : "#FECACA";
+            const barColor = isStrong
+              ? "#22C55E"
+              : isGood
+                ? "#F97316"
+                : "#EF4444";
+            const badgeBg = isStrong
+              ? "#DCFCE7"
+              : isGood
+                ? "#FED7AA"
+                : "#FECACA";
             return (
-              <Box key={s.skill} sx={{
-                display: "grid", gridTemplateColumns: "1fr 90px 90px 58px",
-                px: "16px", py: "7px", alignItems: "center", borderBottom: `1px solid #F3F4F6`,
-                backgroundColor: i % 2 === 0 ? "#fff" : "#FCFCFD",
-                "&:hover": { backgroundColor: "#F9FAFB" }, transition: "background 0.15s",
-              }}>
-                <Typography sx={{ fontSize: 10, fontWeight: 600, color: C.textPrimary, lineHeight: 1.3, pr: "10px" }}>{s.skill}</Typography>
-                <Box sx={{ display: "flex", alignItems: "center", gap: "5px", pr: "8px" }}>
-                  <Box sx={{ flex: 1, height: 4, backgroundColor: "#E5E7EB", borderRadius: "999px", overflow: "hidden" }}>
-                    <Box sx={{ height: "100%", width: `${Math.min(s.candidate, 100)}%`, backgroundColor: barColor, borderRadius: "999px", transition: "width 0.4s ease" }} />
+              <Box
+                key={s.skill}
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: "1fr 90px 90px 58px",
+                  px: "16px",
+                  py: "7px",
+                  alignItems: "center",
+                  borderBottom: `1px solid #F3F4F6`,
+                  backgroundColor: i % 2 === 0 ? "#fff" : "#FCFCFD",
+                  "&:hover": { backgroundColor: "#F9FAFB" },
+                  transition: "background 0.15s",
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontSize: 10,
+                    fontWeight: 600,
+                    color: C.textPrimary,
+                    lineHeight: 1.3,
+                    pr: "10px",
+                  }}
+                >
+                  {s.skill}
+                </Typography>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    pr: "8px",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      flex: 1,
+                      height: 4,
+                      backgroundColor: "#E5E7EB",
+                      borderRadius: "999px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        height: "100%",
+                        width: `${Math.min(s.candidate, 100)}%`,
+                        backgroundColor: barColor,
+                        borderRadius: "999px",
+                        transition: "width 0.4s ease",
+                      }}
+                    />
                   </Box>
-                  <Typography sx={{ fontSize: 10, fontWeight: 700, color: barColor, minWidth: "20px", textAlign: "right" }}>{s.candidate}</Typography>
+                  <Typography
+                    sx={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: barColor,
+                      minWidth: "20px",
+                      textAlign: "right",
+                    }}
+                  >
+                    {s.candidate}
+                  </Typography>
                 </Box>
-                <Box sx={{ display: "flex", alignItems: "center", gap: "5px", pr: "8px" }}>
-                  <Box sx={{ flex: 1, height: 4, backgroundColor: "#E5E7EB", borderRadius: "999px", overflow: "hidden" }}>
-                    <Box sx={{ height: "100%", width: `${Math.min(s.desired, 100)}%`, backgroundColor: "#3B82F6", borderRadius: "999px", transition: "width 0.4s ease" }} />
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    pr: "8px",
+                  }}
+                >
+                  <Box
+                    sx={{
+                      flex: 1,
+                      height: 4,
+                      backgroundColor: "#E5E7EB",
+                      borderRadius: "999px",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        height: "100%",
+                        width: `${Math.min(s.desired, 100)}%`,
+                        backgroundColor: "#3B82F6",
+                        borderRadius: "999px",
+                        transition: "width 0.4s ease",
+                      }}
+                    />
                   </Box>
-                  <Typography sx={{ fontSize: 10, fontWeight: 700, color: "#3B82F6", minWidth: "20px", textAlign: "right" }}>{s.desired}</Typography>
+                  <Typography
+                    sx={{
+                      fontSize: 10,
+                      fontWeight: 700,
+                      color: "#3B82F6",
+                      minWidth: "20px",
+                      textAlign: "right",
+                    }}
+                  >
+                    {s.desired}
+                  </Typography>
                 </Box>
-                <Box sx={{ display: "inline-flex", alignItems: "center", justifyContent: "center", px: "7px", py: "3px", borderRadius: "999px", backgroundColor: badgeBg }}>
-                  <Typography sx={{ fontSize: 9, fontWeight: 700, color: barColor, lineHeight: 1 }}>{pct}%</Typography>
+                <Box
+                  sx={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    px: "7px",
+                    py: "3px",
+                    borderRadius: "999px",
+                    backgroundColor: badgeBg,
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: 9,
+                      fontWeight: 700,
+                      color: barColor,
+                      lineHeight: 1,
+                    }}
+                  >
+                    {pct}%
+                  </Typography>
                 </Box>
               </Box>
             );
           })}
         </DialogContent>
 
-        <Box sx={{ px: "16px", py: "10px", borderTop: `1px solid ${C.border}`, backgroundColor: "#FAFAFA", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <Typography sx={{ fontSize: 10, color: C.textSecondary }}>Scores are out of 100</Typography>
+        <Box
+          sx={{
+            px: "16px",
+            py: "10px",
+            borderTop: `1px solid ${C.border}`,
+            backgroundColor: "#FAFAFA",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <Typography sx={{ fontSize: 10, color: C.textSecondary }}>
+            Scores are out of 100
+          </Typography>
           <Box sx={{ display: "flex", gap: "12px" }}>
-            {[{ label: "≥ 90%", color: "#22C55E" }, { label: "≥ 70%", color: "#F97316" }, { label: "< 70%", color: "#EF4444" }].map(({ label, color }) => (
-              <Box key={label} sx={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                <Box sx={{ width: 6, height: 6, borderRadius: "50%", backgroundColor: color }} />
-                <Typography sx={{ fontSize: 9, color: C.textSecondary }}>{label}</Typography>
+            {[
+              { label: "≥ 90%", color: "#22C55E" },
+              { label: "≥ 70%", color: "#F97316" },
+              { label: "< 70%", color: "#EF4444" },
+            ].map(({ label, color }) => (
+              <Box
+                key={label}
+                sx={{ display: "flex", alignItems: "center", gap: "4px" }}
+              >
+                <Box
+                  sx={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    backgroundColor: color,
+                  }}
+                />
+                <Typography sx={{ fontSize: 9, color: C.textSecondary }}>
+                  {label}
+                </Typography>
               </Box>
             ))}
           </Box>
@@ -825,6 +2010,7 @@ function SkillIntelPanel({ candidate }) {
 /* ═══════════════════════════════════════════════
    PROFILE TAB — Skill Intel only
 ═══════════════════════════════════════════════ */
+
 function SkillIntelTab({ candidate }) {
   const hasSkillIntel =
     (candidate?.score_intel ?? []).length > 0 ||
@@ -833,21 +2019,33 @@ function SkillIntelTab({ candidate }) {
 
   if (!hasSkillIntel) {
     return (
-      <Box sx={{
-        textAlign: "center", py: 8, border: `1px solid ${C.border}`,
-        borderRadius: "12px", backgroundColor: "#fff",
-      }}>
+      <Box
+        sx={{
+          textAlign: "center",
+          py: 8,
+          border: `1px solid ${C.border}`,
+          borderRadius: "12px",
+          backgroundColor: "#fff",
+        }}
+      >
         <TrendingUpIcon sx={{ fontSize: 40, color: "#D1D5DB", mb: 1.5 }} />
-        <Typography fontSize={15} color={C.textSecondary}>No skill intelligence data available.</Typography>
+        <Typography fontSize={15} color={C.textSecondary}>
+          No skill intelligence data available.
+        </Typography>
       </Box>
     );
   }
 
   return (
-    <Box sx={{
-      border: `1px solid ${C.border}`, borderRadius: "14px",
-      backgroundColor: "#fff", px: "28px", py: "24px",
-    }}>
+    <Box
+      sx={{
+        border: `1px solid ${C.border}`,
+        borderRadius: "14px",
+        backgroundColor: "#fff",
+        px: "28px",
+        py: "24px",
+      }}
+    >
       <SkillIntelPanel candidate={candidate} />
     </Box>
   );
@@ -858,10 +2056,15 @@ function SkillIntelTab({ candidate }) {
 ═══════════════════════════════════════════════ */
 function ExperienceTab({ candidate }) {
   return (
-    <Box sx={{
-      border: `1px solid ${C.border}`, borderRadius: "14px",
-      backgroundColor: "#fff", px: "28px", py: "24px",
-    }}>
+    <Box
+      sx={{
+        // border: `1px solid ${C.border}`,
+        borderRadius: "14px",
+        backgroundColor: "#fff",
+        px: "5px",
+        py: "24px",
+      }}
+    >
       <ExperienceList candidate={candidate} />
     </Box>
   );
@@ -872,10 +2075,15 @@ function ExperienceTab({ candidate }) {
 ═══════════════════════════════════════════════ */
 function EducationTab({ candidate }) {
   return (
-    <Box sx={{
-      border: `1px solid ${C.border}`, borderRadius: "14px",
-      backgroundColor: "#fff", px: "28px", py: "24px",
-    }}>
+    <Box
+      sx={{
+        border: `1px solid ${C.border}`,
+        borderRadius: "14px",
+        backgroundColor: "#fff",
+        px: "28px",
+        py: "24px",
+      }}
+    >
       <EducationList candidate={candidate} />
     </Box>
   );
@@ -887,14 +2095,23 @@ function EducationTab({ candidate }) {
 function SkillsTab({ candidate }) {
   const certifications = candidate?.certifications ?? [];
   return (
-    <Box sx={{
-      border: `1px solid ${C.border}`, borderRadius: "14px",
-      backgroundColor: "#fff", px: "28px", py: "24px",
-      display: "flex", flexDirection: "column", gap: "28px",
-    }}>
+    <Box
+      sx={{
+        border: `1px solid ${C.border}`,
+        borderRadius: "14px",
+        backgroundColor: "#fff",
+        px: "28px",
+        py: "24px",
+        display: "flex",
+        flexDirection: "column",
+        gap: "28px",
+      }}
+    >
       <Box>
         <SectionHeader
-          icon={<PsychologyOutlinedIcon sx={{ fontSize: 18, color: "#818CF8" }} />}
+          icon={
+            <PsychologyOutlinedIcon sx={{ fontSize: 18, color: "#818CF8" }} />
+          }
           label="Skills"
         />
         <SkillsPanel candidate={candidate} />
@@ -903,7 +2120,11 @@ function SkillsTab({ candidate }) {
       {certifications.length > 0 && (
         <Box>
           <SectionHeader
-            icon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 18, color: "#16A34A" }} />}
+            icon={
+              <InsertDriveFileOutlinedIcon
+                sx={{ fontSize: 18, color: "#16A34A" }}
+              />
+            }
             label="Certifications"
           />
           <Box sx={{ display: "flex", flexDirection: "column" }}>
@@ -911,28 +2132,61 @@ function SkillsTab({ candidate }) {
               const isLast = i === certifications.length - 1;
               return (
                 <Box key={cert.id ?? i} sx={{ display: "flex", gap: "16px" }}>
-                  <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
-                    <Box sx={{
-                      width: 40, height: 40, borderRadius: "10px", backgroundColor: "#F0FDF4",
-                      border: `1px solid #BBF7D0`, display: "flex", alignItems: "center",
-                      justifyContent: "center", flexShrink: 0,
-                    }}>
-                      <InsertDriveFileOutlinedIcon sx={{ fontSize: 18, color: "#16A34A" }} />
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: "10px",
+                        backgroundColor: "#F0FDF4",
+                        border: `1px solid #BBF7D0`,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <InsertDriveFileOutlinedIcon
+                        sx={{ fontSize: 18, color: "#16A34A" }}
+                      />
                     </Box>
                     {!isLast && (
-                      <Box sx={{ width: 1.5, flex: 1, minHeight: 24, backgroundColor: C.border, my: "6px" }} />
+                      <Box
+                        sx={{
+                          width: 1.5,
+                          flex: 1,
+                          minHeight: 24,
+                          backgroundColor: C.border,
+                          my: "6px",
+                        }}
+                      />
                     )}
                   </Box>
                   <Box sx={{ pb: isLast ? 0 : "24px", flex: 1, pt: "6px" }}>
-                    <Typography fontSize={14} fontWeight={700} color={C.textPrimary} mb="2px">
+                    <Typography
+                      fontSize={14}
+                      fontWeight={700}
+                      color={C.textPrimary}
+                      mb="2px"
+                    >
                       {cert.name ?? cert.title ?? "Certification"}
                     </Typography>
                     {cert.issuer && (
-                      <Typography fontSize={13} color={C.textSecondary}>{cert.issuer}</Typography>
+                      <Typography fontSize={13} color={C.textSecondary}>
+                        {cert.issuer}
+                      </Typography>
                     )}
                     {cert.issued_date && (
                       <Typography fontSize={13} color="#9CA3AF" mt="2px">
-                        {cert.issued_date}{cert.expiry_date ? ` — ${cert.expiry_date}` : ""}
+                        {cert.issued_date}
+                        {cert.expiry_date ? ` — ${cert.expiry_date}` : ""}
                       </Typography>
                     )}
                   </Box>
@@ -953,11 +2207,15 @@ function TimelineTab({ candidate, onInterviewClick }) {
   const currentStage = candidate.current_stage ?? "";
   const location = useLocation();
   const { candidateId } = useParams();
-  const matched_candidate_id = location.state?.matched_candidate_id ?? candidateId;
+  const matched_candidate_id =
+    location.state?.matched_candidate_id ?? candidateId;
 
-  const { data, isLoading } = useGetCandidateStageTimelineQuery(matched_candidate_id, {
-    skip: !matched_candidate_id,
-  });
+  const { data, isLoading } = useGetCandidateStageTimelineQuery(
+    matched_candidate_id,
+    {
+      skip: !matched_candidate_id,
+    },
+  );
 
   const entries = data?.data ?? [];
   const grouped = {};
@@ -980,9 +2238,19 @@ function TimelineTab({ candidate, onInterviewClick }) {
 
   if (!visibleStages.length) {
     return (
-      <Box sx={{ textAlign: "center", py: 8, border: `1px solid ${C.border}`, borderRadius: "12px", backgroundColor: "#fff" }}>
+      <Box
+        sx={{
+          textAlign: "center",
+          py: 8,
+          border: `1px solid ${C.border}`,
+          borderRadius: "12px",
+          backgroundColor: "#fff",
+        }}
+      >
         <TrendingUpIcon sx={{ fontSize: 40, color: "#D1D5DB", mb: 1.5 }} />
-        <Typography fontSize={T.valueSize} color={C.textSecondary}>No timeline entries found.</Typography>
+        <Typography fontSize={T.valueSize} color={C.textSecondary}>
+          No timeline entries found.
+        </Typography>
       </Box>
     );
   }
@@ -1001,42 +2269,158 @@ function TimelineTab({ candidate, onInterviewClick }) {
 
             return (
               <Box key={stage.key} sx={{ display: "flex", gap: "16px" }}>
-                <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    flexShrink: 0,
+                  }}
+                >
                   <StageCircle state={state} size={32} />
-                  {!isLast && <ConnectorLine state={state} minHeight={hasSubEntries ? 80 : 48} />}
+                  {!isLast && (
+                    <ConnectorLine
+                      state={state}
+                      minHeight={hasSubEntries ? 80 : 48}
+                    />
+                  )}
                 </Box>
                 <Box sx={{ pb: isLast ? 0 : "12px", width: "100%", pt: "4px" }}>
-                  <Box sx={{ display: "flex", alignItems: "center", mb: "4px" }}>
-                    <Typography sx={{ fontSize: 14, fontWeight: 600 }} color={C.textPrimary}>{stage.label}</Typography>
+                  <Box
+                    sx={{ display: "flex", alignItems: "center", mb: "4px" }}
+                  >
+                    <Typography
+                      sx={{
+                        fontSize: 15,
+                        fontWeight: 700,
+                        letterSpacing: "0.2px",
+                      }}
+                      color={C.textPrimary}
+                    >
+                      {stage.label}
+                    </Typography>
                     <StatusBadge state={state} />
                   </Box>
                   <Box sx={{ display: "flex", alignItems: "center" }}>
-                    <Typography sx={{ fontSize: 13 }} color={C.textSecondary}>IST :</Typography>
-                    <Typography sx={{ fontSize: 13, fontWeight: 500, ml: 1 }} color={C.textSecondary}>{fmtDateIST(firstEntry.created_at)}</Typography>
+                    <Typography
+                      sx={{
+                        fontSize: 11,
+                        fontWeight: 500,
+                        color: "#9CA3AF",
+                        minWidth: 24,
+                      }}
+                    >
+                      IST :
+                    </Typography>
+                    <Typography
+                      sx={{
+                        fontSize: 12,
+                        fontWeight: 600,
+                        ml: 1,
+                        color: "#4B5563",
+                      }}
+                    >
+                      {fmtDateIST(firstEntry.created_at)}
+                    </Typography>
                   </Box>
                   {firstEntry.triggered_by && (
                     <Box sx={{ display: "flex", alignItems: "center" }}>
-                      <Typography sx={{ fontSize: 13 }} color={C.textSecondary}>By :</Typography>
-                      <Typography sx={{ fontSize: 13, fontWeight: 500, ml: 1 }} color={C.textSecondary}>{firstEntry.triggered_by}</Typography>
+                      <Typography
+                        sx={{
+                          fontSize: 11,
+                          fontWeight: 500,
+                          color: "#9CA3AF",
+                          minWidth: 24,
+                        }}
+                      >
+                        By :
+                      </Typography>
+                      <Typography
+                        sx={{
+                          fontSize: 12,
+                          fontWeight: 600,
+                          ml: 1,
+                          color: "#4B5563",
+                        }}
+                      >
+                        {firstEntry.triggered_by}
+                      </Typography>
                     </Box>
                   )}
                   {hasSubEntries && (
-                    <Box sx={{ mt: "8px", display: "flex", flexDirection: "column", gap: "6px" }}>
+                    <Box
+                      sx={{
+                        mt: "8px",
+                        display: "flex",
+                        flexDirection: "column",
+                        gap: "6px",
+                      }}
+                    >
                       {subEntries.map((sub, si) => {
-                        const subState = sub.stage === "offer_revoked" || sub.stage === "interview_failed" ? "failed" : "completed";
+                        const subState =
+                          sub.stage === "offer_revoked" ||
+                          sub.stage === "interview_failed"
+                            ? "failed"
+                            : "completed";
                         return (
-                          <Box key={si} sx={{ display: "flex", alignItems: "flex-start", gap: "10px" }}>
+                          <Box
+                            key={si}
+                            sx={{
+                              display: "flex",
+                              alignItems: "flex-start",
+                              gap: "10px",
+                            }}
+                          >
                             <SubStageCircle state={subState} size={20} />
                             <Box>
-                              <Box sx={{ display: "flex", alignItems: "center" }}>
-                                <Typography sx={{ fontSize: 13 }}>{sub.step_number ? `Round ${sub.step_number} — ` : ""}</Typography>
-                                <Typography sx={{ fontSize: 13, fontWeight: 500 }} color={C.textSecondary}>
-                                  {SUB_LABEL[sub.stage] ?? sub.stage.replace(/_/g, " ")}
+                              <Box
+                                sx={{ display: "flex", alignItems: "center" }}
+                              >
+                                <Typography
+                                  sx={{
+                                    fontSize: 12,
+                                    fontWeight: 600,
+                                    color: "#374151",
+                                  }}
+                                >
+                                  {sub.step_number
+                                    ? `Round ${sub.step_number} — `
+                                    : ""}
+                                </Typography>
+                                <Typography
+                                  sx={{
+                                    fontSize: 12,
+                                    fontWeight: 500,
+                                    color: "#6B7280",
+                                  }}
+                                >
+                                  {SUB_LABEL[sub.stage] ??
+                                    sub.stage.replace(/_/g, " ")}
                                 </Typography>
                               </Box>
-                              <Box sx={{ display: "flex", alignItems: "center" }}>
-                                <Typography sx={{ fontSize: 13 }} color="#9CA3AF">IST :</Typography>
-                                <Typography sx={{ fontSize: 13, ml: 1 }} color="#9CA3AF">{fmtDateIST(sub.created_at)}</Typography>
+                              <Box
+                                sx={{ display: "flex", alignItems: "center" }}
+                              >
+                                <Typography
+                                  sx={{
+                                    fontSize: 10,
+                                    fontWeight: 500,
+                                    color: "#9CA3AF",
+                                  }}
+                                >
+                                  IST :
+                                </Typography>
+
+                                <Typography
+                                  sx={{
+                                    fontSize: 10,
+                                    fontWeight: 500,
+                                    ml: 1,
+                                    color: "#9CA3AF",
+                                  }}
+                                >
+                                  {fmtDateIST(sub.created_at)}
+                                </Typography>
                               </Box>
                             </Box>
                           </Box>
@@ -1062,9 +2446,21 @@ function InterviewsTab({ candidate }) {
 
   if (!interviews.length) {
     return (
-      <Box sx={{ textAlign: "center", py: 8, border: `1px solid ${C.border}`, borderRadius: "12px", backgroundColor: "#fff" }}>
-        <CalendarMonthOutlinedIcon sx={{ fontSize: 40, color: "#D1D5DB", mb: 1.5 }} />
-        <Typography fontSize={T.valueSize} color={C.textSecondary}>No interviews scheduled yet.</Typography>
+      <Box
+        sx={{
+          textAlign: "center",
+          py: 8,
+          border: `1px solid ${C.border}`,
+          borderRadius: "12px",
+          backgroundColor: "#fff",
+        }}
+      >
+        <CalendarMonthOutlinedIcon
+          sx={{ fontSize: 40, color: "#D1D5DB", mb: 1.5 }}
+        />
+        <Typography fontSize={T.valueSize} color={C.textSecondary}>
+          No interviews scheduled yet.
+        </Typography>
       </Box>
     );
   }
@@ -1072,24 +2468,61 @@ function InterviewsTab({ candidate }) {
   return (
     <Box sx={{ display: "flex", flexDirection: "column", gap: 2 }}>
       {interviews.map((iv, i) => (
-        <Box key={i} sx={{ p: "16px", border: `1px solid ${C.border}`, borderRadius: "10px", backgroundColor: "#fff" }}>
-          <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: "8px" }}>
-            <Typography fontSize={15} fontWeight={700} color={C.textPrimary}>{iv.round_name}</Typography>
-            <Chip label={iv.status} size="small" sx={{
-              fontSize: 11, height: 22, textTransform: "capitalize", fontWeight: 600,
-              backgroundColor: iv.status === "scheduled" ? "#E7F8EE" : "#F3F4F6",
-              color: iv.status === "scheduled" ? "#0F6E56" : "#6B7280",
-              "& .MuiChip-label": { px: "8px" },
-            }} />
+        <Box
+          key={i}
+          sx={{
+            p: "16px",
+            border: `1px solid ${C.border}`,
+            borderRadius: "10px",
+            backgroundColor: "#fff",
+          }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              mb: "8px",
+            }}
+          >
+            <Typography fontSize={15} fontWeight={700} color={C.textPrimary}>
+              {iv.round_name}
+            </Typography>
+            <Chip
+              label={iv.status}
+              size="small"
+              sx={{
+                fontSize: 11,
+                height: 22,
+                textTransform: "capitalize",
+                fontWeight: 600,
+                backgroundColor:
+                  iv.status === "scheduled" ? "#E7F8EE" : "#F3F4F6",
+                color: iv.status === "scheduled" ? "#0F6E56" : "#6B7280",
+                "& .MuiChip-label": { px: "8px" },
+              }}
+            />
           </Box>
           <Typography fontSize={14} color={C.textSecondary}>
-            {new Date(iv.scheduled_at).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+            {new Date(iv.scheduled_at).toLocaleDateString("en-GB", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            })}
             {" · "}
-            {new Date(iv.scheduled_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })}
+            {new Date(iv.scheduled_at).toLocaleTimeString("en-GB", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
           </Typography>
           {iv.interviewer && (
             <Typography fontSize={14} color={C.textSecondary} mt="2px">
-              <Box component="span" sx={{ fontSize: 14, fontWeight: 600, color: C.textPrimary }}>Interviewer: </Box>
+              <Box
+                component="span"
+                sx={{ fontSize: 14, fontWeight: 600, color: C.textPrimary }}
+              >
+                Interviewer:{" "}
+              </Box>
               {iv.interviewer}
             </Typography>
           )}
@@ -1105,30 +2538,67 @@ function InterviewsTab({ candidate }) {
 function DocumentsTab({ candidate }) {
   if (!candidate.resume_url) {
     return (
-      <Box sx={{ textAlign: "center", py: 8, border: `1px solid ${C.border}`, borderRadius: "12px", backgroundColor: "#fff" }}>
-        <InsertDriveFileOutlinedIcon sx={{ fontSize: 40, color: "#D1D5DB", mb: 1.5 }} />
-        <Typography fontSize={T.valueSize} color={C.textSecondary}>No documents uploaded.</Typography>
+      <Box
+        sx={{
+          textAlign: "center",
+          py: 8,
+          border: `1px solid ${C.border}`,
+          borderRadius: "12px",
+          backgroundColor: "#fff",
+        }}
+      >
+        <InsertDriveFileOutlinedIcon
+          sx={{ fontSize: 40, color: "#D1D5DB", mb: 1.5 }}
+        />
+        <Typography fontSize={T.valueSize} color={C.textSecondary}>
+          No documents uploaded.
+        </Typography>
       </Box>
     );
   }
 
   return (
-    <Box sx={{
-      p: "16px", border: `1px solid ${C.border}`, borderRadius: "10px", backgroundColor: "#fff",
-      display: "flex", justifyContent: "space-between", alignItems: "center", maxWidth: 500,
-    }}>
+    <Box
+      sx={{
+        p: "16px",
+        border: `1px solid ${C.border}`,
+        borderRadius: "10px",
+        backgroundColor: "#fff",
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        maxWidth: 500,
+      }}
+    >
       <Box>
-        <Typography fontSize={15} fontWeight={600} color={C.textPrimary}>Resume</Typography>
-        <Typography fontSize={13} color="#9CA3AF" sx={{ wordBreak: "break-all" }}>
+        <Typography fontSize={15} fontWeight={600} color={C.textPrimary}>
+          Resume
+        </Typography>
+        <Typography
+          fontSize={13}
+          color="#9CA3AF"
+          sx={{ wordBreak: "break-all" }}
+        >
           {candidate.resume_url.split("/").pop()}
         </Typography>
       </Box>
-      <Button size="small" variant="outlined" href={candidate.resume_url} target="_blank"
+      <Button
+        size="small"
+        variant="outlined"
+        href={candidate.resume_url}
+        target="_blank"
         sx={{
-          borderColor: C.accent, color: C.accent, textTransform: "none", fontWeight: 600,
-          borderRadius: "8px", fontSize: 13, flexShrink: 0, ml: 2,
+          borderColor: C.accent,
+          color: C.accent,
+          textTransform: "none",
+          fontWeight: 600,
+          borderRadius: "8px",
+          fontSize: 13,
+          flexShrink: 0,
+          ml: 2,
           "&:hover": { backgroundColor: C.accentSoft, borderColor: C.accent },
-        }}>
+        }}
+      >
         View
       </Button>
     </Box>
@@ -1145,8 +2615,10 @@ export default function CandidateDetail() {
   const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState(0);
 
-  const matched_candidate_id = location.state?.matched_candidate_id ?? candidateId;
-  const { data, isLoading, isError, error } = useGetCandidateDetailQuery(matched_candidate_id);
+  const matched_candidate_id =
+    location.state?.matched_candidate_id ?? candidateId;
+  const { data, isLoading, isError, error } =
+    useGetCandidateDetailQuery(matched_candidate_id);
 
   const candidate = data?.data?.candidate ?? null;
   const enriched = candidate
@@ -1169,7 +2641,20 @@ export default function CandidateDetail() {
     if (Object.keys(labels).length) dispatch(setDynamicLabels(labels));
     return () => dispatch(clearDynamicLabels());
   }, [enriched?.full_name, location.state?.orgName, location.state?.jobTitle]);
+const [getResumeView] = useLazyGetResumeViewQuery();
+  const viewResume = async (candidateId) => {
+    try {
+      const res = await getResumeView(candidateId).unwrap();
 
+      const url = res?.resume_url;
+
+      if (url) {
+        window.open(url, "_blank");
+      }
+    } catch (error) {
+      console.error("Resume fetch failed:", error);
+    }
+  };
   useEffect(() => {
     if (candidate?.full_name) {
       dispatch(setDynamicLabels({ candidateId: candidate.full_name }));
@@ -1196,7 +2681,9 @@ export default function CandidateDetail() {
   const expCount = enriched.employment?.length ?? 0;
   const eduCount = enriched.education?.length ?? 0;
   const skillCount = (enriched.skill_info?.[0]?.key_skills ?? "")
-    .split(",").map((s) => s.trim()).filter(Boolean).length;
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean).length;
   const certCount = enriched.certifications?.length ?? 0;
   const hasSkillIntel =
     (enriched.score_intel ?? []).length > 0 ||
@@ -1207,23 +2694,40 @@ export default function CandidateDetail() {
   const topSkillChips = (() => {
     const mandatory = enriched.matched_mandatory_skills ?? [];
     const primary = enriched.matched_primary_skills ?? [];
-    const combined = [...mandatory.map((s) => ({ label: s, type: "mandatory" })),
-                      ...primary.map((s) => ({ label: s, type: "primary" }))];
+    const combined = [
+      ...mandatory.map((s) => ({ label: s, type: "mandatory" })),
+      ...primary.map((s) => ({ label: s, type: "primary" })),
+    ];
     return combined.slice(0, 5);
   })();
 
   // ── Total experience string ──
-  const totalExp = enriched.total_experience ?? enriched.employment?.[0]?.duration ?? null;
+  const totalExp =
+    enriched.total_experience ?? enriched.employment?.[0]?.duration ?? null;
+
+  
 
   return (
     <Box sx={{ p: 1, backgroundColor: "#fff" }}>
       {/* ── Page header card ── */}
-      <Box sx={{
-        border: `0.5px solid ${C.border}`, borderRadius: "14px",
-        backgroundColor: "#fff", mb: "16px", overflow: "hidden",
-      }}>
+      <Box
+        sx={{
+          border: `0.5px solid ${C.border}`,
+          borderRadius: "14px",
+          backgroundColor: "#fff",
+          mb: "16px",
+          overflow: "hidden",
+        }}
+      >
         {/* Top row: back + avatar + name/title + right meta */}
-        <Box sx={{ display: "flex", alignItems: "flex-start", gap: "14px", p: "16px 20px 12px" }}>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "14px",
+            p: "16px 20px 12px",
+          }}
+        >
           {/* Back button */}
           <Box
             onClick={() => {
@@ -1234,108 +2738,258 @@ export default function CandidateDetail() {
                 return;
               }
               if (location.state?.orgId && location.state?.jobId) {
-                navigate(`/account-manager/org/${location.state.orgId}/requisitions/${location.state.jobId}`, {
-                  state: { activeReqTab: 1, previousTab: location.state?.previousTab ?? 1 },
-                });
+                navigate(
+                  `/account-manager/org/${location.state.orgId}/requisitions/${location.state.jobId}`,
+                  {
+                    state: {
+                      activeReqTab: 1,
+                      previousTab: location.state?.previousTab ?? 1,
+                    },
+                  },
+                );
                 return;
               }
               navigate(-1);
             }}
             sx={{
-              width: 30, height: 30, borderRadius: "50%", display: "flex", alignItems: "center",
-              justifyContent: "center", border: `0.5px solid ${C.border}`, backgroundColor: "#F9FAFB",
-              cursor: "pointer", flexShrink: 0, mt: "4px",
+              width: 30,
+              height: 30,
+              borderRadius: "50%",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              border: `0.5px solid ${C.border}`,
+              backgroundColor: "#F9FAFB",
+              cursor: "pointer",
+              flexShrink: 0,
+              mt: "4px",
             }}
           >
             <ArrowBackIcon sx={{ fontSize: 16, color: C.textSecondary }} />
           </Box>
 
           {/* Avatar */}
-          <Avatar sx={{ width: 54, height: 54, backgroundColor: C.accent, fontSize: 18, fontWeight: 600, flexShrink: 0 }}>
-            {enriched.full_name?.split(" ").slice(0, 2).map((n) => n[0]).join("").toUpperCase()}
+          <Avatar
+            sx={{
+              width: 54,
+              height: 54,
+              backgroundColor: C.accent,
+              fontSize: 18,
+              fontWeight: 600,
+              flexShrink: 0,
+            }}
+          >
+            {enriched.full_name
+              ?.split(" ")
+              .slice(0, 2)
+              .map((n) => n[0])
+              .join("")
+              .toUpperCase()}
           </Avatar>
 
           {/* Name + title block */}
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Box sx={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
-              <Typography sx={{ fontSize: 17, fontWeight: 700, color: C.textPrimary, lineHeight: 1.2 }}>
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                flexWrap: "wrap",
+              }}
+            >
+              <Typography
+                sx={{
+                  fontSize: 17,
+                  fontWeight: 700,
+                  color: C.textPrimary,
+                  lineHeight: 1.2,
+                }}
+              >
                 {enriched.full_name}
               </Typography>
               {enriched.clin_id && (
-                <Typography sx={{ fontSize: 11, color: "#9CA3AF", fontWeight: 500 }}>
+                <Typography
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    fontSize: 11,
+                    color: "#9CA3AF",
+                    fontWeight: 500,
+                  }}
+                >
                   CLIN{enriched.clin_id}
+                  <DescriptionOutlinedIcon
+                    onClick={() => {
+                      viewResume(enriched.id);
+                    }}
+                    sx={{
+                      fontSize: 14,
+                      color: "#FF5F1F",
+                      ml: 1,
+                      cursor: "pointer",
+                    }}
+                  />
                 </Typography>
               )}
               {enriched.status && (
-                <Box sx={{
-                  px: "8px", py: "2px", borderRadius: "999px", fontSize: 10, fontWeight: 700,
-                  textTransform: "capitalize",
-                  backgroundColor: enriched.status === "active" ? "#DCFCE7" : enriched.status === "inactive" ? "#F3F4F6" : "#FEF3C7",
-                  color: enriched.status === "active" ? "#16A34A" : enriched.status === "inactive" ? "#6B7280" : "#D97706",
-                }}>
+                <Box
+                  sx={{
+                    px: "8px",
+                    py: "2px",
+                    borderRadius: "999px",
+                    fontSize: 10,
+                    fontWeight: 700,
+                    textTransform: "capitalize",
+                    backgroundColor:
+                      enriched.status === "active"
+                        ? "#DCFCE7"
+                        : enriched.status === "inactive"
+                          ? "#F3F4F6"
+                          : "#FEF3C7",
+                    color:
+                      enriched.status === "active"
+                        ? "#16A34A"
+                        : enriched.status === "inactive"
+                          ? "#6B7280"
+                          : "#D97706",
+                  }}
+                >
                   {enriched.status}
                 </Box>
               )}
             </Box>
-            <Typography sx={{ fontSize: 13, color: C.textSecondary, mt: "3px" }}>
-              {enriched.employment?.[0]?.job_title}
-              {enriched.employment?.[0]?.company_name && (
-                <Box component="span" sx={{ color: C.accent, fontWeight: 600 }}>
-                  {" · "}{enriched.employment[0].company_name}
-                </Box>
-              )}
-            </Typography>
+            <Box
+              sx={{
+                display: "flex",
+                mt: "3px",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <Typography sx={{ fontSize: 13, color: C.textSecondary }}>
+                {enriched.employment?.[0]?.job_title}
+              </Typography>
+              <Typography sx={{ fontSize: 10, color: C.textSecondary }}>
+                {enriched.employment[0].company_name}
+              </Typography>
+            </Box>
+
+            <Box sx={{ display: "flex", alignItems: "center", gap: "5px" }}>
+              <EmailOutlined sx={{ fontSize: 13, color: "#9CA3AF" }} />
+              <Typography sx={{ fontSize: 12, color: C.textSecondary }}>
+                {enriched.email}
+              </Typography>
+            </Box>
 
             {/* Skill match chips */}
-            {topSkillChips.length > 0 && (
-              <Box sx={{ display: "flex", flexWrap: "wrap", gap: "6px", mt: "8px" }}>
+            {/* {topSkillChips.length > 0 && (
+              <Box
+                sx={{
+                  display: "flex",
+                  flexWrap: "wrap",
+                  gap: "6px",
+                  mt: "8px",
+                }}
+              >
                 {topSkillChips.map(({ label, type }) => (
-                  <Chip key={label} label={label} size="small" sx={{
-                    fontSize: 11, height: 22, fontWeight: 500,
-                    backgroundColor: type === "mandatory" ? "#FFF0E8" : type === "primary" ? "#EFF6FF" : "#F3F4F6",
-                    color: type === "mandatory" ? C.accent : type === "primary" ? "#2563EB" : "#374151",
-                    border: `1px solid ${type === "mandatory" ? "#FFCFB3" : type === "primary" ? "#BFDBFE" : "#E5E7EB"}`,
-                    borderRadius: "6px",
-                    "& .MuiChip-label": { px: "8px" },
-                  }} />
+                  <Chip
+                    key={label}
+                    label={label}
+                    size="small"
+                    sx={{
+                      fontSize: 11,
+                      height: 22,
+                      fontWeight: 500,
+                      backgroundColor:
+                        type === "mandatory"
+                          ? "#FFF0E8"
+                          : type === "primary"
+                            ? "#EFF6FF"
+                            : "#F3F4F6",
+                      color:
+                        type === "mandatory"
+                          ? C.accent
+                          : type === "primary"
+                            ? "#2563EB"
+                            : "#374151",
+                      border: `1px solid ${type === "mandatory" ? "#FFCFB3" : type === "primary" ? "#BFDBFE" : "#E5E7EB"}`,
+                      borderRadius: "6px",
+                      "& .MuiChip-label": { px: "8px" },
+                    }}
+                  />
                 ))}
               </Box>
-            )}
+            )} */}
           </Box>
 
           {/* Right meta block — email, experience, phone */}
-          <Box sx={{ display: "flex", flexDirection: "column", gap: "6px", flexShrink: 0, alignItems: "flex-end" }}>
-            {enriched.email && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: "5px",
-                border: `1px solid ${C.border}`, borderRadius: "8px", px: "10px", py: "5px", backgroundColor: "#FAFAFA" }}>
-                <EmailOutlined sx={{ fontSize: 13, color: "#9CA3AF" }} />
-                <Typography sx={{ fontSize: 12, color: C.textSecondary }}>{enriched.email}</Typography>
-              </Box>
-            )}
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "6px",
+              flexShrink: 0,
+              alignItems: "flex-end",
+            }}
+          >
             <Box sx={{ display: "flex", alignItems: "center", gap: "8px" }}>
               {totalExp && (
-                <Box sx={{ display: "flex", alignItems: "center", gap: "5px",
-                  border: `1px solid ${C.border}`, borderRadius: "8px", px: "10px", py: "5px", backgroundColor: "#FAFAFA" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    border: `1px solid ${C.border}`,
+                    borderRadius: "8px",
+                    px: "10px",
+                    py: "5px",
+                    backgroundColor: "#FAFAFA",
+                  }}
+                >
                   <AccessTimeOutlined sx={{ fontSize: 13, color: "#9CA3AF" }} />
-                  <Typography sx={{ fontSize: 12, color: C.textSecondary }}>{totalExp}</Typography>
+                  <Typography sx={{ fontSize: 12, color: C.textSecondary }}>
+                    {totalExp}
+                  </Typography>
                 </Box>
               )}
               {enriched.phone && (
-                <Box sx={{ display: "flex", alignItems: "center", gap: "5px",
-                  border: `1px solid ${C.border}`, borderRadius: "8px", px: "10px", py: "5px", backgroundColor: "#FAFAFA" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    border: `1px solid ${C.border}`,
+                    borderRadius: "8px",
+                    px: "10px",
+                    py: "5px",
+                    backgroundColor: "#FAFAFA",
+                  }}
+                >
                   <PhoneOutlined sx={{ fontSize: 13, color: "#9CA3AF" }} />
-                  <Typography sx={{ fontSize: 12, color: C.textSecondary }}>{enriched.phone}</Typography>
+                  <Typography sx={{ fontSize: 12, color: C.textSecondary }}>
+                    {enriched.phone}
+                  </Typography>
                 </Box>
               )}
             </Box>
             {enriched.skill_info?.[0]?.skillintel_score != null && (
-              <Box sx={{
-                display: "inline-flex", alignItems: "center", gap: "5px",
-                color: C.accent, backgroundColor: C.accentSoft, border: "0.5px solid #FFCFB3",
-                borderRadius: "999px", px: "10px", py: "4px",
-              }}>
+              <Box
+                sx={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "5px",
+                  color: C.accent,
+                  backgroundColor: C.accentSoft,
+                  border: "0.5px solid #FFCFB3",
+                  borderRadius: "999px",
+                  px: "10px",
+                  py: "4px",
+                }}
+              >
                 <TrendingUpIcon sx={{ fontSize: 15, color: C.accent }} />
-                <Typography sx={{ fontSize: 12, fontWeight: 700, color: C.accent }}>
+                <Typography
+                  sx={{ fontSize: 12, fontWeight: 700, color: C.accent }}
+                >
                   Skill Intel {enriched.skill_info[0].skillintel_score}
                 </Typography>
               </Box>
@@ -1344,58 +2998,6 @@ export default function CandidateDetail() {
         </Box>
 
         {/* ── Tab bar (inside header card, matching image) ── */}
-        <Tabs
-          value={activeTab}
-          onChange={(_, v) => setActiveTab(v)}
-          sx={{
-            ...TAB_SX,
-            mb: 0,
-            px: "20px",
-            borderTop: `1px solid ${C.border}`,
-            "& .MuiTabs-indicator": { backgroundColor: C.accent, height: 2, bottom: 0 },
-          }}
-        >
-          <Tab icon={<WorkOutlineOutlined sx={{ fontSize: 14 }} />} iconPosition="start"
-            label={<Box sx={{ display: "flex", alignItems: "center", gap: "5px" }}>
-              Experience {expCount > 0 && <Box component="span" sx={{ fontSize: 11, fontWeight: 700,
-                backgroundColor: activeTab === 0 ? C.accent : "#E5E7EB",
-                color: activeTab === 0 ? "#fff" : "#6B7280",
-                borderRadius: "999px", px: "6px", py: "1px", lineHeight: 1.6 }}>{expCount}</Box>}
-            </Box>}
-          />
-          <Tab icon={<SchoolOutlinedIcon sx={{ fontSize: 14 }} />} iconPosition="start"
-            label={<Box sx={{ display: "flex", alignItems: "center", gap: "5px" }}>
-              Education {eduCount > 0 && <Box component="span" sx={{ fontSize: 11, fontWeight: 700,
-                backgroundColor: activeTab === 1 ? C.accent : "#E5E7EB",
-                color: activeTab === 1 ? "#fff" : "#6B7280",
-                borderRadius: "999px", px: "6px", py: "1px", lineHeight: 1.6 }}>{eduCount}</Box>}
-            </Box>}
-          />
-          <Tab icon={<PsychologyOutlinedIcon sx={{ fontSize: 14 }} />} iconPosition="start"
-            label={<Box sx={{ display: "flex", alignItems: "center", gap: "5px" }}>
-              Skills {skillCount > 0 && <Box component="span" sx={{ fontSize: 11, fontWeight: 700,
-                backgroundColor: activeTab === 2 ? C.accent : "#E5E7EB",
-                color: activeTab === 2 ? "#fff" : "#6B7280",
-                borderRadius: "999px", px: "6px", py: "1px", lineHeight: 1.6 }}>{skillCount}</Box>}
-            </Box>}
-          />
-          {certCount > 0 && (
-            <Tab icon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 14 }} />} iconPosition="start"
-              label={<Box sx={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                Certifications <Box component="span" sx={{ fontSize: 11, fontWeight: 700,
-                  backgroundColor: activeTab === 3 ? C.accent : "#E5E7EB",
-                  color: activeTab === 3 ? "#fff" : "#6B7280",
-                  borderRadius: "999px", px: "6px", py: "1px", lineHeight: 1.6 }}>{certCount}</Box>
-              </Box>}
-            />
-          )}
-          {hasSkillIntel && (
-            <Tab icon={<TrendingUpIcon sx={{ fontSize: 14 }} />} iconPosition="start" label="Skill Intel" />
-          )}
-          <Tab icon={<TrendingUpIcon sx={{ fontSize: 14 }} />} iconPosition="start" label="Timeline" />
-          {/* <Tab icon={<CalendarMonthOutlinedIcon sx={{ fontSize: 14 }} />} iconPosition="start" label="Interviews" />
-          <Tab icon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 14 }} />} iconPosition="start" label="Documents" /> */}
-        </Tabs>
       </Box>
 
       {/* ── Tab content ── */}
@@ -1412,16 +3014,185 @@ export default function CandidateDetail() {
         const DOCUMENTS = idx++;
 
         return (
-          <>
-            {activeTab === EXP && <ExperienceTab candidate={enriched} />}
-            {activeTab === EDU && <EducationTab candidate={enriched} />}
-            {activeTab === SKILLS && <SkillsTab candidate={enriched} showCerts={false} />}
-            {CERT !== -1 && activeTab === CERT && <CertificationsTab candidate={enriched} />}
-            {INTEL !== -1 && activeTab === INTEL && <SkillIntelTab candidate={enriched} />}
-            {activeTab === TIMELINE && <TimelineTab candidate={enriched} onInterviewClick={() => setActiveTab(INTERVIEWS)} />}
-            {/* {activeTab === INTERVIEWS && <InterviewsTab candidate={enriched} />}
+          <Box
+            sx={{
+              border: `0.5px solid ${C.border}`,
+              borderRadius: "14px",
+              backgroundColor: "#fff",
+              p: "10px",
+              display: "flex",
+              flexDirection: "column",
+              gap: "20px",
+            }}
+          >
+            <Tabs
+              value={activeTab}
+              onChange={(_, v) => setActiveTab(v)}
+              sx={{
+                ...TAB_SX,
+                mb: 0,
+                px: "20px",
+                // borderTop: `1px solid ${C.border}`,
+                "& .MuiTabs-indicator": {
+                  backgroundColor: C.accent,
+                  height: 2,
+                  bottom: 0,
+                },
+              }}
+            >
+              <Tab
+                icon={<WorkOutlineOutlined sx={{ fontSize: 14 }} />}
+                iconPosition="start"
+                label={
+                  <Box
+                    sx={{ display: "flex", alignItems: "center", gap: "5px" }}
+                  >
+                    Experience{" "}
+                    {expCount > 0 && (
+                      <Box
+                        component="span"
+                        sx={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          backgroundColor:
+                            activeTab === 0 ? C.accent : "#E5E7EB",
+                          color: activeTab === 0 ? "#fff" : "#6B7280",
+                          borderRadius: "999px",
+                          px: "6px",
+                          py: "1px",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {expCount}
+                      </Box>
+                    )}
+                  </Box>
+                }
+              />
+              <Tab
+                icon={<SchoolOutlinedIcon sx={{ fontSize: 14 }} />}
+                iconPosition="start"
+                label={
+                  <Box
+                    sx={{ display: "flex", alignItems: "center", gap: "5px" }}
+                  >
+                    Education{" "}
+                    {eduCount > 0 && (
+                      <Box
+                        component="span"
+                        sx={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          backgroundColor:
+                            activeTab === 1 ? C.accent : "#E5E7EB",
+                          color: activeTab === 1 ? "#fff" : "#6B7280",
+                          borderRadius: "999px",
+                          px: "6px",
+                          py: "1px",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {eduCount}
+                      </Box>
+                    )}
+                  </Box>
+                }
+              />
+              <Tab
+                icon={<PsychologyOutlinedIcon sx={{ fontSize: 14 }} />}
+                iconPosition="start"
+                label={
+                  <Box
+                    sx={{ display: "flex", alignItems: "center", gap: "5px" }}
+                  >
+                    Skills{" "}
+                    {skillCount > 0 && (
+                      <Box
+                        component="span"
+                        sx={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          backgroundColor:
+                            activeTab === 2 ? C.accent : "#E5E7EB",
+                          color: activeTab === 2 ? "#fff" : "#6B7280",
+                          borderRadius: "999px",
+                          px: "6px",
+                          py: "1px",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {skillCount}
+                      </Box>
+                    )}
+                  </Box>
+                }
+              />
+              {certCount > 0 && (
+                <Tab
+                  icon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 14 }} />}
+                  iconPosition="start"
+                  label={
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: "5px" }}
+                    >
+                      Certifications{" "}
+                      <Box
+                        component="span"
+                        sx={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          backgroundColor:
+                            activeTab === 3 ? C.accent : "#E5E7EB",
+                          color: activeTab === 3 ? "#fff" : "#6B7280",
+                          borderRadius: "999px",
+                          px: "6px",
+                          py: "1px",
+                          lineHeight: 1.6,
+                        }}
+                      >
+                        {certCount}
+                      </Box>
+                    </Box>
+                  }
+                />
+              )}
+              {hasSkillIntel && (
+                <Tab
+                  icon={<TrendingUpIcon sx={{ fontSize: 14 }} />}
+                  iconPosition="start"
+                  label="Skill Intel"
+                />
+              )}
+              <Tab
+                icon={<TrendingUpIcon sx={{ fontSize: 14 }} />}
+                iconPosition="start"
+                label="Timeline"
+              />
+              {/* <Tab icon={<CalendarMonthOutlinedIcon sx={{ fontSize: 14 }} />} iconPosition="start" label="Interviews" />
+          <Tab icon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 14 }} />} iconPosition="start" label="Documents" /> */}
+            </Tabs>
+            <Box sx={{ mt: -1 }}>
+              {activeTab === EXP && <ExperienceTab candidate={enriched} />}
+              {activeTab === EDU && <EducationTab candidate={enriched} />}
+              {activeTab === SKILLS && (
+                <SkillsTab candidate={enriched} showCerts={false} />
+              )}
+              {CERT !== -1 && activeTab === CERT && (
+                <CertificationsTab candidate={enriched} />
+              )}
+              {INTEL !== -1 && activeTab === INTEL && (
+                <SkillIntelTab candidate={enriched} />
+              )}
+              {activeTab === TIMELINE && (
+                <TimelineTab
+                  candidate={enriched}
+                  onInterviewClick={() => setActiveTab(INTERVIEWS)}
+                />
+              )}
+              {/* {activeTab === INTERVIEWS && <InterviewsTab candidate={enriched} />}
             {activeTab === DOCUMENTS && <DocumentsTab candidate={enriched} />} */}
-          </>
+            </Box>
+          </Box>
         );
       })()}
     </Box>

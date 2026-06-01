@@ -1239,10 +1239,18 @@ const DrawerLayout = () => {
                     to={item.path}
                     disabled={item.disabled}
                     className={
-                      item.label === "Organization" &&
-                      (location.pathname.includes("/org") ||
-                        location.pathname.includes("/candidate"))
-                        ? "active"
+                      item.label === "Organization"
+                        ? location.pathname.startsWith(
+                            "/account-manager/organization",
+                          ) ||
+                          location.pathname.startsWith(
+                            "/account-manager/org/",
+                          ) ||
+                          location.pathname.startsWith(
+                            "/account-manager/candidate/",
+                          )
+                          ? "active"
+                          : ""
                         : location.pathname.startsWith(item.path)
                           ? "active"
                           : ""

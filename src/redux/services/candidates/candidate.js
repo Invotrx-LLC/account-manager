@@ -8,8 +8,14 @@ export const candidateService = api.injectEndpoints({
         method: "DELETE",
       }),
     }),
+    getCandidateMatchedJobs: builder.query({
+      query: (candidate_id) => ({
+        url: `/acc/candidate/jobs/${candidate_id}`,
+        method: "GET",
+      }),
+    }),
   }),
 });
 
 // ── Export hooks ──
-export const { useDeleteCandidateMutation } = candidateService;
+export const { useDeleteCandidateMutation, useGetCandidateMatchedJobsQuery } = candidateService;

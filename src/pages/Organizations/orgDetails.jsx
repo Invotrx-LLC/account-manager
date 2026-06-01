@@ -995,7 +995,7 @@ function OrgOverviewTab({ org, orgId }) {
             mb: "16px",
           }}
         >
-          <SectionLabel>Job Analytics</SectionLabel>
+          {/* <SectionLabel>Job Analytics</SectionLabel> */}
           <FormControl size="small" sx={{ minWidth: 120 }}>
             <Select
               value={groupBy}
