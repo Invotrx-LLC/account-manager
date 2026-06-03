@@ -2980,7 +2980,7 @@ export default function CandidateDetailPage() {
 
   return (
     <Box
-      sx={{ backgroundColor: C.bg, minHeight: "100vh", p: "20px 20px 40px" }}
+      sx={{ backgroundColor: "#fff", minHeight: "100vh", p: "10px 10px 40px" }}
     >
       {/* ── Hero card ── */}
       <Box
@@ -2992,8 +2992,8 @@ export default function CandidateDetailPage() {
           mb: "16px",
         }}
       >
-        <Box sx={{ height: 72 }} />
-        <Box sx={{ px: "24px", pb: "20px", mt: "-50px" }}>
+        <Box sx={{ height: 42 }} />
+        <Box sx={{ px: "24px", pb: "20px", mt: "-30px" }}>
           <Box
             sx={{
               display: "flex",

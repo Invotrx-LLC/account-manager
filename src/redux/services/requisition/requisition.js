@@ -230,6 +230,7 @@ export const {
   useLazyGetResumeViewQuery,
   useGetJobDetailsQuery,
   useGetInterviewDetailsQuery,
+  useLazyGetInterviewDetailsQuery,
   useGetCandidateSkillInfoQuery,
   useUpdateCandidateSkillsMutation,
 } = requisitionApi;

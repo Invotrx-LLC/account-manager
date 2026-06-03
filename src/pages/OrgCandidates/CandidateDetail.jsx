@@ -17,6 +17,10 @@ import {
   AccordionSummary,
   AccordionDetails,
   LinearProgress,
+  Stack,
+  Divider,
+  Link,
+  DialogActions,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
@@ -40,6 +44,8 @@ import {
   useGetCandidateDetailQuery,
   useGetCandidateStageTimelineQuery,
   useLazyGetResumeViewQuery,
+  useGetInterviewDetailsQuery,
+  useLazyGetInterviewDetailsQuery,
 } from "../../redux/services/requisition/requisition";
 import {
   PersonOutlineOutlined,
@@ -56,6 +62,7 @@ import BusinessOutlinedIcon from "@mui/icons-material/BusinessOutlined";
 import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import PublicOutlinedIcon from "@mui/icons-material/PublicOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import VisibilityIcon from "@mui/icons-material/Visibility";
 
 /* ═══════════════════════════════════════════════
    CONSTANTS
@@ -619,7 +626,7 @@ function RadarChart({ scoreIntel, size = 400 }) {
             const anchor =
               Math.abs(lx - cx) < 5 ? "middle" : lx < cx ? "end" : "start";
             const label =
-              d.skill.length > 14 ? d.skill.slice(0, 13) + "…" : d.skill;
+              d.skill.length > 24 ? d.skill.slice(0, 22) + "…" : d.skill;
             return (
               <text
                 key={i}
@@ -792,7 +799,9 @@ function ExperienceList({ candidate }) {
         const isSkillsExpanded = !!expandedSkills[i];
         const allSkills = emp.skills_used ?? [];
         const LIMIT = 8;
-        const visibleSkills = isSkillsExpanded ? allSkills : allSkills.slice(0, LIMIT);
+        const visibleSkills = isSkillsExpanded
+          ? allSkills
+          : allSkills.slice(0, LIMIT);
         const hiddenCount = allSkills.length - LIMIT;
 
         return (
@@ -896,7 +905,12 @@ function ExperienceList({ candidate }) {
                     )}
                   </Box>
                   <Typography
-                    sx={{ mt: 0.25, fontSize: 14, fontWeight: 700, color: "#FF5F1F" }}
+                    sx={{
+                      mt: 0.25,
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: "#FF5F1F",
+                    }}
                   >
                     {emp.company_name}
                   </Typography>
@@ -914,13 +928,17 @@ function ExperienceList({ candidate }) {
                       backgroundColor: "#F8FAFC",
                     }}
                   >
-                    <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#475569" }}>
+                    <Typography
+                      sx={{ fontSize: 12, fontWeight: 600, color: "#475569" }}
+                    >
                       {emp.joining_date ?? "—"} —{" "}
                       {emp.is_current ? "Present" : (emp.end_date ?? "—")}
                     </Typography>
                   </Box>
                   {emp.duration && (
-                    <Typography sx={{ mt: 0.25, fontSize: 12, color: "#94A3B8" }}>
+                    <Typography
+                      sx={{ mt: 0.25, fontSize: 12, color: "#94A3B8" }}
+                    >
                       {emp.duration}
                     </Typography>
                   )}
@@ -940,7 +958,9 @@ function ExperienceList({ candidate }) {
               >
                 {emp.location && (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <LocationOnOutlinedIcon sx={{ fontSize: 14, color: "#8B8BA7" }} />
+                    <LocationOnOutlinedIcon
+                      sx={{ fontSize: 14, color: "#8B8BA7" }}
+                    />
                     <Typography sx={{ fontSize: 12, color: "#475569" }}>
                       {emp.location}
                     </Typography>
@@ -948,7 +968,9 @@ function ExperienceList({ candidate }) {
                 )}
                 {emp.country && (
                   <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
-                    <PublicOutlinedIcon sx={{ fontSize: 14, color: "#8B8BA7" }} />
+                    <PublicOutlinedIcon
+                      sx={{ fontSize: 14, color: "#8B8BA7" }}
+                    />
                     <Typography sx={{ fontSize: 12, color: "#475569" }}>
                       {emp.country}
                     </Typography>
@@ -1250,6 +1272,29 @@ function SkillsPanel({ candidate }) {
 /* ═══════════════════════════════════════════════
    PROFILE: SKILL INTEL PANEL (radar + scores dialog)
 ═══════════════════════════════════════════════ */
+const getScoreColors = (score) => {
+  if (score >= 80) {
+    return {
+      ring: "#10B981",
+      text: "#059669",
+      bg: "#ECFDF5",
+    };
+  }
+
+  if (score >= 50) {
+    return {
+      ring: "#F59E0B",
+      text: "#D97706",
+      bg: "#FFFBEB",
+    };
+  }
+
+  return {
+    ring: "#DC2626",
+    text: "#DC2626",
+    bg: "#FEF2F2",
+  };
+};
 function SkillNotesAccordion({ skillNotes = {}, scoreIntel = [] }) {
   const notesArray = Object.entries(skillNotes);
 
@@ -1275,6 +1320,7 @@ function SkillNotesAccordion({ skillNotes = {}, scoreIntel = [] }) {
 
         const score = scoreData?.candidate || 0;
 
+        const colors = getScoreColors(score);
         const noteText = typeof note === "object" ? note.value : note;
 
         return (
@@ -1312,13 +1358,31 @@ function SkillNotesAccordion({ skillNotes = {}, scoreIntel = [] }) {
                   }}
                 >
                   <Box sx={{ position: "relative" }}>
+                    {/* Background ring */}
+                    <CircularProgress
+                      variant="determinate"
+                      value={100}
+                      size={42}
+                      thickness={5}
+                      sx={{
+                        color: "#E5E7EB",
+                        position: "absolute",
+                        left: 0,
+                        top: 0,
+                      }}
+                    />
+
+                    {/* Actual progress */}
                     <CircularProgress
                       variant="determinate"
                       value={score}
                       size={42}
                       thickness={5}
                       sx={{
-                        color: "#10B981",
+                        color: colors.ring,
+                        "& .MuiCircularProgress-circle": {
+                          strokeLinecap: "round",
+                        },
                       }}
                     />
 
@@ -1335,6 +1399,7 @@ function SkillNotesAccordion({ skillNotes = {}, scoreIntel = [] }) {
                         sx={{
                           fontSize: 10,
                           fontWeight: 700,
+                          color: colors.text,
                         }}
                       >
                         {Math.round(score)}%
@@ -1368,9 +1433,10 @@ function SkillNotesAccordion({ skillNotes = {}, scoreIntel = [] }) {
                         width: 20,
                         fontSize: 10,
                         fontWeight: 600,
+                        mr: 1,
                       }}
                     >
-                      AI
+                      Score
                     </Typography>
 
                     <LinearProgress
@@ -1399,93 +1465,25 @@ function SkillNotesAccordion({ skillNotes = {}, scoreIntel = [] }) {
                       }}
                     />
                   </Box>
-
-                  {/* <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1,
-                    }}
-                  >
-                    <Typography
-                      sx={{
-                        width: 20,
-                        fontSize: 10,
-                        fontWeight: 600,
-                      }}
-                    >
-                      MNL
-                    </Typography>
-
-                    <LinearProgress
-                      variant="determinate"
-                      value={0}
-                      sx={{
-                        flex: 1,
-                        height: 4,
-                        borderRadius: 999,
-                        backgroundColor: "#E5E7EB",
-                      }}
-                    />
-
-                    <Chip
-                      label="—"
-                      size="small"
-                      sx={{
-                        bgcolor: "#F3F4F6",
-                      }}
-                    />
-                  </Box> */}
                 </Box>
-
-                {/* <IconButton size="small">
-                  <EditOutlinedIcon />
-                </IconButton> */}
               </Box>
             </AccordionSummary>
 
             <AccordionDetails
               sx={{
-                background: "#FAFAFA",
+                // background: "#FAFAFA",
                 borderTop: "1px solid #F3F4F6",
               }}
             >
               {/* AI Notes */}
               <Box
                 sx={{
-                  p: 2,
+                  p: 1,
                   borderRadius: 2,
-                  bgcolor: "#EEF2FF",
-                  mb: 2,
+                  // bgcolor: "#EEF2FF",
+                  // mb: 2,
                 }}
               >
-                {/* <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    mb: 1,
-                  }}
-                >
-                  <AutoAwesomeIcon
-                    sx={{
-                      fontSize: 18,
-                      color: "#4F46E5",
-                    }}
-                  />
-
-                  <Typography
-                    sx={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: "#4F46E5",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    AI Skill Notes
-                  </Typography>
-                </Box> */}
-
                 <Typography
                   sx={{
                     fontSize: 14,
@@ -1496,53 +1494,6 @@ function SkillNotesAccordion({ skillNotes = {}, scoreIntel = [] }) {
                   {noteText}
                 </Typography>
               </Box>
-
-              {/* Reviewer Notes */}
-              {/* <Box
-                sx={{
-                  p: 2,
-                  borderRadius: 2,
-                  bgcolor: "#FFFFFF",
-                  border: "1px dashed #D1D5DB",
-                }}
-              >
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    mb: 1,
-                  }}
-                >
-                  <RateReviewOutlinedIcon
-                    sx={{
-                      fontSize: 18,
-                      color: "#6B7280",
-                    }}
-                  />
-
-                  <Typography
-                    sx={{
-                      fontSize: 13,
-                      fontWeight: 700,
-                      color: "#6B7280",
-                      textTransform: "uppercase",
-                    }}
-                  >
-                    Reviewer Notes
-                  </Typography>
-                </Box>
-
-                <Typography
-                  sx={{
-                    fontSize: 14,
-                    color: "#9CA3AF",
-                    fontStyle: "italic",
-                  }}
-                >
-                  Not overridden — using AI Skill Notes.
-                </Typography>
-              </Box> */}
             </AccordionDetails>
           </Accordion>
         );
@@ -1793,18 +1744,18 @@ function SkillIntelPanel({ candidate }) {
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: "1fr 90px 90px 58px",
+            gridTemplateColumns: "1fr 120px 58px",
             px: "16px",
             py: "6px",
             backgroundColor: "#F9FAFB",
             borderBottom: `1px solid ${C.border}`,
           }}
         >
-          {["Skill", "Candidate", "Desired", "Match"].map((h) => (
+          {["Skill", "Candidate", "Score"].map((h) => (
             <Typography
               key={h}
               sx={{
-                fontSize: 8.5,
+                fontSize: 11,
                 fontWeight: 700,
                 color: "#9CA3AF",
                 textTransform: "uppercase",
@@ -1837,19 +1788,20 @@ function SkillIntelPanel({ candidate }) {
                 key={s.skill}
                 sx={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 90px 90px 58px",
+                  gridTemplateColumns: "1fr 120px 58px",
                   px: "16px",
                   py: "7px",
                   alignItems: "center",
-                  borderBottom: `1px solid #F3F4F6`,
+                  borderBottom: "1px solid #F3F4F6",
                   backgroundColor: i % 2 === 0 ? "#fff" : "#FCFCFD",
                   "&:hover": { backgroundColor: "#F9FAFB" },
                   transition: "background 0.15s",
                 }}
               >
+                {/* Skill */}
                 <Typography
                   sx={{
-                    fontSize: 10,
+                    fontSize: 12,
                     fontWeight: 600,
                     color: C.textPrimary,
                     lineHeight: 1.3,
@@ -1858,6 +1810,8 @@ function SkillIntelPanel({ candidate }) {
                 >
                   {s.skill}
                 </Typography>
+
+                {/* Candidate Score */}
                 <Box
                   sx={{
                     display: "flex",
@@ -1885,9 +1839,10 @@ function SkillIntelPanel({ candidate }) {
                       }}
                     />
                   </Box>
+
                   <Typography
                     sx={{
-                      fontSize: 10,
+                      fontSize: 12,
                       fontWeight: 700,
                       color: barColor,
                       minWidth: "20px",
@@ -1897,45 +1852,8 @@ function SkillIntelPanel({ candidate }) {
                     {s.candidate}
                   </Typography>
                 </Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "5px",
-                    pr: "8px",
-                  }}
-                >
-                  <Box
-                    sx={{
-                      flex: 1,
-                      height: 4,
-                      backgroundColor: "#E5E7EB",
-                      borderRadius: "999px",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <Box
-                      sx={{
-                        height: "100%",
-                        width: `${Math.min(s.desired, 100)}%`,
-                        backgroundColor: "#3B82F6",
-                        borderRadius: "999px",
-                        transition: "width 0.4s ease",
-                      }}
-                    />
-                  </Box>
-                  <Typography
-                    sx={{
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: "#3B82F6",
-                      minWidth: "20px",
-                      textAlign: "right",
-                    }}
-                  >
-                    {s.desired}
-                  </Typography>
-                </Box>
+
+                {/* Match % */}
                 <Box
                   sx={{
                     display: "inline-flex",
@@ -1949,7 +1867,7 @@ function SkillIntelPanel({ candidate }) {
                 >
                   <Typography
                     sx={{
-                      fontSize: 9,
+                      fontSize: 12,
                       fontWeight: 700,
                       color: barColor,
                       lineHeight: 1,
@@ -1974,7 +1892,7 @@ function SkillIntelPanel({ candidate }) {
             justifyContent: "space-between",
           }}
         >
-          <Typography sx={{ fontSize: 10, color: C.textSecondary }}>
+          <Typography sx={{ fontSize: 12, color: C.textSecondary }}>
             Scores are out of 100
           </Typography>
           <Box sx={{ display: "flex", gap: "12px" }}>
@@ -1995,7 +1913,7 @@ function SkillIntelPanel({ candidate }) {
                     backgroundColor: color,
                   }}
                 />
-                <Typography sx={{ fontSize: 9, color: C.textSecondary }}>
+                <Typography sx={{ fontSize: 12, color: C.textSecondary }}>
                   {label}
                 </Typography>
               </Box>
@@ -2218,6 +2136,7 @@ function TimelineTab({ candidate, onInterviewClick }) {
   );
 
   const entries = data?.data ?? [];
+  console.log("Timeline entries:", entries);
   const grouped = {};
   entries.forEach((e) => {
     const g = STAGE_GROUP[e.stage?.toLowerCase()];
@@ -2257,177 +2176,269 @@ function TimelineTab({ candidate, onInterviewClick }) {
 
   return (
     <Grid container spacing={4}>
-      <Grid size={{ xs: 12, md: 6 }}>
-        <Box sx={{ display: "flex", flexDirection: "column" }}>
+      <Grid sx={{ width: "100%",pr:10 }}>
+        <Box sx={{ display: "flex", flexDirection: "column", ml: 5,width:"100%" }}>
           {visibleStages.map((stage, i) => {
             const stageEntries = grouped[stage.key] ?? [];
             const isLast = i === visibleStages.length - 1;
             const state = groupState(stage.key, entries, currentStage);
             const firstEntry = stageEntries[0];
+
             const subEntries = stageEntries.filter((e) => SUB_LABEL[e.stage]);
+            console.log("subEntries", subEntries);
             const hasSubEntries = subEntries.length > 0;
 
+            const interviewEntry = stageEntries.filter(
+              (entry) => entry.interview_id,
+            );
             return (
-              <Box key={stage.key} sx={{ display: "flex", gap: "16px" }}>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  width: "100%",
+                }}
+                key={stage.key}
+              >
                 <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    flexShrink: 0,
-                  }}
+                  key={stage.key}
+                  sx={{ display: "flex", gap: "16px", width: "100%" }}
                 >
-                  <StageCircle state={state} size={32} />
-                  {!isLast && (
-                    <ConnectorLine
-                      state={state}
-                      minHeight={hasSubEntries ? 80 : 48}
-                    />
-                  )}
-                </Box>
-                <Box sx={{ pb: isLast ? 0 : "12px", width: "100%", pt: "4px" }}>
                   <Box
-                    sx={{ display: "flex", alignItems: "center", mb: "4px" }}
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      alignItems: "center",
+                      flexShrink: 0,
+                    }}
                   >
-                    <Typography
-                      sx={{
-                        fontSize: 15,
-                        fontWeight: 700,
-                        letterSpacing: "0.2px",
-                      }}
-                      color={C.textPrimary}
-                    >
-                      {stage.label}
-                    </Typography>
-                    <StatusBadge state={state} />
+                    <StageCircle state={state} size={32} />
+                    {!isLast && (
+                      <ConnectorLine
+                        state={state}
+                        minHeight={hasSubEntries ? 80 : 48}
+                      />
+                    )}
                   </Box>
-                  <Box sx={{ display: "flex", alignItems: "center" }}>
-                    <Typography
-                      sx={{
-                        fontSize: 11,
-                        fontWeight: 500,
-                        color: "#9CA3AF",
-                        minWidth: 24,
-                      }}
-                    >
-                      IST :
-                    </Typography>
-                    <Typography
-                      sx={{
-                        fontSize: 12,
-                        fontWeight: 600,
-                        ml: 1,
-                        color: "#4B5563",
-                      }}
-                    >
-                      {fmtDateIST(firstEntry.created_at)}
-                    </Typography>
-                  </Box>
-                  {firstEntry.triggered_by && (
-                    <Box sx={{ display: "flex", alignItems: "center" }}>
-                      <Typography
-                        sx={{
-                          fontSize: 11,
-                          fontWeight: 500,
-                          color: "#9CA3AF",
-                          minWidth: 24,
-                        }}
-                      >
-                        By :
-                      </Typography>
-                      <Typography
-                        sx={{
-                          fontSize: 12,
-                          fontWeight: 600,
-                          ml: 1,
-                          color: "#4B5563",
-                        }}
-                      >
-                        {firstEntry.triggered_by}
-                      </Typography>
-                    </Box>
-                  )}
-                  {hasSubEntries && (
+                  <Box
+                    sx={{
+                      pb: isLast ? 0 : "12px",
+                      width: "100%",
+                      pt: "4px",
+                      width: "100%",
+                    }}
+                  >
                     <Box
                       sx={{
-                        mt: "8px",
                         display: "flex",
-                        flexDirection: "column",
-                        gap: "6px",
+                        alignItems: "center",
+                        mb: "4px",
+                        width: "100%",
                       }}
                     >
-                      {subEntries.map((sub, si) => {
-                        const subState =
-                          sub.stage === "offer_revoked" ||
-                          sub.stage === "interview_failed"
-                            ? "failed"
-                            : "completed";
-                        return (
-                          <Box
-                            key={si}
+                      <Typography
+                        sx={{
+                          fontSize: 15,
+                          fontWeight: 700,
+                          letterSpacing: "0.2px",
+                        }}
+                        color={C.textPrimary}
+                      >
+                        {stage.label}
+                      </Typography>
+                      <StatusBadge state={state} />
+                    </Box>
+                    {stage.key !== "interviewing" && (
+                      <>
+                        <Box sx={{ display: "flex", alignItems: "center" }}>
+                          <Typography
                             sx={{
-                              display: "flex",
-                              alignItems: "flex-start",
-                              gap: "10px",
+                              fontSize: 11,
+                              fontWeight: 500,
+                              color: "#9CA3AF",
+                              minWidth: 24,
                             }}
                           >
-                            <SubStageCircle state={subState} size={20} />
-                            <Box>
-                              <Box
-                                sx={{ display: "flex", alignItems: "center" }}
-                              >
-                                <Typography
-                                  sx={{
-                                    fontSize: 12,
-                                    fontWeight: 600,
-                                    color: "#374151",
-                                  }}
-                                >
-                                  {sub.step_number
-                                    ? `Round ${sub.step_number} — `
-                                    : ""}
-                                </Typography>
-                                <Typography
-                                  sx={{
-                                    fontSize: 12,
-                                    fontWeight: 500,
-                                    color: "#6B7280",
-                                  }}
-                                >
-                                  {SUB_LABEL[sub.stage] ??
-                                    sub.stage.replace(/_/g, " ")}
-                                </Typography>
-                              </Box>
-                              <Box
-                                sx={{ display: "flex", alignItems: "center" }}
-                              >
-                                <Typography
-                                  sx={{
-                                    fontSize: 10,
-                                    fontWeight: 500,
-                                    color: "#9CA3AF",
-                                  }}
-                                >
-                                  IST :
-                                </Typography>
+                            IST :
+                          </Typography>
+                          <Typography
+                            sx={{
+                              fontSize: 12,
+                              fontWeight: 600,
+                              ml: 1,
+                              color: "#4B5563",
+                            }}
+                          >
+                            {fmtDateIST(firstEntry.created_at)}
+                          </Typography>
+                        </Box>
 
-                                <Typography
-                                  sx={{
-                                    fontSize: 10,
-                                    fontWeight: 500,
-                                    ml: 1,
-                                    color: "#9CA3AF",
-                                  }}
-                                >
-                                  {fmtDateIST(sub.created_at)}
-                                </Typography>
+                        {firstEntry.triggered_by && (
+                          <Box sx={{ display: "flex", alignItems: "center" }}>
+                            <Typography
+                              sx={{
+                                fontSize: 11,
+                                fontWeight: 500,
+                                color: "#9CA3AF",
+                                minWidth: 24,
+                              }}
+                            >
+                              By :
+                            </Typography>
+                            <Typography
+                              sx={{
+                                fontSize: 12,
+                                fontWeight: 600,
+                                ml: 1,
+                                color: "#4B5563",
+                              }}
+                            >
+                              {firstEntry.triggered_by}
+                            </Typography>
+                          </Box>
+                        )}
+                      </>
+                    )}
+                    {hasSubEntries && (
+                      <Box
+                        sx={{
+                          mt: "8px",
+                          display: "flex",
+                          flexDirection: "column",
+                          gap: "6px",
+                          width: "100%",
+                        }}
+                      >
+                        {subEntries.map((sub, si) => {
+                          const subState =
+                            sub.stage === "offer_revoked" ||
+                            sub.stage === "interview_failed"
+                              ? "failed"
+                              : "completed";
+                          const isLastInterviewEntry =
+                            sub.interview_id &&
+                            si ===
+                              subEntries
+                                .map((e, index) => ({ ...e, index }))
+                                .filter((e) => e.interview_id)
+                                .slice(-1)[0]?.index;
+                          return (
+                            <Box
+                              key={si}
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                gap: "10px",
+                                // border:1,
+                                width: "100%",
+                              }}
+                            >
+                              <Box
+                                sx={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  gap: 1,
+                                  mt: "2px",
+                                }}
+                              >
+                                <SubStageCircle state={subState} size={20} />
+                                <Box>
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                    }}
+                                  >
+                                    <Typography
+                                      sx={{
+                                        fontSize: 12,
+                                        fontWeight: 600,
+                                        color: "#374151",
+                                      }}
+                                    >
+                                      {sub.step_number
+                                        ? `Round ${sub.step_number} — `
+                                        : ""}
+                                    </Typography>
+                                    <Typography
+                                      sx={{
+                                        fontSize: 12,
+                                        fontWeight: 500,
+                                        color: "#6B7280",
+                                      }}
+                                    >
+                                      {SUB_LABEL[sub.stage] ??
+                                        sub.stage.replace(/_/g, " ")}
+                                    </Typography>
+                                  </Box>
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                    }}
+                                  >
+                                    <Typography
+                                      sx={{
+                                        fontSize: 10,
+                                        fontWeight: 500,
+                                        color: "#9CA3AF",
+                                      }}
+                                    >
+                                      IST :
+                                    </Typography>
+
+                                    <Typography
+                                      sx={{
+                                        fontSize: 10,
+                                        fontWeight: 500,
+                                        ml: 1,
+                                        color: "#9CA3AF",
+                                      }}
+                                    >
+                                      {fmtDateIST(sub.created_at)}
+                                    </Typography>
+                                  </Box>
+                                </Box>
+                              </Box>
+                              <Box>
+                                {sub.interview_id && (
+                                  <Button
+                                    startIcon={
+                                      <VisibilityIcon
+                                        sx={{ fontSize: "13px !important" }}
+                                      />
+                                    }
+                                    variant="outlined"
+                                    onClick={() =>
+                                      onInterviewClick(sub.interview_id)
+                                    }
+                                    sx={{
+                                      borderColor: "#1976d2",
+                                      color: "#1976d2",
+                                      textTransform: "none",
+                                      fontSize: "12px",
+                                      fontWeight: 500,
+                                      borderRadius: "5px",
+                                      px: 2,
+                                      py: 0,
+                                      height: "30px",
+                                      "& .MuiSvgIcon-root": {
+                                        fontSize: "13px",
+                                      },
+                                    }}
+                                  >
+                                    View Details
+                                  </Button>
+                                )}
                               </Box>
                             </Box>
-                          </Box>
-                        );
-                      })}
-                    </Box>
-                  )}
+                          );
+                        })}
+                      </Box>
+                    )}
+                  </Box>
                 </Box>
               </Box>
             );
@@ -2632,6 +2643,23 @@ export default function CandidateDetail() {
         status: data?.data?.status,
       }
     : null;
+  const [interviewModalOpen, setInterviewModalOpen] = useState(false);
+
+  const [selectedInterview, setSelectedInterview] = useState(null);
+
+  const [getInterviewDetails, { isFetching }] =
+    useLazyGetInterviewDetailsQuery();
+  const handleInterviewDetails = async (interviewId) => {
+    try {
+      const response = await getInterviewDetails(interviewId).unwrap();
+
+      setSelectedInterview(response.data);
+
+      setInterviewModalOpen(true);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   useEffect(() => {
     const labels = {};
@@ -2641,7 +2669,7 @@ export default function CandidateDetail() {
     if (Object.keys(labels).length) dispatch(setDynamicLabels(labels));
     return () => dispatch(clearDynamicLabels());
   }, [enriched?.full_name, location.state?.orgName, location.state?.jobTitle]);
-const [getResumeView] = useLazyGetResumeViewQuery();
+  const [getResumeView] = useLazyGetResumeViewQuery();
   const viewResume = async (candidateId) => {
     try {
       const res = await getResumeView(candidateId).unwrap();
@@ -2705,8 +2733,6 @@ const [getResumeView] = useLazyGetResumeViewQuery();
   const totalExp =
     enriched.total_experience ?? enriched.employment?.[0]?.duration ?? null;
 
-  
-
   return (
     <Box sx={{ p: 1, backgroundColor: "#fff" }}>
       {/* ── Page header card ── */}
@@ -2723,9 +2749,11 @@ const [getResumeView] = useLazyGetResumeViewQuery();
         <Box
           sx={{
             display: "flex",
-            alignItems: "flex-start",
+            alignItems: "center",
+            justifyContent: "center",
             gap: "14px",
             p: "16px 20px 12px",
+            width: "100%",
           }}
         >
           {/* Back button */}
@@ -2823,7 +2851,7 @@ const [getResumeView] = useLazyGetResumeViewQuery();
                       viewResume(enriched.id);
                     }}
                     sx={{
-                      fontSize: 14,
+                      fontSize: 18,
                       color: "#FF5F1F",
                       ml: 1,
                       cursor: "pointer",
@@ -2866,10 +2894,13 @@ const [getResumeView] = useLazyGetResumeViewQuery();
                 gap: "6px",
               }}
             >
-              <Typography sx={{ fontSize: 13, color: C.textSecondary }}>
+              <Typography sx={{ fontSize: 12, color: C.textSecondary }}>
                 {enriched.employment?.[0]?.job_title}
               </Typography>
-              <Typography sx={{ fontSize: 10, color: C.textSecondary }}>
+              <Typography sx={{ fontSize: 13, color: C.textSecondary }}>
+                {" . "}
+              </Typography>
+              <Typography sx={{ fontSize: 12, color: C.textSecondary }}>
                 {enriched.employment[0].company_name}
               </Typography>
             </Box>
@@ -3186,7 +3217,7 @@ const [getResumeView] = useLazyGetResumeViewQuery();
               {activeTab === TIMELINE && (
                 <TimelineTab
                   candidate={enriched}
-                  onInterviewClick={() => setActiveTab(INTERVIEWS)}
+                  onInterviewClick={handleInterviewDetails}
                 />
               )}
               {/* {activeTab === INTERVIEWS && <InterviewsTab candidate={enriched} />}
@@ -3195,6 +3226,381 @@ const [getResumeView] = useLazyGetResumeViewQuery();
           </Box>
         );
       })()}
+      <Dialog
+        open={interviewModalOpen}
+        onClose={() => setInterviewModalOpen(false)}
+        maxWidth={false}
+        PaperProps={{
+          sx: {
+            width: 480,
+            maxWidth: "95vw",
+            minWidth: 0,
+            borderRadius: "20px",
+            overflow: "hidden",
+            boxShadow: "0 20px 50px rgba(0,0,0,0.12)",
+          },
+        }}
+      >
+        {selectedInterview && (
+          <>
+            {/* HEADER */}
+            <Box sx={{ px: 2.5, pt: 2.5, pb: 2, bgcolor: "background.paper" }}>
+              <Typography
+                sx={{
+                  fontSize: 18,
+                  fontWeight: 700,
+                  mb: 1.5,
+                  color: "#111827",
+                }}
+              >
+                Interview Details
+              </Typography>
+              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+                <Chip
+                  icon={<CalendarMonthOutlinedIcon sx={{ fontSize: 13 }} />}
+                  label={selectedInterview.interview_step_name ?? "Round-1"}
+                  size="small"
+                  sx={{
+                    bgcolor: "#FFF7ED",
+                    color: "#B45309",
+                    border: "1px solid #FED7AA",
+                    borderRadius: "20px",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    height: 26,
+                    "& .MuiChip-icon": { color: "#B45309", ml: "8px" },
+                  }}
+                />
+                <Chip
+                  icon={<PhoneOutlined sx={{ fontSize: 13 }} />}
+                  label={selectedInterview.interview_step_type ?? "Telephonic"}
+                  size="small"
+                  sx={{
+                    bgcolor: "#ECFDF5",
+                    color: "#065F46",
+                    border: "1px solid #A7F3D0",
+                    borderRadius: "20px",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    height: 26,
+                    "& .MuiChip-icon": { color: "#065F46", ml: "8px" },
+                  }}
+                />
+                <Chip
+                  label={selectedInterview.status}
+                  size="small"
+                  sx={{
+                    bgcolor:
+                      selectedInterview.status === "Cancelled"
+                        ? "#FEF2F2"
+                        : "#ECFDF5",
+                    color:
+                      selectedInterview.status === "Cancelled"
+                        ? "#991B1B"
+                        : "#065F46",
+                    border: `1px solid ${selectedInterview.status === "Cancelled" ? "#FECACA" : "#A7F3D0"}`,
+                    borderRadius: "20px",
+                    fontSize: 12,
+                    fontWeight: 500,
+                    height: 26,
+                  }}
+                />
+              </Stack>
+            </Box>
+
+            {/* CANDIDATE ROW */}
+            <Box sx={{ px: 2.5, pb: 1.5 }}>
+              <Stack direction="row" spacing={1.2} alignItems="center">
+                <Avatar
+                  sx={{
+                    width: 36,
+                    height: 36,
+                    bgcolor: "#E6F1FB",
+                    color: "#185FA5",
+                    fontSize: 14,
+                    fontWeight: 600,
+                  }}
+                >
+                  {selectedInterview.candidate_name?.charAt(0)}
+                </Avatar>
+                <Box>
+                  <Typography
+                    sx={{ fontSize: 14, fontWeight: 600, color: "#111827" }}
+                  >
+                    {selectedInterview.candidate_name}
+                  </Typography>
+                  <Typography sx={{ fontSize: 12, color: "#6B7280" }}>
+                    {selectedInterview.candidate_experience}
+                  </Typography>
+                </Box>
+              </Stack>
+            </Box>
+
+            <Divider />
+
+            <DialogContent
+              sx={{
+                p: 0,
+                bgcolor: "#fff",
+                // ✅ THIS is the critical fix — constrain width hard
+                width: 480,
+                maxWidth: "95vw",
+                overflowX: "hidden", // ✅ blocks horizontal expansion
+                overflowY: "auto", // ✅ allows vertical scroll
+              }}
+            >
+              {isFetching ? (
+                <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
+                  <CircularProgress />
+                </Box>
+              ) : (
+                <>
+                  {/* DATE / TIME / PLATFORM */}
+                  <Box
+                    sx={{
+                      px: 2.5,
+                      py: 1.5,
+                      // ✅ Hard clamp so children cannot push width
+                      width: "100%",
+                      boxSizing: "border-box",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Stack spacing={1}>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <CalendarMonthOutlinedIcon
+                          sx={{ fontSize: 15, color: "#6B7280", flexShrink: 0 }}
+                        />
+                        <Typography sx={{ fontSize: 13, color: "#111827" }}>
+                          {selectedInterview.date}
+                        </Typography>
+                      </Stack>
+
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <AccessTimeOutlined
+                          sx={{ fontSize: 15, color: "#6B7280", flexShrink: 0 }}
+                        />
+                        <Typography sx={{ fontSize: 13, color: "#111827" }}>
+                          {selectedInterview.start_time} –{" "}
+                          {selectedInterview.end_time} (
+                          {selectedInterview.duration} Min)
+                        </Typography>
+                      </Stack>
+
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <WorkOutlineOutlined
+                          sx={{ fontSize: 15, color: "#6B7280", flexShrink: 0 }}
+                        />
+                        <Typography sx={{ fontSize: 13, color: "#111827" }}>
+                          Platform: {selectedInterview.platform}
+                        </Typography>
+                      </Stack>
+
+                      {/* ✅ URL — fully contained, truncates with ellipsis */}
+                      {selectedInterview.meeting_url && (
+                        <Stack
+                          direction="row"
+                          spacing={1}
+                          alignItems="center"
+                          sx={{
+                            width: "100%",
+                            // ✅ These two together are the real fix
+                            minWidth: 0,
+                            overflow: "hidden",
+                          }}
+                        >
+                          <InsertDriveFileOutlinedIcon
+                            sx={{
+                              fontSize: 15,
+                              color: "#185FA5",
+                              flexShrink: 0,
+                            }}
+                          />
+                          <Box
+                            component="a"
+                            href={selectedInterview.meeting_url}
+                            target="_blank"
+                            title={selectedInterview.meeting_url}
+                            sx={{
+                              fontSize: 13,
+                              color: "#185FA5",
+                              textDecoration: "none",
+                              // ✅ Block + overflow = text clips at container edge
+                              display: "block",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              // ✅ Must have minWidth:0 and flex:1 together
+                              minWidth: 0,
+                              flex: 1,
+                              "&:hover": { textDecoration: "underline" },
+                            }}
+                          >
+                            {selectedInterview.meeting_url}
+                          </Box>
+                        </Stack>
+                      )}
+                    </Stack>
+                  </Box>
+
+                  <Divider />
+
+                  {/* PRIMARY INTERVIEWER */}
+                  <Box sx={{ px: 2.5, py: 1.5 }}>
+                    <Stack
+                      direction="row"
+                      spacing={0.8}
+                      alignItems="center"
+                      mb={1.2}
+                    >
+                      <PersonOutlineOutlined
+                        sx={{ fontSize: 16, color: "#6B7280" }}
+                      />
+                      <Typography
+                        sx={{ fontSize: 13, fontWeight: 600, color: "#111827" }}
+                      >
+                        Primary Interviewer
+                      </Typography>
+                    </Stack>
+                    <Box spacing={1} sx={{ ml:2.5}}>
+                      {selectedInterview.primary_interviewer?.name && (
+                        <Stack direction="row" justifyContent="space-between">
+                          <Typography sx={{ fontSize: 13 }}>
+                            {selectedInterview.primary_interviewer.name}
+                          </Typography>
+                          <Typography
+                            sx={{ ml: 2, fontSize: 12, color: "#6B7280" }}
+                          >
+                            Primary Interviewer
+                          </Typography>
+                        </Stack>
+                      )}
+                      {selectedInterview.created_by?.name && (
+                        <Stack direction="row" justifyContent="space-between">
+                          <Typography sx={{ fontSize: 13 }}>
+                            {selectedInterview.created_by.name}
+                          </Typography>
+                          <Typography
+                            sx={{ ml: 2, fontSize: 12, color: "#6B7280" }}
+                          >
+                            Created By
+                          </Typography>
+                        </Stack>
+                      )}
+                    </Box>
+                  </Box>
+
+                  <Divider />
+
+                  {/* JOB DETAILS */}
+                  <Box sx={{ px: 2.5, py: 1.5 }}>
+                    <Stack
+                      direction="row"
+                      spacing={0.8}
+                      alignItems="center"
+                      mb={1.2}
+                    >
+                      <WorkOutlineOutlined
+                        sx={{ fontSize: 16, color: "#6B7280" }}
+                      />
+                      <Typography
+                        sx={{ fontSize: 13, fontWeight: 600, color: "#111827" }}
+                      >
+                        Job Details
+                      </Typography>
+                    </Stack>
+                   <Box spacing={1} sx={{ ml:2.5}}>
+                      {[
+                        {
+                          label: "Round",
+                          value: selectedInterview.interview_step_name,
+                        },
+                        {
+                          label: "Type",
+                          value: selectedInterview.interview_step_type,
+                        },
+                        {
+                          label: "Duration",
+                          value: selectedInterview.duration
+                            ? `${selectedInterview.duration} mins`
+                            : null,
+                        },
+                      ].map(({ label, value }) =>
+                        value ? (
+                          <Stack
+                            key={label}
+                            direction="row"
+                            justifyContent="space-between"
+                          >
+                            <Typography sx={{ fontSize: 13, color: "#6B7280" }}>
+                              {label}
+                            </Typography>
+                            <Typography
+                              sx={{ ml: 2, fontSize: 13, color: "#111827" }}
+                            >
+                              {value}
+                            </Typography>
+                          </Stack>
+                        ) : null,
+                      )}
+                    </Box>
+                  </Box>
+                </>
+              )}
+            </DialogContent>
+
+            {/* FOOTER */}
+            <DialogActions
+              sx={{
+                px: 2.5,
+                py: 1.8,
+                borderTop: "1px solid #E5E7EB",
+                bgcolor: "#fff",
+                gap: 1,
+              }}
+            >
+              <Button
+                variant="outlined"
+                onClick={() => setInterviewModalOpen(false)}
+                sx={{
+                  flex: 1,
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  fontWeight: 500,
+                  fontSize: 14,
+                  color: "#111827",
+                  borderColor: "#E5E7EB",
+                }}
+              >
+                Close
+              </Button>
+              {/* <Button
+                variant="contained"
+                href={selectedInterview.meeting_url}
+                target="_blank"
+                disabled={!selectedInterview.meeting_url}
+                sx={{
+                  flex: 2,
+                  textTransform: "none",
+                  borderRadius: "10px",
+                  fontWeight: 500,
+                  fontSize: 14,
+                  background:
+                    "linear-gradient(90deg, #4F6EF7 0%, #6C8EFF 100%)",
+                  boxShadow: "none",
+                  "&:hover": {
+                    background:
+                      "linear-gradient(90deg, #3B5BE3 0%, #5A7AEF 100%)",
+                    boxShadow: "none",
+                  },
+                }}
+              >
+                Reschedule
+              </Button> */}
+            </DialogActions>
+          </>
+        )}
+      </Dialog>
     </Box>
   );
 }

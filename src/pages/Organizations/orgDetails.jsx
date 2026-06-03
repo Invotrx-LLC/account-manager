@@ -87,22 +87,31 @@ import GroupOutlinedIcon from "@mui/icons-material/GroupOutlined";
 import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import WorkspacePremiumOutlinedIcon from "@mui/icons-material/WorkspacePremiumOutlined";
 import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
-
-
-
+import CustomSelect from "../../components/Select/index";
 
 const LABEL_SX = {
-  fontSize: 10, fontWeight: 700, letterSpacing: "0.08em",
-  textTransform: "uppercase", color: "#9696A6",
+  fontSize: 10,
+  fontWeight: 700,
+  letterSpacing: "0.08em",
+  textTransform: "uppercase",
+  color: "#9696A6",
 };
 const CARD_SX = {
-  backgroundColor: "#fff", borderRadius: "14px",
-  border: "1px solid #E8E8EC", p: "14px 16px",
+  backgroundColor: "#fff",
+  borderRadius: "14px",
+  border: "1px solid #E8E8EC",
+  p: "14px 16px",
 };
 
 /* ── Helpers ── */
 const fmtDate = (d) =>
-  d ? new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" }) : "—";
+  d
+    ? new Date(d).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "long",
+        year: "numeric",
+      })
+    : "—";
 
 const fmtTime = (t) => {
   if (!t) return "—";
@@ -115,16 +124,21 @@ const slugToTitle = (s = "") =>
   s.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
 const STATUS_MAP = {
-  scheduled:     { bg: "#EEF2FF", color: "#3C3489", border: "#AFA9EC" },
-  completed:     { bg: "#E1F5EE", color: "#085041", border: "#5DCAA5" },
-  cancelled:     { bg: "#F3F4F6", color: "#5F5E5A", border: "#D3D1C7" },
-  rescheduled:   { bg: "#FAEEDA", color: "#633806", border: "#EF9F27" },
-  no_show:       { bg: "#FCEBEB", color: "#791F1F", border: "#F09595" },
+  scheduled: { bg: "#EEF2FF", color: "#3C3489", border: "#AFA9EC" },
+  completed: { bg: "#E1F5EE", color: "#085041", border: "#5DCAA5" },
+  cancelled: { bg: "#F3F4F6", color: "#5F5E5A", border: "#D3D1C7" },
+  rescheduled: { bg: "#FAEEDA", color: "#633806", border: "#EF9F27" },
+  no_show: { bg: "#FCEBEB", color: "#791F1F", border: "#F09595" },
   not_conducted: { bg: "#F3F4F6", color: "#5F5E5A", border: "#D3D1C7" },
 };
 
 function initials(name = "") {
-  return name.split(" ").filter(Boolean).slice(0, 2).map((w) => w[0].toUpperCase()).join("");
+  return name
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0].toUpperCase())
+    .join("");
 }
 
 const AVATAR_COLORS = [
@@ -155,12 +169,27 @@ function PersonRow({ name, subtitle, size = 36 }) {
   const ac = avatarColor(name);
   return (
     <Box sx={{ display: "flex", alignItems: "center", gap: "10px" }}>
-      <Avatar sx={{ width: size, height: size, fontSize: size * 0.35, fontWeight: 700, bgcolor: ac.bg, color: ac.color }}>
+      <Avatar
+        sx={{
+          width: size,
+          height: size,
+          fontSize: size * 0.35,
+          fontWeight: 700,
+          bgcolor: ac.bg,
+          color: ac.color,
+        }}
+      >
         {initials(name)}
       </Avatar>
       <Box>
-        <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111118" }}>{name}</Typography>
-        {subtitle && <Typography sx={{ fontSize: 11, color: "#5C5C70", mt: "1px" }}>{subtitle}</Typography>}
+        <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111118" }}>
+          {name}
+        </Typography>
+        {subtitle && (
+          <Typography sx={{ fontSize: 11, color: "#5C5C70", mt: "1px" }}>
+            {subtitle}
+          </Typography>
+        )}
       </Box>
     </Box>
   );
@@ -169,23 +198,35 @@ function PersonRow({ name, subtitle, size = 36 }) {
 /* ── Meta key-value row ── */
 function MetaRow({ label, value }) {
   return (
-    <Box sx={{
-      display: "flex", justifyContent: "space-between", alignItems: "center",
-      py: "6px", borderBottom: "1px solid #F3F4F6",
-      "&:last-child": { borderBottom: "none", pb: 0 },
-      "&:first-of-type": { pt: 0 },
-    }}>
+    <Box
+      sx={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        py: "6px",
+        borderBottom: "1px solid #F3F4F6",
+        "&:last-child": { borderBottom: "none", pb: 0 },
+        "&:first-of-type": { pt: 0 },
+      }}
+    >
       <Typography sx={{ fontSize: 12, color: "#9696A6" }}>{label}</Typography>
-      <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#111118", textTransform: "capitalize" }}>
+      <Typography
+        sx={{
+          fontSize: 12,
+          fontWeight: 600,
+          color: "#111118",
+          textTransform: "capitalize",
+        }}
+      >
         {value ?? "—"}
       </Typography>
     </Box>
   );
 }
 function InterviewDetailDialog({ open, onClose, interviewId }) {
-
   const { data, isLoading, isError } = useGetInterviewDetailsQuery(
-    interviewId, { skip: !interviewId }
+    interviewId,
+    { skip: !interviewId },
   );
   const iv = data?.data ?? null;
 
@@ -193,7 +234,7 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
   const statusCfg = STATUS_MAP[statusKey] ?? STATUS_MAP.scheduled;
 
   return (
-   <Dialog
+    <Dialog
       open={open}
       onClose={onClose}
       maxWidth="md"
@@ -209,41 +250,130 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
       }}
     >
       {/* ══ Header band ══ */}
-      <Box sx={{ backgroundColor: "#FF5F1F", px: "24px", pt: "22px", pb: "52px" }}>
-        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: "12px" }}>
+      <Box
+        sx={{ backgroundColor: "#FF5F1F", px: "24px", pt: "22px", pb: "52px" }}
+      >
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "flex-start",
+            justifyContent: "space-between",
+            gap: "12px",
+          }}
+        >
           <Box>
-            <Typography sx={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", textTransform: "uppercase", color: "rgba(255,255,255,0.55)", mb: "5px" }}>
+            <Typography
+              sx={{
+                fontSize: 10,
+                fontWeight: 700,
+                letterSpacing: "0.12em",
+                textTransform: "uppercase",
+                color: "rgba(255,255,255,0.55)",
+                mb: "5px",
+              }}
+            >
               Interview details
             </Typography>
-            {isLoading
-              ? <Box sx={{ width: 240, height: 26, borderRadius: "6px", backgroundColor: "rgba(255,255,255,0.2)" }} />
-              : <Typography sx={{ fontSize: 20, fontWeight: 700, color: "#fff", lineHeight: 1.25 }}>
-                  {iv?.interview_step_name ?? "—"}
-                </Typography>
-            }
+            {isLoading ? (
+              <Box
+                sx={{
+                  width: 240,
+                  height: 26,
+                  borderRadius: "6px",
+                  backgroundColor: "rgba(255,255,255,0.2)",
+                }}
+              />
+            ) : (
+              <Typography
+                sx={{
+                  fontSize: 20,
+                  fontWeight: 700,
+                  color: "#fff",
+                  lineHeight: 1.25,
+                }}
+              >
+                {iv?.interview_step_name ?? "—"}
+              </Typography>
+            )}
             {iv && (
-              <Typography sx={{ fontSize: 12, color: "rgba(255,255,255,0.65)", mt: "4px" }}>
+              <Typography
+                sx={{
+                  fontSize: 12,
+                  color: "rgba(255,255,255,0.65)",
+                  mt: "4px",
+                }}
+              >
                 Step {iv.interview_step_number} · {iv.interview_step_type}
               </Typography>
             )}
           </Box>
 
-          <Box sx={{ display: "flex", alignItems: "center", gap: "7px", flexWrap: "wrap", justifyContent: "flex-end", pt: "2px" }}>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: "7px",
+              flexWrap: "wrap",
+              justifyContent: "flex-end",
+              pt: "2px",
+            }}
+          >
             {iv?.status && (
-              <Box sx={{ px: "11px", py: "4px", borderRadius: "99px", backgroundColor: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.3)" }}>
-                <Typography sx={{ fontSize: 11, fontWeight: 600, color: "#fff", textTransform: "capitalize" }}>
+              <Box
+                sx={{
+                  px: "11px",
+                  py: "4px",
+                  borderRadius: "99px",
+                  backgroundColor: "rgba(255,255,255,0.15)",
+                  border: "1px solid rgba(255,255,255,0.3)",
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    color: "#fff",
+                    textTransform: "capitalize",
+                  }}
+                >
                   {iv.status}
                 </Typography>
               </Box>
             )}
             {iv?.is_final && (
-              <Box sx={{ display: "flex", alignItems: "center", gap: "4px", px: "11px", py: "4px", borderRadius: "99px", backgroundColor: "#FBBF24" }}>
-                <EmojiEventsOutlinedIcon sx={{ fontSize: 12, color: "#1F2937" }} />
-                <Typography sx={{ fontSize: 11, fontWeight: 700, color: "#1F2937" }}>Final round</Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  px: "11px",
+                  py: "4px",
+                  borderRadius: "99px",
+                  backgroundColor: "#FBBF24",
+                }}
+              >
+                <EmojiEventsOutlinedIcon
+                  sx={{ fontSize: 12, color: "#1F2937" }}
+                />
+                <Typography
+                  sx={{ fontSize: 11, fontWeight: 700, color: "#1F2937" }}
+                >
+                  Final round
+                </Typography>
               </Box>
             )}
-            <IconButton size="small" onClick={onClose}
-              sx={{ color: "rgba(255,255,255,0.8)", backgroundColor: "rgba(255,255,255,0.12)", borderRadius: "8px", width: 28, height: 28, "&:hover": { backgroundColor: "rgba(255,255,255,0.2)" } }}>
+            <IconButton
+              size="small"
+              onClick={onClose}
+              sx={{
+                color: "rgba(255,255,255,0.8)",
+                backgroundColor: "rgba(255,255,255,0.12)",
+                borderRadius: "8px",
+                width: 28,
+                height: 28,
+                "&:hover": { backgroundColor: "rgba(255,255,255,0.2)" },
+              }}
+            >
               <CloseIcon sx={{ fontSize: 16 }} />
             </IconButton>
           </Box>
@@ -261,34 +391,92 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
         }}
       >
         {isLoading ? (
-          <Box sx={{ ...CARD_SX, mt: "30px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", py: 10, gap: 2 }}>
+          <Box
+            sx={{
+              ...CARD_SX,
+              mt: "30px",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              py: 10,
+              gap: 2,
+            }}
+          >
             <CircularProgress sx={{ color: "#FF5F1F" }} size={28} />
-            <Typography sx={{ fontSize: 13, color: "#5C5C70" }}>Loading interview details…</Typography>
+            <Typography sx={{ fontSize: 13, color: "#5C5C70" }}>
+              Loading interview details…
+            </Typography>
           </Box>
-
         ) : isError || !iv ? (
           <Box sx={{ ...CARD_SX, mt: "30px", py: 8, textAlign: "center" }}>
-            <Typography sx={{ fontSize: 14, fontWeight: 600, color: "#B91C1C" }}>Failed to load details</Typography>
+            <Typography
+              sx={{ fontSize: 14, fontWeight: 600, color: "#B91C1C" }}
+            >
+              Failed to load details
+            </Typography>
           </Box>
-
         ) : (
-          <Box sx={{ display: "flex", flexDirection: "column", gap: "10px", mt: "30px" }}>
-
+          <Box
+            sx={{
+              display: "flex",
+              flexDirection: "column",
+              gap: "10px",
+              mt: "30px",
+            }}
+          >
             {/* ── Candidate strip ── */}
-            <Box sx={{
-              ...CARD_SX,
-              display: "flex", alignItems: "center",
-              justifyContent: "space-between", flexWrap: "wrap", gap: "12px",
-            }}>
-              <PersonRow name={iv.candidate_name ?? ""} subtitle={`${iv.candidate_experience} experience`} size={42} />
+            <Box
+              sx={{
+                ...CARD_SX,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: "12px",
+              }}
+            >
+              <PersonRow
+                name={iv.candidate_name ?? ""}
+                subtitle={`${iv.candidate_experience} experience`}
+                size={42}
+              />
               <Box sx={{ display: "flex", alignItems: "center", gap: "7px" }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: "5px", px: "11px", py: "5px", borderRadius: "10px", backgroundColor: "#E1F5EE", border: "1px solid #5DCAA5" }}>
-                  <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#085041" }}>
+                <Box
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    px: "11px",
+                    py: "5px",
+                    borderRadius: "10px",
+                    backgroundColor: "#E1F5EE",
+                    border: "1px solid #5DCAA5",
+                  }}
+                >
+                  <Typography
+                    sx={{ fontSize: 12, fontWeight: 700, color: "#085041" }}
+                  >
                     {iv.skill_intel_score}% match
                   </Typography>
                 </Box>
-                <Box sx={{ px: "11px", py: "5px", borderRadius: "10px", backgroundColor: statusCfg.bg, border: `1px solid ${statusCfg.border}` }}>
-                  <Typography sx={{ fontSize: 12, fontWeight: 700, color: statusCfg.color, textTransform: "capitalize" }}>
+                <Box
+                  sx={{
+                    px: "11px",
+                    py: "5px",
+                    borderRadius: "10px",
+                    backgroundColor: statusCfg.bg,
+                    border: `1px solid ${statusCfg.border}`,
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: statusCfg.color,
+                      textTransform: "capitalize",
+                    }}
+                  >
                     {iv.status}
                   </Typography>
                 </Box>
@@ -296,22 +484,36 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
             </Box>
 
             {/* ── Date / Time / Platform ── */}
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr 1fr",
+                gap: "10px",
+              }}
+            >
               {/* Date */}
               <Box sx={CARD_SX}>
                 <SectionIcon icon={CalendarMonthOutlinedIcon} label="Date" />
-                <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111118" }}>
+                <Typography
+                  sx={{ fontSize: 13, fontWeight: 600, color: "#111118" }}
+                >
                   {fmtDate(iv.date)}
                 </Typography>
                 <Typography sx={{ fontSize: 11, color: "#9696A6", mt: "2px" }}>
-                  {iv.date ? new Date(iv.date).toLocaleDateString("en-GB", { weekday: "long" }) : ""}
+                  {iv.date
+                    ? new Date(iv.date).toLocaleDateString("en-GB", {
+                        weekday: "long",
+                      })
+                    : ""}
                 </Typography>
               </Box>
 
               {/* Time */}
               <Box sx={CARD_SX}>
                 <SectionIcon icon={AccessTimeOutlinedIcon} label="Time" />
-                <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111118" }}>
+                <Typography
+                  sx={{ fontSize: 13, fontWeight: 600, color: "#111118" }}
+                >
                   {fmtTime(iv.start_time)} – {fmtTime(iv.end_time)}
                 </Typography>
                 <Typography sx={{ fontSize: 11, color: "#9696A6", mt: "2px" }}>
@@ -322,12 +524,28 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
               {/* Platform */}
               <Box sx={CARD_SX}>
                 <SectionIcon icon={VideocamOutlinedIcon} label="Platform" />
-                <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111118" }}>
+                <Typography
+                  sx={{ fontSize: 13, fontWeight: 600, color: "#111118" }}
+                >
                   {iv.platform ?? "—"}
                 </Typography>
                 {iv.meeting_url && (
-                  <Box component="a" href={iv.meeting_url} target="_blank" rel="noopener noreferrer"
-                    sx={{ display: "inline-flex", alignItems: "center", gap: "3px", fontSize: 11, color: "#185FA5", textDecoration: "none", mt: "3px", "&:hover": { textDecoration: "underline" } }}>
+                  <Box
+                    component="a"
+                    href={iv.meeting_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    sx={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: "3px",
+                      fontSize: 11,
+                      color: "#185FA5",
+                      textDecoration: "none",
+                      mt: "3px",
+                      "&:hover": { textDecoration: "underline" },
+                    }}
+                  >
                     Join meeting <OpenInNewIcon sx={{ fontSize: 11 }} />
                   </Box>
                 )}
@@ -335,46 +553,88 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
             </Box>
 
             {/* ── Interviewers ── */}
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "10px",
+              }}
+            >
               {/* Primary */}
               <Box sx={CARD_SX}>
-                <SectionIcon icon={PersonOutlineOutlined} label="Primary interviewer" />
-                {iv.primary_interviewer?.name
-                  ? <PersonRow name={iv.primary_interviewer.name} subtitle={iv.primary_interviewer.designation ?? ""} />
-                  : <Typography sx={{ fontSize: 12, color: "#9696A6" }}>Not assigned</Typography>
-                }
+                <SectionIcon
+                  icon={PersonOutlineOutlined}
+                  label="Primary interviewer"
+                />
+                {iv.primary_interviewer?.name ? (
+                  <PersonRow
+                    name={iv.primary_interviewer.name}
+                    subtitle={iv.primary_interviewer.designation ?? ""}
+                  />
+                ) : (
+                  <Typography sx={{ fontSize: 12, color: "#9696A6" }}>
+                    Not assigned
+                  </Typography>
+                )}
               </Box>
 
               {/* Panel */}
               <Box sx={CARD_SX}>
                 <SectionIcon icon={GroupOutlinedIcon} label="Panel members" />
                 {iv.panel_members?.length > 0 ? (
-                  <Box sx={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <Box
+                    sx={{
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "8px",
+                    }}
+                  >
                     {iv.panel_members.map((p) => (
                       <PersonRow key={p.id} name={p.name} size={28} />
                     ))}
                   </Box>
                 ) : (
-                  <Typography sx={{ fontSize: 12, color: "#9696A6" }}>No panel members</Typography>
+                  <Typography sx={{ fontSize: 12, color: "#9696A6" }}>
+                    No panel members
+                  </Typography>
                 )}
               </Box>
             </Box>
 
             {/* ── Skills + Job meta ── */}
-            <Box sx={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+            <Box
+              sx={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: "10px",
+              }}
+            >
               {/* Skills */}
               <Box sx={CARD_SX}>
-                <SectionIcon icon={PsychologyOutlinedIcon} label="Required skills" />
+                <SectionIcon
+                  icon={PsychologyOutlinedIcon}
+                  label="Required skills"
+                />
                 <Box sx={{ display: "flex", flexWrap: "wrap", gap: "5px" }}>
                   {(iv.skills ?? "")
-                    .split(",").map((s) => s.trim()).filter(Boolean)
+                    .split(",")
+                    .map((s) => s.trim())
+                    .filter(Boolean)
                     .map((skill) => (
-                      <Box key={skill} sx={{
-                        fontSize: 11, fontWeight: 500, px: "8px", py: "3px",
-                        borderRadius: "6px", backgroundColor: "#F3F4F6",
-                        border: "1px solid #E8E8EC", color: "#5C5C70",
-                        textTransform: "capitalize",
-                      }}>
+                      <Box
+                        key={skill}
+                        sx={{
+                          fontSize: 11,
+                          fontWeight: 500,
+                          px: "8px",
+                          py: "3px",
+                          borderRadius: "6px",
+                          backgroundColor: "#F3F4F6",
+                          border: "1px solid #E8E8EC",
+                          color: "#5C5C70",
+                          textTransform: "capitalize",
+                        }}
+                      >
                         {skill}
                       </Box>
                     ))}
@@ -383,74 +643,128 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
 
               {/* Job meta */}
               <Box sx={CARD_SX}>
-                <SectionIcon icon={WorkOutlineRoundedIcon} label="Job details" />
-                <MetaRow label="Function"     value={slugToTitle(iv.function ?? "")} />
-                <MetaRow label="Sub-function" value={slugToTitle(iv.sub_function ?? "")} />
-                <MetaRow label="Experience"   value={`${iv.min_years}–${iv.max_years} years`} />
-                <MetaRow label="Work mode"    value={iv.mode_of_work} />
-                <MetaRow label="Location"     value={iv.country} />
+                <SectionIcon
+                  icon={WorkOutlineRoundedIcon}
+                  label="Job details"
+                />
+                <MetaRow
+                  label="Function"
+                  value={slugToTitle(iv.function ?? "")}
+                />
+                <MetaRow
+                  label="Sub-function"
+                  value={slugToTitle(iv.sub_function ?? "")}
+                />
+                <MetaRow
+                  label="Experience"
+                  value={`${iv.min_years}–${iv.max_years} years`}
+                />
+                <MetaRow label="Work mode" value={iv.mode_of_work} />
+                <MetaRow label="Location" value={iv.country} />
               </Box>
             </Box>
 
             {/* ── Feedback banner (conditional) ── */}
             {!iv.feedback_submitted && statusKey === "completed" && (
-              <Box sx={{
-                display: "flex", alignItems: "center", justifyContent: "space-between",
-                gap: "12px", px: "16px", py: "13px",
-                borderRadius: "12px", backgroundColor: "#FAEEDA",
-                border: "1px solid #EF9F27",
-              }}>
-                <Box sx={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <WarningAmberOutlinedIcon sx={{ fontSize: 16, color: "#633806", flexShrink: 0 }} />
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  gap: "12px",
+                  px: "16px",
+                  py: "13px",
+                  borderRadius: "12px",
+                  backgroundColor: "#FAEEDA",
+                  border: "1px solid #EF9F27",
+                }}
+              >
+                <Box
+                  sx={{ display: "flex", alignItems: "center", gap: "10px" }}
+                >
+                  <WarningAmberOutlinedIcon
+                    sx={{ fontSize: 16, color: "#633806", flexShrink: 0 }}
+                  />
                   <Box>
-                    <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#633806" }}>
+                    <Typography
+                      sx={{ fontSize: 13, fontWeight: 600, color: "#633806" }}
+                    >
                       Feedback not submitted
                     </Typography>
-                    <Typography sx={{ fontSize: 11, color: "#854F0B", mt: "1px" }}>
+                    <Typography
+                      sx={{ fontSize: 11, color: "#854F0B", mt: "1px" }}
+                    >
                       Interview completed — awaiting interviewer feedback
                     </Typography>
                   </Box>
                 </Box>
-                <Button size="small" sx={{
-                  textTransform: "none", fontSize: 12, fontWeight: 600,
-                  color: "#633806", borderColor: "#EF9F27",
-                  border: "1px solid", borderRadius: "8px", px: "14px",
-                  whiteSpace: "nowrap", flexShrink: 0,
-                  "&:hover": { backgroundColor: "#FCD34D22" },
-                }}>
+                <Button
+                  size="small"
+                  sx={{
+                    textTransform: "none",
+                    fontSize: 12,
+                    fontWeight: 600,
+                    color: "#633806",
+                    borderColor: "#EF9F27",
+                    border: "1px solid",
+                    borderRadius: "8px",
+                    px: "14px",
+                    whiteSpace: "nowrap",
+                    flexShrink: 0,
+                    "&:hover": { backgroundColor: "#FCD34D22" },
+                  }}
+                >
                   Submit feedback
                 </Button>
               </Box>
             )}
-
           </Box>
         )}
       </DialogContent>
 
       {/* ══ Footer ══ */}
-      <Box sx={{
-        px: "20px", py: "14px",
-        borderTop: "1px solid #E8E8EC",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        backgroundColor: "#fff",
-      }}>
+      <Box
+        sx={{
+          px: "20px",
+          py: "14px",
+          borderTop: "1px solid #E8E8EC",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          backgroundColor: "#fff",
+        }}
+      >
         <Typography sx={{ fontSize: 11, color: "#9696A6" }}>
           ID #{iv?.id?.slice(0, 8).toUpperCase() ?? "—"}
         </Typography>
         <Box sx={{ display: "flex", gap: "8px" }}>
-          <Button onClick={onClose} sx={{
-            textTransform: "none", fontWeight: 500, fontSize: 13,
-            color: "#5C5C70", border: "1px solid #E8E8EC",
-            borderRadius: "10px", px: "18px",
-          }}>
+          <Button
+            onClick={onClose}
+            sx={{
+              textTransform: "none",
+              fontWeight: 500,
+              fontSize: 13,
+              color: "#5C5C70",
+              border: "1px solid #E8E8EC",
+              borderRadius: "10px",
+              px: "18px",
+            }}
+          >
             Close
           </Button>
-          <Button variant="contained" sx={{
-            textTransform: "none", fontWeight: 600, fontSize: 13,
-            backgroundColor: "#111118", borderRadius: "10px", px: "18px",
-            boxShadow: "none",
-            "&:hover": { backgroundColor: "#222", boxShadow: "none" },
-          }}>
+          <Button
+            variant="contained"
+            sx={{
+              textTransform: "none",
+              fontWeight: 600,
+              fontSize: 13,
+              backgroundColor: "#111118",
+              borderRadius: "10px",
+              px: "18px",
+              boxShadow: "none",
+              "&:hover": { backgroundColor: "#222", boxShadow: "none" },
+            }}
+          >
             Reschedule
           </Button>
         </Box>
@@ -531,11 +845,11 @@ function StatusPill({ status }) {
 function OrgHeroHeader({ org, analytics }) {
   const initials = org.organisation_name
     ? org.organisation_name
-      .split(" ")
-      .map((w) => w[0])
-      .slice(0, 2)
-      .join("")
-      .toUpperCase()
+        .split(" ")
+        .map((w) => w[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase()
     : "?";
 
   const statPills = [
@@ -904,30 +1218,30 @@ function OrgOverviewTab({ org, orgId }) {
 
   const funnelData = analytics
     ? [
-      { name: "Matched", value: analytics.candidate_stage_breakdown.matched },
-      {
-        name: "Shortlisted",
-        value: analytics.candidate_stage_breakdown.shortlisted,
-      },
-      {
-        name: "Interviewing",
-        value:
-          analytics.candidate_stage_breakdown.interview_scheduled +
-          analytics.candidate_stage_breakdown.interview_rescheduled,
-      },
-      {
-        name: "Selected",
-        value: analytics.candidate_stage_breakdown.selected,
-      },
-      {
-        name: "Rejected",
-        value: analytics.candidate_stage_breakdown.rejected,
-      },
-      {
-        name: "Onboarded",
-        value: analytics.candidate_stage_breakdown.onboarded,
-      },
-    ].filter((d) => d.value > 0)
+        { name: "Matched", value: analytics.candidate_stage_breakdown.matched },
+        {
+          name: "Shortlisted",
+          value: analytics.candidate_stage_breakdown.shortlisted,
+        },
+        {
+          name: "Interviewing",
+          value:
+            analytics.candidate_stage_breakdown.interview_scheduled +
+            analytics.candidate_stage_breakdown.interview_rescheduled,
+        },
+        {
+          name: "Selected",
+          value: analytics.candidate_stage_breakdown.selected,
+        },
+        {
+          name: "Rejected",
+          value: analytics.candidate_stage_breakdown.rejected,
+        },
+        {
+          name: "Onboarded",
+          value: analytics.candidate_stage_breakdown.onboarded,
+        },
+      ].filter((d) => d.value > 0)
     : [];
 
   const candidateTrendData =
@@ -952,31 +1266,31 @@ function OrgOverviewTab({ org, orgId }) {
 
   const overviewCards = analytics
     ? [
-      {
-        label: "Total Jobs",
-        value: analytics.job_overview.total_jobs,
-        color: C.accent,
-        soft: C.accentSoft,
-      },
-      {
-        label: "Open Jobs",
-        value: analytics.job_overview.open_jobs,
-        color: C.green,
-        soft: C.greenSoft,
-      },
-      {
-        label: "Closed Jobs",
-        value: analytics.job_overview.closed_jobs,
-        color: "#6B7280",
-        soft: "#F3F4F6",
-      },
-      {
-        label: "Total Candidates",
-        value: analytics.total_candidates,
-        color: C.indigo,
-        soft: C.indigoSoft,
-      },
-    ]
+        {
+          label: "Total Jobs",
+          value: analytics.job_overview.total_jobs,
+          color: C.accent,
+          soft: C.accentSoft,
+        },
+        {
+          label: "Open Jobs",
+          value: analytics.job_overview.open_jobs,
+          color: C.green,
+          soft: C.greenSoft,
+        },
+        {
+          label: "Closed Jobs",
+          value: analytics.job_overview.closed_jobs,
+          color: "#6B7280",
+          soft: "#F3F4F6",
+        },
+        {
+          label: "Total Candidates",
+          value: analytics.total_candidates,
+          color: C.indigo,
+          soft: C.indigoSoft,
+        },
+      ]
     : [];
 
   return (
@@ -996,17 +1310,14 @@ function OrgOverviewTab({ org, orgId }) {
           }}
         >
           {/* <SectionLabel>Job Analytics</SectionLabel> */}
-          <FormControl size="small" sx={{ minWidth: 120 }}>
-            <Select
-              value={groupBy}
-              onChange={(e) => setGroupBy(e.target.value)}
-              sx={{ fontSize: 12, borderRadius: "8px" }}
-            >
-              <MenuItem value="month">Monthly</MenuItem>
-              <MenuItem value="week">Weekly</MenuItem>
-              <MenuItem value="day">Daily</MenuItem>
-            </Select>
-          </FormControl>
+          <CustomSelect
+            value={groupBy}
+            onChange={setGroupBy}
+            options={["month", "week", "day"]}
+            placeholder="Group By"
+            width={120}
+            height={120}
+          />
         </Box>
 
         {analyticsLoading ? (
@@ -1663,7 +1974,8 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
     orgId,
     status: "all",
   });
-  console.log("orgId", orgId)
+
+  console.log("orgId", orgId);
   const reqColumns = useMemo(
     () => [
       {
@@ -1766,15 +2078,14 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
             <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })
                 : "—"}
             </Typography>
           );
         },
-
       },
       {
         accessorKey: "closing_date",
@@ -1786,10 +2097,10 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
             <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })
                 : "—"}
             </Typography>
           );
@@ -1907,8 +2218,8 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
     statusFilter === "all"
       ? candidates
       : candidates.filter((c) =>
-        c.jobs?.some((j) => j.current_stage === statusFilter),
-      );
+          c.jobs?.some((j) => j.current_stage === statusFilter),
+        );
 
   const goToCandidate = (candidate, matchedCandidateId, job) =>
     navigate(`/account-manager/candidate/${candidate.candidate_id}`, {
@@ -2186,21 +2497,17 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
             </Typography>
           </Box>
         </Box>
-        <FormControl size="small" sx={{ minWidth: 160 }}>
-          <InputLabel sx={{ fontSize: 12 }}>Filter by stage</InputLabel>
-          <Select
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          {/* <InputLabel sx={{ fontSize: 12 }}>Filter by stage</InputLabel> */}
+
+          <CustomSelect
             value={statusFilter}
-            label="Filter by stage"
-            onChange={(e) => setStatusFilter(e.target.value)}
-            sx={{ fontSize: 12, borderRadius: "8px" }}
-          >
-            <MenuItem value="all">All Stages</MenuItem>
-            {statusOptions.map((s) => (
-              <MenuItem key={s} value={s} sx={{ textTransform: "capitalize" }}>
-                {s}
-              </MenuItem>
-            ))}
-          </Select>
+            onChange={setStatusFilter}
+            options={statusOptions}
+            placeholder="All Stages"
+            width={160}
+            height={300}
+          />
         </FormControl>
         <Box sx={{ ml: "auto", display: "flex", alignItems: "center", gap: 2 }}>
           <SearchFilter
@@ -2273,9 +2580,12 @@ function OrgInterviewsTab({ orgId }) {
     { key: "not_conducted", value: "Not Conducted" },
   ];
 
-  const filtered = statusFilter === "all"
-    ? interviews
-    : interviews.filter((iv) => (iv.interview_status ?? "scheduled") === statusFilter);
+  const filtered =
+    statusFilter === "all"
+      ? interviews
+      : interviews.filter(
+          (iv) => (iv.interview_status ?? "scheduled") === statusFilter,
+        );
 
   const searchedInterviews = filtered.filter((iv) => {
     const value = search.toLowerCase();
@@ -2377,10 +2687,10 @@ function OrgInterviewsTab({ orgId }) {
             <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })
                 : "—"}
             </Typography>
           );
@@ -2466,7 +2776,10 @@ function OrgInterviewsTab({ orgId }) {
       {/* ...your existing toolbar JSX unchanged... */}
 
       {searchedInterviews.length === 0 ? (
-        <StaticPlaceholder label="No Interviews" description="No interviews match the selected filter." />
+        <StaticPlaceholder
+          label="No Interviews"
+          description="No interviews match the selected filter."
+        />
       ) : view === "grid" ? (
         <Grid container spacing={2}>
           {searchedInterviews.map((iv) => (
@@ -2784,10 +3097,10 @@ function OrgEmployeesTab({ orgId }) {
             <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })
                 : "—"}
             </Typography>
           );
@@ -2806,10 +3119,10 @@ function OrgEmployeesTab({ orgId }) {
             <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })
                 : "—"}
             </Typography>
           );
@@ -2828,10 +3141,10 @@ function OrgEmployeesTab({ orgId }) {
             <Typography sx={{ fontSize: 12 }} color={C.textSecondary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })
                 : "—"}
             </Typography>
           );
@@ -2934,7 +3247,6 @@ function OrgEmployeesTab({ orgId }) {
           </Box>
         </Box>
 
-
         <SearchFilter
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -2958,6 +3270,48 @@ function OrgEmployeesTab({ orgId }) {
 /* ═══════════════════════════════════════════════
    RequisitionCard
 ═══════════════════════════════════════════════ */
+const CARD_THEMES = [
+  {
+    iconBg: "#EEF2FF",
+    iconColor: "#4F46E5",
+    chipBg: "#EEF2FF",
+    chipColor: "#4338CA",
+  },
+  {
+    iconBg: "#ECFDF5",
+    iconColor: "#059669",
+    chipBg: "#ECFDF5",
+    chipColor: "#047857",
+  },
+  {
+    iconBg: "#FFF7ED",
+    iconColor: "#EA580C",
+    chipBg: "#FFF7ED",
+    chipColor: "#C2410C",
+  },
+  {
+    iconBg: "#FDF2F8",
+    iconColor: "#DB2777",
+    chipBg: "#FDF2F8",
+    chipColor: "#BE185D",
+  },
+  {
+    iconBg: "#EFF6FF",
+    iconColor: "#2563EB",
+    chipBg: "#EFF6FF",
+    chipColor: "#1D4ED8",
+  },
+];
+
+const getCardTheme = (title = "") => {
+  let hash = 0;
+
+  for (let i = 0; i < title.length; i++) {
+    hash = title.charCodeAt(i) + ((hash << 5) - hash);
+  }
+
+  return CARD_THEMES[Math.abs(hash) % CARD_THEMES.length];
+};
 function RequisitionCard({ job, onOpen }) {
   const [hovered, setHovered] = React.useState(false);
   const title = job.job_title ?? "Untitled";
@@ -2971,18 +3325,21 @@ function RequisitionCard({ job, onOpen }) {
   const skills = job.skills ? job.skills.split(",").map((s) => s.trim()) : [];
   const status = job.status ?? "open";
   const chip = statusChip(status);
-  const Created = job.created_at    ? new Date(job.created_at).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  }) : null;
+  const Created = job.created_at
+    ? new Date(job.created_at).toLocaleDateString("en-GB", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
+    : null;
   const closingDate = job.closing_date
     ? new Date(job.closing_date).toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    })
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
     : null;
+  const theme = getCardTheme(title);
 
   return (
     <Card
@@ -3020,14 +3377,19 @@ function RequisitionCard({ job, onOpen }) {
             sx={{
               width: 46,
               height: 46,
-              borderRadius: "8px",
-              backgroundColor: C.accentSoft,
+              borderRadius: "12px",
+              backgroundColor: theme.iconBg,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
           >
-            <WorkOutlineRoundedIcon sx={{ color: C.accent, fontSize: 18 }} />
+            <WorkOutlineRoundedIcon
+              sx={{
+                color: theme.iconColor,
+                fontSize: 20,
+              }}
+            />
           </Box>
           <Box sx={{ flex: 1, px: "10px" }}>
             <Typography
@@ -3052,67 +3414,56 @@ function RequisitionCard({ job, onOpen }) {
                 label={l}
                 size="small"
                 sx={{
-                  fontSize: 10,
-                  height: 20,
+                  fontSize: 11,
+                  height: 22,
+                  fontWeight: 600,
                   textTransform: "capitalize",
-                  backgroundColor: "#F3F4F6",
-                  color: C.textSecondary,
-                  "& .MuiChip-label": { px: "8px" },
+                  backgroundColor: theme.chipBg,
+                  color: theme.chipColor,
+                  border: "none",
+
+                  "& .MuiChip-label": {
+                    px: "8px",
+                  },
                 }}
               />
             ))}
           </Box>
         )}
 
-        <Grid container spacing={1} sx={{ mb: "10px" }}>
-          {minYrs !== null && maxYrs !== null && (
-            <Grid size={{ xs: 6 }}>
-              <Box
-                sx={{
-                  backgroundColor: "#F9FAFB",
-                  borderRadius: "8px",
-                  p: "8px",
-                }}
-              >
-                <Typography
-                  sx={{ fontSize: 10, color: C.textSecondary, mb: "1px" }}
-                >
-                  Experience
-                </Typography>
-                <Typography
-                  sx={{ fontSize: 12, fontWeight: 700, color: C.textPrimary }}
-                >
-                  {minYrs}–{maxYrs} yrs
-                </Typography>
-              </Box>
-            </Grid>
-          )}
-          {positions && (
-            <Grid size={{ xs: 6 }}>
-              <Box
-                sx={{
-                  backgroundColor: "#F9FAFB",
-                  borderRadius: "8px",
-                  p: "8px",
-                }}
-              >
-                <Typography
-                  sx={{ fontSize: 10, color: C.textSecondary, mb: "1px" }}
-                >
-                  Positions
-                </Typography>
-                <Typography
-                  sx={{ fontSize: 12, fontWeight: 700, color: C.textPrimary }}
-                >
-                  {positions}
-                </Typography>
-              </Box>
-            </Grid>
-          )}
-        </Grid>
-{Created && (
+        {minYrs !== null && maxYrs !== null && (
+          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
+            <Typography sx={{ fontSize: 11, color: C.textSecondary }}>
+              Experience
+            </Typography>
+            <Typography
+              sx={{ fontSize: 12, fontWeight: 700, color: C.textPrimary }}
+            >
+              {minYrs}–{maxYrs} yrs
+            </Typography>
+          </Box>
+        )}
+        {positions && (
           <Box
-            sx={{ display: "flex", justifyContent: "space-between", mb: "6px" }}
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+          >
+            <Typography sx={{ fontSize: 11, color: C.textSecondary }}>
+              Positions
+            </Typography>
+            <Typography
+              sx={{ fontSize: 12, fontWeight: 700, color: C.textPrimary }}
+            >
+              {positions}
+            </Typography>
+          </Box>
+        )}
+
+        {Created && (
+          <Box
+            sx={{ display: "flex", justifyContent: "space-between", mb: "0px" }}
           >
             <Typography sx={{ fontSize: 11, color: C.textSecondary }}>
               Created
@@ -3140,7 +3491,7 @@ function RequisitionCard({ job, onOpen }) {
         )}
 
         {skills.length > 0 && (
-          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mb: "10px" }}>
+          <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mb: "0px" }}>
             {skills.slice(0, 3).map((s) => (
               <Chip
                 key={s}
@@ -3148,7 +3499,7 @@ function RequisitionCard({ job, onOpen }) {
                 size="small"
                 variant="outlined"
                 sx={{
-                  fontSize: 10,
+                  fontSize: 11,
                   height: 20,
                   textTransform: "capitalize",
                   borderColor: C.border,
@@ -3294,58 +3645,43 @@ function AssignedCandidateCard({ candidate, primaryJob, orgJobCount, onView }) {
             </Box>
           </Box>
           <Divider sx={{ mb: "10px" }} />
-          <Grid container spacing={1} sx={{ mb: "10px" }}>
-            <Grid size={{ xs: 7 }}>
-              <Box
-                sx={{
-                  backgroundColor: "#F9FAFB",
-                  borderRadius: "8px",
-                  p: "8px",
-                }}
-              >
-                <Typography
-                  sx={{ fontSize: 10, color: C.textSecondary, mb: "2px" }}
-                >
-                  Current Stage
-                </Typography>
-                <Box
-                  component="span"
-                  sx={{
-                    fontSize: 10,
-                    fontWeight: 700,
-                    px: "6px",
-                    py: "2px",
-                    borderRadius: "6px",
-                    backgroundColor: sc.bg,
-                    color: sc.color,
-                    textTransform: "capitalize",
-                  }}
-                >
-                  {primaryJob?.current_stage ?? "—"}
-                </Box>
-              </Box>
-            </Grid>
-            <Grid size={{ xs: 5 }}>
-              <Box
-                sx={{
-                  backgroundColor: "#F9FAFB",
-                  borderRadius: "8px",
-                  p: "8px",
-                }}
-              >
-                <Typography
-                  sx={{ fontSize: 10, color: C.textSecondary, mb: "2px" }}
-                >
-                  Jobs Here
-                </Typography>
-                <Typography
-                  sx={{ fontSize: 12, fontWeight: 700, color: C.textPrimary }}
-                >
-                  {orgJobCount}
-                </Typography>
-              </Box>
-            </Grid>
-          </Grid>
+
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+          >
+            <Typography
+              sx={{
+                fontSize: { xs: 10, sm: 11 },
+                color: C.textSecondary,
+                mb: "2px",
+              }}
+            >
+              Current Stage
+            </Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 700, color: sc.color }}>
+              {primaryJob?.current_stage ?? "—"}
+            </Typography>
+          </Box>
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "space-between",
+            }}
+          >
+            <Typography
+              sx={{ fontSize: 11, color: C.textSecondary, mb: "2px" }}
+            >
+              Jobs Here
+            </Typography>
+            <Typography
+              sx={{ fontSize: 12, fontWeight: 700, color: C.textPrimary }}
+            >
+              {orgJobCount}
+            </Typography>
+          </Box>
           <Box
             sx={{ display: "flex", justifyContent: "space-between", mb: "6px" }}
           >
@@ -3394,7 +3730,8 @@ function AssignedCandidateCard({ candidate, primaryJob, orgJobCount, onView }) {
                   <Box
                     key={label}
                     sx={{
-                      fontSize: 10,
+                      fontSize: 11,
+                      fontFamily: "Helvetica",
                       fontWeight: 600,
                       px: "6px",
                       py: "2px",
@@ -3747,10 +4084,10 @@ function InterviewCard({ interview }) {
 
   const formattedDate = interview.interview_date
     ? new Date(interview.interview_date).toLocaleDateString("en-GB", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
-    })
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      })
     : "—";
 
   return (

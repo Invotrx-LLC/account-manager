@@ -236,137 +236,168 @@ export default function RequisitionDetail() {
       {/* ── Header with background ── */}
       <Box
         sx={{
-          background:
-            "linear-gradient(135deg, #FFF7F4 0%, #FFF0E8 60%, #FEF3EE 100%)",
-          border: "1px solid #F9C4AE",
+          background: "#fff",
+          border: `1px solid ${C.border}`,
           borderRadius: "12px",
-          px: "16px",
-          py: "14px",
+          px: "14px",
+          py: "10px",
           mb: "5px",
         }}
       >
-        {/* Title row */}
+        {/* Header Row */}
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
-            flexWrap: "wrap",
-            gap: 1,
-            mb: "6px",
+            gap: 1.5,
           }}
         >
-          <ArrowBack
-            sx={{
-              fontSize: 28,
-              color: C.text,
-              padding: "5px",
-              borderRadius: "8px",
-              transition: "all 0.2s ease",
-              "&:hover": {
-                color: C.accent,
-                backgroundColor: "rgba(232,72,12,0.12)",
-                cursor: "pointer",
-                transform: "translateX(-2px)",
-              },
-            }}
+          {/* Back Button */}
+          <Box
             onClick={() =>
               navigate(`/account-manager/org/${orgId}`, {
                 state: { activeTab: location.state?.previousTab ?? 1 },
               })
             }
-          />
-
-          <Typography
-            sx={{ fontSize: "18px", fontWeight: 700, color: C.textPrimary }}
-          >
-            {jobDetail?.jobTitle ?? job.job_title}
-          </Typography>
-
-          {/* Status chip */}
-          <Box
-            component="span"
             sx={{
-              fontSize: 11,
-              fontWeight: 700,
-              px: "10px",
-              py: "3px",
-              borderRadius: "6px",
-              backgroundColor: chip.bg,
-              color: chip.color,
-              textTransform: "uppercase",
-              letterSpacing: "0.05em",
-              border: `1px solid ${chip.border ?? chip.bg}`,
+              width: 32,
+              height: 32,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              borderRadius: "8px",
+              cursor: "pointer",
+              flexShrink: 0,
+              transition: "all 0.2s ease",
+              "&:hover": {
+                backgroundColor: "rgba(232,72,12,0.12)",
+                transform: "translateX(-2px)",
+              },
             }}
           >
-            {jobDetail?.status ?? job.status}
+            <ArrowBack
+              sx={{
+                fontSize: 20,
+                color: C.text,
+              }}
+            />
           </Box>
 
-          {/* Priority chip */}
-          {jobDetail?.rolePriority && (
+          {/* Content */}
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            {/* Title Row */}
             <Box
-              component="span"
               sx={{
-                fontSize: 11,
-                fontWeight: 700,
-                px: "10px",
-                py: "3px",
-                borderRadius: "6px",
-                backgroundColor:
-                  jobDetail.rolePriority?.toLowerCase() === "high"
-                    ? "#FEE2E2"
-                    : "#FEF3C7",
-                color:
-                  jobDetail.rolePriority?.toLowerCase() === "high"
-                    ? C.red
-                    : C.amber,
-                border: `1px solid ${
-                  jobDetail.rolePriority?.toLowerCase() === "high"
-                    ? "#FECACA"
-                    : "#FDE68A"
-                }`,
+                display: "flex",
+                alignItems: "center",
+                gap: 1,
+                flexWrap: "wrap",
+                mb: "2px",
               }}
             >
-              {jobDetail.rolePriority} Priority
-            </Box>
-          )}
-        </Box>
+              <Typography
+                sx={{
+                  fontSize: 18,
+                  fontWeight: 700,
+                  color: C.textPrimary,
+                  lineHeight: 1.2,
+                }}
+              >
+                {jobDetail?.jobTitle ?? job.job_title}
+              </Typography>
 
-        {/* Subtitle row */}
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            ml: "36px",
-            color: C.textSecondary,
-          }}
-        >
-          {[
-            jobDetail?.positionId ?? job.job_position_id,
-            jobDetail?.jobType ?? job.job_type,
-            jobDetail?.workMode,
-          ]
-            .filter(Boolean)
-            .map((item, i, arr) => (
-              <React.Fragment key={i}>
-                <Typography
-                  sx={{ fontSize: 12, color: C.textSecondary, fontWeight: 400 }}
+              {/* Status Chip */}
+              <Box
+                component="span"
+                sx={{
+                  fontSize: 10,
+                  fontWeight: 700,
+                  px: "8px",
+                  py: "2px",
+                  borderRadius: "6px",
+                  backgroundColor: chip.bg,
+                  color: chip.color,
+                  textTransform: "uppercase",
+                  letterSpacing: "0.04em",
+                  border: `1px solid ${chip.border ?? chip.bg}`,
+                }}
+              >
+                {jobDetail?.status ?? job.status}
+              </Box>
+
+              {/* Priority Chip */}
+              {jobDetail?.rolePriority && (
+                <Box
+                  component="span"
+                  sx={{
+                    fontSize: 10,
+                    fontWeight: 700,
+                    px: "8px",
+                    py: "2px",
+                    borderRadius: "6px",
+                    backgroundColor:
+                      jobDetail.rolePriority?.toLowerCase() === "high"
+                        ? "#FEE2E2"
+                        : "#FEF3C7",
+                    color:
+                      jobDetail.rolePriority?.toLowerCase() === "high"
+                        ? C.red
+                        : C.amber,
+                    border: `1px solid ${
+                      jobDetail.rolePriority?.toLowerCase() === "high"
+                        ? "#FECACA"
+                        : "#FDE68A"
+                    }`,
+                  }}
                 >
-                  {item}
-                </Typography>
-                {i < arr.length - 1 && (
-                  <Box
-                    sx={{
-                      width: 3,
-                      height: 3,
-                      borderRadius: "50%",
-                      backgroundColor: "#D1D5DB",
-                      flexShrink: 0,
-                    }}
-                  />
-                )}
-              </React.Fragment>
-            ))}
+                  {jobDetail.rolePriority} Priority
+                </Box>
+              )}
+            </Box>
+
+            {/* Subtitle Row */}
+            <Box
+              sx={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                flexWrap: "wrap",
+                color: C.textSecondary,
+              }}
+            >
+              {[
+                jobDetail?.positionId ?? job.job_position_id,
+                jobDetail?.jobType ?? job.job_type,
+                jobDetail?.workMode,
+              ]
+                .filter(Boolean)
+                .map((item, i, arr) => (
+                  <React.Fragment key={i}>
+                    <Typography
+                      sx={{
+                        fontSize: 12,
+                        fontWeight: 500,
+                        color: C.textSecondary,
+                      }}
+                    >
+                      {item}
+                    </Typography>
+
+                    {i < arr.length - 1 && (
+                      <Box
+                        sx={{
+                          width: 3,
+                          height: 3,
+                          borderRadius: "50%",
+                          backgroundColor: "#D1D5DB",
+                          flexShrink: 0,
+                        }}
+                      />
+                    )}
+                  </React.Fragment>
+                ))}
+            </Box>
+          </Box>
         </Box>
       </Box>
 
@@ -672,7 +703,7 @@ export function ReqOverviewTab({ job = {}, jobDetail = null }) {
         <Grid size={{ xs: 12, md: 6 }} sx={{ display: "flex" }}>
           {/* ── Row 2: Required Skills ── */}
           {hasSkills && (
-            <Box sx={{flex:1,...CARD}}>
+            <Box sx={{ flex: 1, ...CARD }}>
               <Typography sx={CARD_TITLE}>Required Skills</Typography>
               <Grid container spacing="20px">
                 <Grid size={{ xs: 12, md: 6 }}>
@@ -705,10 +736,8 @@ export function ReqOverviewTab({ job = {}, jobDetail = null }) {
           )}
         </Grid>
       </Grid>
-      <Box
-        sx={{ display: "flex", flexDirection: "row", gap: "14px", flex: 1 }}
-      >
-        <Box sx={{flex: 1,...CARD}}>
+      <Box sx={{ display: "flex", flexDirection: "row", gap: "14px", flex: 1 }}>
+        <Box sx={{ flex: 1, ...CARD }}>
           <Typography sx={CARD_TITLE}>Experience &amp; Positions</Typography>
 
           <Box
@@ -741,40 +770,40 @@ export function ReqOverviewTab({ job = {}, jobDetail = null }) {
             </Box>
           </Box>
         </Box>
-        <Box sx={{flex: 1,...CARD}}>
+        <Box sx={{ flex: 1, ...CARD }}>
           {/* Ownership & Team */}
-        {(jobDetail?.creator ||
-          jobDetail?.approver ||
-          collaborators.length > 0) && (
-          <Box>
-            <Typography sx={CARD_TITLE}>Ownership &amp; Team</Typography>
+          {(jobDetail?.creator ||
+            jobDetail?.approver ||
+            collaborators.length > 0) && (
+            <Box>
+              <Typography sx={CARD_TITLE}>Ownership &amp; Team</Typography>
 
-            <Box
-              sx={{
-                display: "grid",
-                gridTemplateColumns: {
-                  xs: "1fr",
-                  sm: "1fr 1fr",
-                },
-                gap: "14px",
-                mt: 2,
-              }}
-            >
-              <Field label="Created by" value={jobDetail?.creator?.name} />
+              <Box
+                sx={{
+                  display: "grid",
+                  gridTemplateColumns: {
+                    xs: "1fr",
+                    sm: "1fr 1fr",
+                  },
+                  gap: "14px",
+                  mt: 2,
+                }}
+              >
+                <Field label="Created by" value={jobDetail?.creator?.name} />
 
-              <Field label="Approver" value={jobDetail?.approver?.name} />
+                <Field label="Approver" value={jobDetail?.approver?.name} />
 
-              <Field
-                label="Collaborators"
-                value={
-                  collaborators.length > 0
-                    ? collaborators.map((c) => c.name).join(", ")
-                    : "N/A"
-                }
-              />
+                <Field
+                  label="Collaborators"
+                  value={
+                    collaborators.length > 0
+                      ? collaborators.map((c) => c.name).join(", ")
+                      : "N/A"
+                  }
+                />
+              </Box>
             </Box>
-          </Box>
-        )}
+          )}
         </Box>
         {/* Approvals */}
         {approvals.length > 0 && (
@@ -1700,6 +1729,48 @@ function CandidateCard({ candidate, onView }) {
       : candidate.match_score >= 60
         ? { bg: "#FFF8E1", color: "#B45309" }
         : { bg: "#FEE2E2", color: "#B91C1C" };
+  const getStageColor = (stage) => {
+    switch (stage?.toLowerCase()) {
+      case "matched":
+        return "#3B82F6"; // Blue
+
+      case "shortlisted":
+        return "#8B5CF6"; // Purple
+
+      case "interview_scheduled":
+      case "interviewing":
+        return "#F59E0B"; // Amber
+
+      case "interview_completed":
+        return "#06B6D4"; // Cyan
+
+      case "interview_passed":
+        return "#10B981"; // Green
+
+      case "interview_failed":
+        return "#EF4444"; // Red
+
+      case "selected":
+        return "#14B8A6"; // Teal
+
+      case "offer":
+      case "offer_released":
+        return "#F97316"; // Orange
+
+      case "offer_accepted":
+        return "#22C55E"; // Green
+
+      case "offer_declined":
+      case "offer_revoked":
+        return "#DC2626"; // Dark Red
+
+      case "hired":
+        return "#059669"; // Dark Green
+
+      default:
+        return "#6B7280"; // Gray
+    }
+  };
 
   return (
     <Card
@@ -1756,7 +1827,7 @@ function CandidateCard({ candidate, onView }) {
             </Typography>
           </Box>
           <Chip
-            label={`${candidate.match_score}%`}
+            label={`SkillIntel ${candidate.match_score}%`}
             size="small"
             sx={{
               fontSize: 11,
@@ -1772,51 +1843,53 @@ function CandidateCard({ candidate, onView }) {
 
         <Divider sx={{ mb: "12px" }} />
 
-        <Grid container spacing={1} sx={{ mb: "12px" }}>
-          <Grid size={{ xs: 6 }}>
-            <Box
-              sx={{ backgroundColor: "#F9FAFB", borderRadius: "8px", p: "8px" }}
+        <Box
+          sx={{
+            width: "100%",
+            display: "flex",
+            justifyContent: "space-between",
+          }}
+        >
+          <Typography sx={{ fontSize: 10, color: C.textSecondary, mb: "2px" }}>
+            Stage
+          </Typography>
+          <Typography
+            sx={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: getStageColor(candidate.current_stage),
+              textTransform: "capitalize",
+            }}
+          >
+            {candidate.current_stage?.replace(/_/g, " ")}
+          </Typography>
+        </Box>
+
+
+          <Box
+            sx={{
+             display: "flex",
+             justifyContent: "space-between",
+            }}
+          >
+            <Typography
+              sx={{ fontSize: 10, color: C.textSecondary, mb: "0px" }}
             >
-              <Typography
-                sx={{ fontSize: 10, color: C.textSecondary, mb: "2px" }}
-              >
-                Stage
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: C.textPrimary,
-                  textTransform: "capitalize",
-                }}
-              >
-                {candidate.current_stage}
-              </Typography>
-            </Box>
-          </Grid>
-          <Grid size={{ xs: 6 }}>
-            <Box
-              sx={{ backgroundColor: "#F9FAFB", borderRadius: "8px", p: "8px" }}
+              Availability
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: 12,
+                fontWeight: 700,
+                color:
+                  candidate.availability === 0 ? C.textPrimary : C.textPrimary,
+              }}
             >
-              <Typography
-                sx={{ fontSize: 10, color: C.textSecondary, mb: "2px" }}
-              >
-                Availability
-              </Typography>
-              <Typography
-                sx={{
-                  fontSize: 12,
-                  fontWeight: 700,
-                  color: candidate.availability === 0 ? C.green : C.textPrimary,
-                }}
-              >
-                {candidate.availability === 0
-                  ? "Immediate"
-                  : `${candidate.availability} days`}
-              </Typography>
-            </Box>
-          </Grid>
-        </Grid>
+              {candidate.availability === 0
+                ? "Immediate"
+                : `${candidate.availability} days`}
+            </Typography>
+          </Box>
 
         {[
           { label: "Experience", value: candidate.total_experience },

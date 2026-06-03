@@ -56,6 +56,7 @@ import DeleteOutlineIcon from "@mui/icons-material/DeleteOutlineOutlined";
 import WarningAmberRoundedIcon from "@mui/icons-material/WarningAmberRounded";
 
 import { useDeleteCandidateMutation } from "../../redux/services/candidates/candidate";
+import CustomSelect from "../../components/Select";
 
 /* ─── Design tokens ─────────────────────────────────────────────────────────── */
 const C = {
@@ -76,9 +77,7 @@ const SEARCH_DEBOUNCE_MS = 350;
 const DOMAIN_OPTIONS = ["clinical"];
 const FUNCTION_OPTIONS = ["biostatistics", "clinical_data_management"];
 const SUB_FUNCTION_MAP = {
-  biostatistics: [
-    "statistical_programmer",
-  ],
+  biostatistics: ["statistical_programmer"],
   clinical_data_management: [
     "clinical_programmer",
     "crf_developer",
@@ -411,7 +410,8 @@ function buildColumns(handleToggleActive, navigate, openResume, onDelete) {
             label={cell.getValue().replace(/_/g, " ")}
             size="small"
             sx={{
-              fontSize: 10,
+              fontSize: 11,
+              fontFamily: "Helvetica",
               height: 20,
               textTransform: "capitalize",
               backgroundColor: "#EEF2FF",
@@ -435,7 +435,8 @@ function buildColumns(handleToggleActive, navigate, openResume, onDelete) {
             label={cell.getValue().replace(/_/g, " ")}
             size="small"
             sx={{
-              fontSize: 10,
+              fontSize: 11,
+              fontFamily: "Helvetica",
               height: 20,
               textTransform: "capitalize",
               backgroundColor: "#F3F4F6",
@@ -488,51 +489,51 @@ function buildColumns(handleToggleActive, navigate, openResume, onDelete) {
           </Typography>
         ),
     },
-{
-  id: "status",
-  header: "Status",
-  size: 160,
-  enableColumnFilter: false,
+    {
+      id: "status",
+      header: "Status",
+      size: 160,
+      enableColumnFilter: false,
 
-  Cell: ({ row }) => {
-    const candidate = row.original;
-    const active = candidate.is_active;
+      Cell: ({ row }) => {
+        const candidate = row.original;
+        const active = candidate.is_active;
 
-    return (
-      <Box
-        sx={{
-          display: "flex",
-          alignItems: "center",
-          gap: "12px",
-        }}
-      >
-        {/* Status Badge */}
-        <Box
-          component="span"
-          sx={{
-            fontSize: 10,
-            fontWeight: 700,
-            px: "8px",
-            py: "3px",
-            borderRadius: "10px",
-            backgroundColor: active ? C.greenSoft : "#F3F4F6",
-            color: active ? C.green : "#6B7280",
-            minWidth: "64px",
-            textAlign: "center",
-          }}
-        >
-          {active ? "Active" : "Inactive"}
-        </Box>
+        return (
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: "12px",
+            }}
+          >
+            {/* Status Badge */}
+            <Box
+              component="span"
+              sx={{
+                fontSize: 10,
+                fontWeight: 700,
+                px: "8px",
+                py: "3px",
+                borderRadius: "10px",
+                backgroundColor: active ? C.greenSoft : "#F3F4F6",
+                color: active ? C.green : "#6B7280",
+                minWidth: "64px",
+                textAlign: "center",
+              }}
+            >
+              {active ? "Active" : "Inactive"}
+            </Box>
 
-        {/* Toggle */}
-        <ActiveToggleCell
-          candidate={candidate}
-          onStatusChange={handleToggleActive}
-        />
-      </Box>
-    );
-  },
-},
+            {/* Toggle */}
+            <ActiveToggleCell
+              candidate={candidate}
+              onStatusChange={handleToggleActive}
+            />
+          </Box>
+        );
+      },
+    },
     {
       id: "delete",
       header: "Delete",
@@ -1044,95 +1045,35 @@ export default function CandidatesPage() {
           {/* <FilterListIcon sx={{ fontSize: 14, color: C.textTertiary }} /> */}
 
           {/* Domain */}
-          <Select
-            size="small"
+          <CustomSelect
             value={domain}
-            displayEmpty
-            onChange={(e) => handleDomainChange(e.target.value)}
-            renderValue={(v) => (v ? v.replace(/_/g, " ") : "Domain")}
-            sx={{
-              fontSize: 11,
-              borderRadius: "8px",
-              height: 36,
-              minWidth: 100,
-              textTransform: "capitalize",
-              "& .MuiSelect-select": { py: "6px" },
-            }}
-          >
-            <MenuItem value="" sx={{ fontSize: 12 }}>
-              All Domains
-            </MenuItem>
-            {DOMAIN_OPTIONS.map((d) => (
-              <MenuItem
-                key={d}
-                value={d}
-                sx={{ fontSize: 12, textTransform: "capitalize" }}
-              >
-                {d.replace(/_/g, " ")}
-              </MenuItem>
-            ))}
-          </Select>
+            onChange={handleDomainChange}
+            options={DOMAIN_OPTIONS}
+            placeholder="Domain"
+            width={120}
+            height={180}
+          />
 
           {/* Function */}
-          <Select
-            size="small"
+          <CustomSelect
             value={func}
-            displayEmpty
-            onChange={(e) => handleFuncChange(e.target.value)}
-            renderValue={(v) => (v ? v.replace(/_/g, " ") : "Function")}
-            sx={{
-              fontSize: 11,
-              borderRadius: "8px",
-              height: 36,
-              minWidth: 120,
-              textTransform: "capitalize",
-              "& .MuiSelect-select": { py: "6px" },
-            }}
-          >
-            <MenuItem value="" sx={{ fontSize: 12 }}>
-              All Functions
-            </MenuItem>
-            {FUNCTION_OPTIONS.map((f) => (
-              <MenuItem
-                key={f}
-                value={f}
-                sx={{ fontSize: 12, textTransform: "capitalize" }}
-              >
-                {f.replace(/_/g, " ")}
-              </MenuItem>
-            ))}
-          </Select>
+            onChange={handleFuncChange}
+            options={FUNCTION_OPTIONS}
+            placeholder="Function"
+            width={140}
+            height={180}
+          />
 
           {/* Sub-function */}
-          <Select
-            size="small"
+          <CustomSelect
             value={subFunc}
-            displayEmpty
+            onChange={handleSubFuncChange}
+            options={SUB_FUNCTION_MAP[func] ?? []}
+            placeholder="Sub Function"
+            width={160}
+            height={180}
             disabled={!func}
-            onChange={(e) => handleSubFuncChange(e.target.value)}
-            renderValue={(v) => (v ? v.replace(/_/g, " ") : "Sub-function")}
-            sx={{
-              fontSize: 11,
-              borderRadius: "8px",
-              height: 36,
-              minWidth: 130,
-              textTransform: "capitalize",
-              "& .MuiSelect-select": { py: "6px" },
-            }}
-          >
-            <MenuItem value="" sx={{ fontSize: 12 }}>
-              All
-            </MenuItem>
-            {(SUB_FUNCTION_MAP[func] ?? []).map((s) => (
-              <MenuItem
-                key={s}
-                value={s}
-                sx={{ fontSize: 12, textTransform: "capitalize" }}
-              >
-                {s.replace(/_/g, " ")}
-              </MenuItem>
-            ))}
-          </Select>
+          />
 
           {/* Applied chips */}
           {domain && (
@@ -1141,7 +1082,7 @@ export default function CandidatesPage() {
               size="small"
               onDelete={() => handleDomainChange("")}
               sx={{
-                fontSize: 10,
+                fontSize: 11,
                 height: 22,
                 textTransform: "capitalize",
                 backgroundColor: C.accentSoft,
@@ -1220,6 +1161,7 @@ export default function CandidatesPage() {
                 display: "flex",
                 alignItems: "center",
                 fontSize: 11,
+                fontFamily: "Helvetica",
                 fontWeight: 600,
                 border: "1px solid",
                 whiteSpace: "nowrap",
@@ -1281,26 +1223,6 @@ export default function CandidatesPage() {
         >
           + Add Candidate
         </Button>
-
-        {/* Counter badge */}
-        {/* <Box
-          sx={{
-            px: "10px", height: 28, borderRadius: "8px", flexShrink: 0,
-            backgroundColor: searchMode ? "#EEF2FF" : C.accentSoft,
-            border: `1px solid ${searchMode ? "#C7D2FE" : C.accentBorder}`,
-            display: "flex", alignItems: "center",
-          }}
-        >
-          <Typography fontSize={11} fontWeight={700} color={searchMode ? "#4338CA" : C.accent} sx={{ whiteSpace: "nowrap" }}>
-            {isBusy
-              ? "…"
-              : searchMode
-              ? `${sourceList.length} result${sourceList.length !== 1 ? "s" : ""}`
-              : isBrowsing
-              ? "Loading…"
-              : `${candidates.length} loaded`}
-          </Typography>
-        </Box> */}
       </Box>
 
       {/* ════════════════════════════════════════
@@ -2151,7 +2073,8 @@ function CandidateCard({ candidate, onStatusChange, onViewResume, onDelete }) {
               label={candidate.function.replace(/_/g, " ")}
               size="small"
               sx={{
-                fontSize: 10,
+                fontSize: 11,
+                fontFamily: "Helvetica",
                 height: 20,
                 textTransform: "capitalize",
                 backgroundColor: "#EEF2FF",
@@ -2165,7 +2088,8 @@ function CandidateCard({ candidate, onStatusChange, onViewResume, onDelete }) {
               label={candidate.sub_function.replace(/_/g, " ")}
               size="small"
               sx={{
-                fontSize: 10,
+                fontSize: 11,
+                fontFamily: "Helvetica",
                 height: 20,
                 textTransform: "capitalize",
                 backgroundColor: "#F3F4F6",
@@ -2205,7 +2129,7 @@ function CandidateCard({ candidate, onStatusChange, onViewResume, onDelete }) {
         <Box
           sx={{
             display: "flex",
-            justifyContent:"space-between",
+            justifyContent: "space-between",
             alignItems: "center",
             gap: 1,
           }}
