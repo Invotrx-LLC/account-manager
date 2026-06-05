@@ -21,6 +21,7 @@ import {
   Divider,
   Link,
   DialogActions,
+  Tooltip,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
@@ -35,6 +36,7 @@ import DialogTitle from "@mui/material/DialogTitle";
 import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
+import Person2OutlinedIcon from '@mui/icons-material/Person2Outlined';
 
 import {
   setDynamicLabels,
@@ -1397,7 +1399,7 @@ function SkillNotesAccordion({ skillNotes = {}, scoreIntel = [] }) {
                     >
                       <Typography
                         sx={{
-                          fontSize: 10,
+                          fontSize: 8,
                           fontWeight: 700,
                           color: colors.text,
                         }}
@@ -1471,16 +1473,16 @@ function SkillNotesAccordion({ skillNotes = {}, scoreIntel = [] }) {
 
             <AccordionDetails
               sx={{
-                // background: "#FAFAFA",
+                background: "#FAFAFA",
                 borderTop: "1px solid #F3F4F6",
               }}
             >
               {/* AI Notes */}
               <Box
                 sx={{
-                  p: 1,
+                  p: 0,
                   borderRadius: 2,
-                  // bgcolor: "#EEF2FF",
+
                   // mb: 2,
                 }}
               >
@@ -1744,14 +1746,14 @@ function SkillIntelPanel({ candidate }) {
         <Box
           sx={{
             display: "grid",
-            gridTemplateColumns: "1fr 120px 58px",
+            gridTemplateColumns: "1fr 0px 58px",
             px: "16px",
             py: "6px",
             backgroundColor: "#F9FAFB",
             borderBottom: `1px solid ${C.border}`,
           }}
         >
-          {["Skill", "Candidate", "Score"].map((h) => (
+          {["Skill", "Score"].map((h) => (
             <Typography
               key={h}
               sx={{
@@ -1788,7 +1790,7 @@ function SkillIntelPanel({ candidate }) {
                 key={s.skill}
                 sx={{
                   display: "grid",
-                  gridTemplateColumns: "1fr 120px 58px",
+                  gridTemplateColumns: "1fr 150px",
                   px: "16px",
                   py: "7px",
                   alignItems: "center",
@@ -1817,7 +1819,7 @@ function SkillIntelPanel({ candidate }) {
                     display: "flex",
                     alignItems: "center",
                     gap: "5px",
-                    pr: "8px",
+                    width: "100%",
                   }}
                 >
                   <Box
@@ -1845,16 +1847,21 @@ function SkillIntelPanel({ candidate }) {
                       fontSize: 12,
                       fontWeight: 700,
                       color: barColor,
-                      minWidth: "20px",
+                      ml: "auto", // pushes badge to right
+                      minWidth: "55px",
                       textAlign: "right",
+                      px: "10px",
+                      py: "1px",
+                      borderRadius: "999px",
+                      backgroundColor: badgeBg,
                     }}
                   >
-                    {s.candidate}
+                    {s.candidate}%
                   </Typography>
                 </Box>
 
                 {/* Match % */}
-                <Box
+                {/* <Box
                   sx={{
                     display: "inline-flex",
                     alignItems: "center",
@@ -1875,7 +1882,7 @@ function SkillIntelPanel({ candidate }) {
                   >
                     {pct}%
                   </Typography>
-                </Box>
+                </Box> */}
               </Box>
             );
           })}
@@ -2176,8 +2183,15 @@ function TimelineTab({ candidate, onInterviewClick }) {
 
   return (
     <Grid container spacing={4}>
-      <Grid sx={{ width: "100%",pr:10 }}>
-        <Box sx={{ display: "flex", flexDirection: "column", ml: 5,width:"100%" }}>
+      <Grid sx={{ width: "100%", pr: 10 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            ml: 5,
+            width: "100%",
+          }}
+        >
           {visibleStages.map((stage, i) => {
             const stageEntries = grouped[stage.key] ?? [];
             const isLast = i === visibleStages.length - 1;
@@ -2353,7 +2367,7 @@ function TimelineTab({ candidate, onInterviewClick }) {
                                   >
                                     <Typography
                                       sx={{
-                                        fontSize: 12,
+                                        fontSize: 14,
                                         fontWeight: 600,
                                         color: "#374151",
                                       }}
@@ -2364,9 +2378,10 @@ function TimelineTab({ candidate, onInterviewClick }) {
                                     </Typography>
                                     <Typography
                                       sx={{
-                                        fontSize: 12,
+                                        fontSize: 14,
                                         fontWeight: 500,
                                         color: "#6B7280",
+                                        ml: 1,
                                       }}
                                     >
                                       {SUB_LABEL[sub.stage] ??
@@ -2381,7 +2396,7 @@ function TimelineTab({ candidate, onInterviewClick }) {
                                   >
                                     <Typography
                                       sx={{
-                                        fontSize: 10,
+                                        fontSize: 12,
                                         fontWeight: 500,
                                         color: "#9CA3AF",
                                       }}
@@ -2391,7 +2406,7 @@ function TimelineTab({ candidate, onInterviewClick }) {
 
                                     <Typography
                                       sx={{
-                                        fontSize: 10,
+                                        fontSize: 12,
                                         fontWeight: 500,
                                         ml: 1,
                                         color: "#9CA3AF",
@@ -2630,7 +2645,6 @@ export default function CandidateDetail() {
     location.state?.matched_candidate_id ?? candidateId;
   const { data, isLoading, isError, error } =
     useGetCandidateDetailQuery(matched_candidate_id);
-
   const candidate = data?.data?.candidate ?? null;
   const enriched = candidate
     ? {
@@ -2835,30 +2849,17 @@ export default function CandidateDetail() {
               >
                 {enriched.full_name}
               </Typography>
-              {enriched.clin_id && (
-                <Typography
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    fontSize: 11,
-                    color: "#9CA3AF",
-                    fontWeight: 500,
-                  }}
-                >
-                  CLIN{enriched.clin_id}
-                  <DescriptionOutlinedIcon
+              <DescriptionOutlinedIcon
                     onClick={() => {
                       viewResume(enriched.id);
                     }}
                     sx={{
-                      fontSize: 18,
+                      fontSize: 14,
                       color: "#FF5F1F",
-                      ml: 1,
+                      ml: 0,
                       cursor: "pointer",
                     }}
                   />
-                </Typography>
-              )}
               {enriched.status && (
                 <Box
                   sx={{
@@ -2867,7 +2868,7 @@ export default function CandidateDetail() {
                     borderRadius: "999px",
                     fontSize: 10,
                     fontWeight: 700,
-                    textTransform: "capitalize",
+                     textTransform: "uppercase",
                     backgroundColor:
                       enriched.status === "active"
                         ? "#DCFCE7"
@@ -2885,6 +2886,12 @@ export default function CandidateDetail() {
                   {enriched.status}
                 </Box>
               )}
+              <Tooltip title="View Full Profile">
+                
+                <Person2OutlinedIcon sx={{ fontSize: 16, color: "#FF5722",cursor:"pointer" }} onClick={() => {
+                  navigate(`/account-manager/candidates/${candidate?.id}`)
+                }} />
+              </Tooltip>
             </Box>
             <Box
               sx={{
@@ -2906,10 +2913,28 @@ export default function CandidateDetail() {
             </Box>
 
             <Box sx={{ display: "flex", alignItems: "center", gap: "5px" }}>
-              <EmailOutlined sx={{ fontSize: 13, color: "#9CA3AF" }} />
+             
+              <Box sx={{display:"flex",alignItems:"center",gap:"5px"}}>
+                <EmailOutlined sx={{ fontSize: 13, color: "#9CA3AF" }} />
               <Typography sx={{ fontSize: 12, color: C.textSecondary }}>
                 {enriched.email}
               </Typography>
+              </Box>
+               {enriched.clin_id && (
+                <Typography
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    fontSize: 11,
+                    color: "#000",
+                    fontWeight: 500,
+                    ml:1
+                  }}
+                >
+                  CLIN{enriched.clin_id}
+                  
+                </Typography>
+              )}
             </Box>
 
             {/* Skill match chips */}
@@ -3462,7 +3487,7 @@ export default function CandidateDetail() {
                         Primary Interviewer
                       </Typography>
                     </Stack>
-                    <Box spacing={1} sx={{ ml:2.5}}>
+                    <Box spacing={1} sx={{ ml: 2.5 }}>
                       {selectedInterview.primary_interviewer?.name && (
                         <Stack direction="row" justifyContent="space-between">
                           <Typography sx={{ fontSize: 13 }}>
@@ -3509,7 +3534,7 @@ export default function CandidateDetail() {
                         Job Details
                       </Typography>
                     </Stack>
-                   <Box spacing={1} sx={{ ml:2.5}}>
+                    <Box spacing={1} sx={{ ml: 2.5 }}>
                       {[
                         {
                           label: "Round",

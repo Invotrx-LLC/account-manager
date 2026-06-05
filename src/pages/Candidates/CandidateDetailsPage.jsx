@@ -1246,7 +1246,7 @@ function SkillRow({ skillKey, item, onEdit }) {
           userSelect: "none",
         }}
       >
-        <ScoreRing value={currVal} size={52} />
+        <ScoreRing value={currVal} size={42} />
 
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Box
@@ -3043,6 +3043,7 @@ export default function CandidateDetailPage() {
               <Box sx={{ pb: "4px" }}>
                 <Box sx={{ display: "flex", alignItems: "center", gap: 0 }}>
                   <Typography sx={T.valueLg}>{fmt(name)}</Typography>
+                  {console.log("name...", name)}
                   <DescriptionOutlinedIcon
                     onClick={() => {
                       viewResume(candidateId);

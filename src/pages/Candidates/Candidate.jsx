@@ -938,16 +938,17 @@ export default function CandidatesPage() {
           mb: "14px",
           flexWrap: "nowrap",
           minHeight: 40,
+          // border:1
         }}
       >
         {/* ── Search ── */}
         <TextField
           size="small"
-          placeholder="Search name, email…"
+          placeholder="Search.."
           value={search}
           onChange={(e) => handleSearchChange(e.target.value)}
           sx={{
-            width: 210,
+            width: 100,
             flexShrink: 0,
             "& .MuiOutlinedInput-root": {
               borderRadius: "8px",
@@ -2132,6 +2133,7 @@ function CandidateCard({ candidate, onStatusChange, onViewResume, onDelete }) {
             justifyContent: "space-between",
             alignItems: "center",
             gap: 1,
+            mt:"6px"
           }}
         >
           {/* RESUME */}

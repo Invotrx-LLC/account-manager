@@ -45,6 +45,7 @@ import {
   useGetOrganisationInterviewsQuery,
   useGetJobDetailsQuery,
   useGetJobInterviewsQuery,
+  useLazyGetResumeViewQuery,
 } from "../../redux/services/requisition/requisition";
 import ReusableMRT from "../../components/table";
 import ViewToggle from "../../components/table/ViewToggle";
@@ -335,6 +336,7 @@ export default function RequisitionDetail() {
                     px: "8px",
                     py: "2px",
                     borderRadius: "6px",
+                     textTransform: "uppercase",
                     backgroundColor:
                       jobDetail.rolePriority?.toLowerCase() === "high"
                         ? "#FEE2E2"
@@ -349,6 +351,7 @@ export default function RequisitionDetail() {
                         : "#FDE68A"
                     }`,
                   }}
+                  
                 >
                   {jobDetail.rolePriority} Priority
                 </Box>
@@ -1771,6 +1774,20 @@ function CandidateCard({ candidate, onView }) {
         return "#6B7280"; // Gray
     }
   };
+  const [getResumeView] = useLazyGetResumeViewQuery();
+  const viewResume = async (candidateId) => {
+    try {
+      const res = await getResumeView(candidateId).unwrap();
+
+      const url = res?.resume_url;
+
+      if (url) {
+        window.open(url, "_blank");
+      }
+    } catch (error) {
+      console.error("Resume fetch failed:", error);
+    }
+  };
 
   return (
     <Card
@@ -1810,21 +1827,39 @@ function CandidateCard({ candidate, onView }) {
             {candidate.full_name?.charAt(0).toUpperCase()}
           </Avatar>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography
-              sx={{
-                fontSize: 13,
-                fontWeight: 700,
-                color: C.textPrimary,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-              }}
+            <Box
+             
             >
-              {candidate.full_name}
-            </Typography>
-            <Typography sx={{ fontSize: 11, color: C.textSecondary }}>
+              <Typography
+                sx={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  color: C.textPrimary,
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {candidate.full_name}
+              </Typography>
+              
+            </Box>
+            <Box  sx={{ display: "flex", alignItems: "center"}}>
+              <Typography sx={{ fontSize: 11, color: C.textSecondary }}>
               CLIN{candidate.clin_id}
             </Typography>
+            <DescriptionOutlinedIcon
+                onClick={() => {
+                  viewResume(candidate.candidate_id);
+                }}
+                sx={{
+                  fontSize: 14,
+                  color: "#FF5F1F",
+                  ml: 1,
+                  cursor: "pointer",
+                }}
+              />
+            </Box>
           </Box>
           <Chip
             label={`SkillIntel ${candidate.match_score}%`}
@@ -1848,9 +1883,10 @@ function CandidateCard({ candidate, onView }) {
             width: "100%",
             display: "flex",
             justifyContent: "space-between",
+            mb: "6px",
           }}
         >
-          <Typography sx={{ fontSize: 10, color: C.textSecondary, mb: "2px" }}>
+          <Typography sx={{ fontSize: 11, color: C.textSecondary, mb: "2px" }}>
             Stage
           </Typography>
           <Typography
@@ -1865,31 +1901,29 @@ function CandidateCard({ candidate, onView }) {
           </Typography>
         </Box>
 
-
-          <Box
+        <Box
+          sx={{
+            display: "flex",
+            justifyContent: "space-between",
+            mb: "6px",
+          }}
+        >
+          <Typography sx={{ fontSize: 11, color: C.textSecondary, mb: "0px" }}>
+            Availability
+          </Typography>
+          <Typography
             sx={{
-             display: "flex",
-             justifyContent: "space-between",
+              fontSize: 12,
+              fontWeight: 700,
+              color:
+                candidate.availability === 0 ? C.textPrimary : C.textPrimary,
             }}
           >
-            <Typography
-              sx={{ fontSize: 10, color: C.textSecondary, mb: "0px" }}
-            >
-              Availability
-            </Typography>
-            <Typography
-              sx={{
-                fontSize: 12,
-                fontWeight: 700,
-                color:
-                  candidate.availability === 0 ? C.textPrimary : C.textPrimary,
-              }}
-            >
-              {candidate.availability === 0
-                ? "Immediate"
-                : `${candidate.availability} days`}
-            </Typography>
-          </Box>
+            {candidate.availability === 0
+              ? "Immediate"
+              : `${candidate.availability} days`}
+          </Typography>
+        </Box>
 
         {[
           { label: "Experience", value: candidate.total_experience },
@@ -1920,7 +1954,7 @@ function CandidateCard({ candidate, onView }) {
           </Box>
         ))}
 
-        <Box sx={{ mt: "auto" }}>
+        <Box sx={{ mt: "6px" }}>
           <Button
             variant="outlined"
             fullWidth

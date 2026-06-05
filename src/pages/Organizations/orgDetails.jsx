@@ -68,6 +68,7 @@ import {
   useGetOrganisationInterviewsQuery,
   useGetOrganisationJobAnalyticsQuery,
   useGetOrganisationCandidatesQuery,
+  useLazyGetResumeViewQuery,
 } from "../../redux/services/requisition/requisition";
 import { useGetEmployeeDetailsQuery } from "../../redux/services/orgEmployees/orgEmployees";
 
@@ -88,6 +89,8 @@ import AccessTimeOutlinedIcon from "@mui/icons-material/AccessTimeOutlined";
 import WorkspacePremiumOutlinedIcon from "@mui/icons-material/WorkspacePremiumOutlined";
 import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 import CustomSelect from "../../components/Select/index";
+import ControlPointIcon from "@mui/icons-material/ControlPoint";
+import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 
 const LABEL_SX = {
   fontSize: 10,
@@ -1413,10 +1416,24 @@ function OrgOverviewTab({ org, orgId }) {
                 {chartType.funnel === "line" ? (
                   <LineChart data={candidateTrendData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" />
-                    <YAxis />
+                    <XAxis
+                      dataKey="label"
+                      tick={{
+                        fontSize: 14,
+                      }}
+                    />
+                    <YAxis
+                      tick={{
+                        fontSize: 14,
+                      }}
+                    />
                     <Tooltip />
-                    <Legend />
+                    <Legend
+                      iconSize={8}
+                      wrapperStyle={{
+                        fontSize: 14,
+                      }}
+                    />
                     <Line type="monotone" dataKey="Matched" stroke={C.accent} />
                     <Line
                       type="monotone"
@@ -1433,10 +1450,24 @@ function OrgOverviewTab({ org, orgId }) {
                 ) : (
                   <BarChart data={candidateTrendData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" />
-                    <YAxis />
+                    <XAxis
+                      dataKey="label"
+                      tick={{
+                        fontSize: 14,
+                      }}
+                    />
+                    <YAxis
+                      tick={{
+                        fontSize: 14,
+                      }}
+                    />
                     <Tooltip />
-                    <Legend />
+                    <Legend
+                      iconSize={8}
+                      wrapperStyle={{
+                        fontSize: 14,
+                      }}
+                    />
                     <Bar dataKey="Matched" fill={C.accent} />
                     <Bar dataKey="Shortlisted" fill={C.green} />
                     <Bar dataKey="Rejected" fill={C.red} />
@@ -1634,13 +1665,13 @@ function OrgOverviewTab({ org, orgId }) {
                           <XAxis
                             dataKey="name"
                             tick={{
-                              fontSize: 11,
+                              fontSize: 14,
                             }}
                           />
 
                           <YAxis
                             tick={{
-                              fontSize: 11,
+                              fontSize: 14,
                             }}
                           />
 
@@ -1758,13 +1789,13 @@ function OrgOverviewTab({ org, orgId }) {
                           <XAxis
                             dataKey="label"
                             tick={{
-                              fontSize: 10,
+                              fontSize: 14,
                             }}
                           />
 
                           <YAxis
                             tick={{
-                              fontSize: 10,
+                              fontSize: 14,
                             }}
                             allowDecimals={false}
                           />
@@ -1779,7 +1810,7 @@ function OrgOverviewTab({ org, orgId }) {
                           <Legend
                             iconSize={8}
                             wrapperStyle={{
-                              fontSize: 11,
+                              fontSize: 14,
                             }}
                           />
 
@@ -1828,19 +1859,24 @@ function OrgOverviewTab({ org, orgId }) {
                           <XAxis
                             dataKey="label"
                             tick={{
-                              fontSize: 10,
+                              fontSize: 14,
                             }}
                           />
 
                           <YAxis
                             tick={{
-                              fontSize: 10,
+                              fontSize: 14,
                             }}
                           />
 
                           <Tooltip />
 
-                          <Legend />
+                          <Legend
+                            iconSize={8}
+                            wrapperStyle={{
+                              fontSize: 14,
+                            }}
+                          />
 
                           <Line
                             type="monotone"
@@ -1932,10 +1968,10 @@ function OrgOverviewTab({ org, orgId }) {
                     margin={{ top: 4, right: 8, left: -20, bottom: 0 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
-                    <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                    <XAxis dataKey="label" tick={{ fontSize: 14 }} />
+                    <YAxis tick={{ fontSize: 14 }} allowDecimals={false} />
                     <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
-                    <Legend iconSize={8} wrapperStyle={{ fontSize: 11 }} />
+                    <Legend iconSize={8} wrapperStyle={{ fontSize: 14 }} />
                     <Bar dataKey="Open" fill={C.green} radius={[4, 4, 0, 0]} />
                     <Bar
                       dataKey="Closed"
@@ -1946,10 +1982,10 @@ function OrgOverviewTab({ org, orgId }) {
                 ) : (
                   <LineChart data={jobTrendData}>
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="label" />
-                    <YAxis />
-                    <Tooltip />
-                    <Legend />
+                    <XAxis dataKey="label" tick={{ fontSize: 14 }} />
+                    <YAxis tick={{ fontSize: 14 }} />
+                    <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                    <Legend iconSize={8} wrapperStyle={{ fontSize: 14 }} />
                     <Line type="monotone" dataKey="Open" stroke={C.green} />
                     <Line type="monotone" dataKey="Closed" stroke="#9CA3AF" />
                   </LineChart>
@@ -2163,6 +2199,23 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
           // border:2
         }}
       >
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: 1,
+            backgroundColor: C.accent,
+            p: 1,
+            borderRadius: "8px",
+            cursor: "pointer",
+          }}
+        >
+          <ControlPointIcon sx={{ fontSize: 16, color: "#fff" }} />
+          <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#fff" }}>
+            Add Requisition
+          </Typography>
+        </Box>
+
         <SearchFilter
           value={search}
           onChange={(e) => setSearch(e.target.value)}
@@ -2645,9 +2698,9 @@ function OrgInterviewsTab({ orgId }) {
             <Typography sx={{ fontSize: 14 }} color={C.textPrimary}>
               {row.original.interview_step_name}
             </Typography>
-            <Typography sx={{ fontSize: 14 }} color={C.textSecondary}>
+            {/* <Typography sx={{ fontSize: 14 }} color={C.textSecondary}>
               Step {row.original.interview_step_number}
-            </Typography>
+            </Typography> */}
           </Box>
         ),
       },
@@ -3377,8 +3430,8 @@ function RequisitionCard({ job, onOpen }) {
             sx={{
               width: 46,
               height: 46,
-              borderRadius: "12px",
-              backgroundColor: theme.iconBg,
+              borderRadius: "50px",
+              backgroundColor: "#FF5722",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -3386,7 +3439,7 @@ function RequisitionCard({ job, onOpen }) {
           >
             <WorkOutlineRoundedIcon
               sx={{
-                color: theme.iconColor,
+                color: "#fff",
                 fontSize: 20,
               }}
             />
@@ -3397,7 +3450,7 @@ function RequisitionCard({ job, onOpen }) {
             >
               {title}
             </Typography>
-            <Typography sx={{ fontSize: 11, color: C.textSecondary }}>
+            <Typography sx={{ fontSize: 11, color: "#000" }}>
               {jobId} · {empType}
             </Typography>
           </Box>
@@ -3416,7 +3469,7 @@ function RequisitionCard({ job, onOpen }) {
                 sx={{
                   fontSize: 11,
                   height: 22,
-                  fontWeight: 600,
+                  fontWeight: 500,
                   textTransform: "capitalize",
                   backgroundColor: theme.chipBg,
                   color: theme.chipColor,
@@ -3432,13 +3485,13 @@ function RequisitionCard({ job, onOpen }) {
         )}
 
         {minYrs !== null && maxYrs !== null && (
-          <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-            <Typography sx={{ fontSize: 11, color: C.textSecondary }}>
+          <Box
+            sx={{ display: "flex", justifyContent: "space-between", mb: "6px" }}
+          >
+            <Typography sx={{ fontSize: 11, color: "#000" }}>
               Experience
             </Typography>
-            <Typography
-              sx={{ fontSize: 12, fontWeight: 700, color: C.textPrimary }}
-            >
+            <Typography sx={{ fontSize: 11, color: "#000" }}>
               {minYrs}–{maxYrs} yrs
             </Typography>
           </Box>
@@ -3448,14 +3501,13 @@ function RequisitionCard({ job, onOpen }) {
             sx={{
               display: "flex",
               justifyContent: "space-between",
+              mb: "6px",
             }}
           >
-            <Typography sx={{ fontSize: 11, color: C.textSecondary }}>
+            <Typography sx={{ fontSize: 11, color: "#000" }}>
               Positions
             </Typography>
-            <Typography
-              sx={{ fontSize: 12, fontWeight: 700, color: C.textPrimary }}
-            >
+            <Typography sx={{ fontSize: 11, color: "#000" }}>
               {positions}
             </Typography>
           </Box>
@@ -3463,14 +3515,12 @@ function RequisitionCard({ job, onOpen }) {
 
         {Created && (
           <Box
-            sx={{ display: "flex", justifyContent: "space-between", mb: "0px" }}
+            sx={{ display: "flex", justifyContent: "space-between", mb: "6px" }}
           >
-            <Typography sx={{ fontSize: 11, color: C.textSecondary }}>
+            <Typography sx={{ fontSize: 11, color: "#000" }}>
               Created
             </Typography>
-            <Typography
-              sx={{ fontSize: 11, fontWeight: 600, color: C.textPrimary }}
-            >
+            <Typography sx={{ fontSize: 11, color: "#000" }}>
               {Created}
             </Typography>
           </Box>
@@ -3479,18 +3529,16 @@ function RequisitionCard({ job, onOpen }) {
           <Box
             sx={{ display: "flex", justifyContent: "space-between", mb: "6px" }}
           >
-            <Typography sx={{ fontSize: 11, color: C.textSecondary }}>
+            <Typography sx={{ fontSize: 11, color: "#000" }}>
               Closing date
             </Typography>
-            <Typography
-              sx={{ fontSize: 11, fontWeight: 600, color: C.textPrimary }}
-            >
+            <Typography sx={{ fontSize: 11, color: "#000" }}>
               {closingDate}
             </Typography>
           </Box>
         )}
 
-        {skills.length > 0 && (
+        {/* {skills.length > 0 && (
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.5, mb: "0px" }}>
             {skills.slice(0, 3).map((s) => (
               <Chip
@@ -3523,15 +3571,18 @@ function RequisitionCard({ job, onOpen }) {
               />
             )}
           </Box>
-        )}
+        )} */}
 
         <Box
           sx={{
             display: "flex",
             alignItems: "center",
+            justifyContent: "center",
             gap: 0.4,
-            mt: "auto",
-            pt: "8px",
+            mt: 2,
+            p: 0.9,
+            borderRadius: "8px",
+            border: "1px solid #FF5722",
           }}
         >
           <Typography
@@ -3540,8 +3591,9 @@ function RequisitionCard({ job, onOpen }) {
               fontWeight: 700,
               textTransform: "uppercase",
               letterSpacing: "0.05em",
-              color: hovered ? C.accent : C.textTertiary,
+              color: "#FF5722",
               transition: "color 0.15s",
+              textAlign: "center",
             }}
           >
             See full details
@@ -3549,7 +3601,7 @@ function RequisitionCard({ job, onOpen }) {
           <ArrowForwardIcon
             sx={{
               fontSize: 11,
-              color: hovered ? C.accent : C.textTertiary,
+              color: "#FF5722",
               transition: "color 0.15s, transform 0.15s",
               transform: hovered ? "translateX(3px)" : "none",
             }}
@@ -3579,6 +3631,20 @@ function AssignedCandidateCard({ candidate, primaryJob, orgJobCount, onView }) {
 
   const sc = stageColor(primaryJob?.current_stage);
   const orgJobs = candidate.jobs ?? [];
+  const [getResumeView] = useLazyGetResumeViewQuery();
+  const viewResume = async (candidateId) => {
+    try {
+      const res = await getResumeView(candidateId).unwrap();
+
+      const url = res?.resume_url;
+
+      if (url) {
+        window.open(url, "_blank");
+      }
+    } catch (error) {
+      console.error("Resume fetch failed:", error);
+    }
+  };
 
   return (
     <>
@@ -3619,18 +3685,31 @@ function AssignedCandidateCard({ candidate, primaryJob, orgJobCount, onView }) {
               {candidate.candidate_name?.charAt(0).toUpperCase()}
             </Avatar>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography
-                sx={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  color: C.textPrimary,
-                  whiteSpace: "nowrap",
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                }}
-              >
-                {candidate.candidate_name}
-              </Typography>
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                <Typography
+                  sx={{
+                    fontSize: 13,
+                    fontWeight: 700,
+                    color: C.textPrimary,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {candidate.candidate_name}
+                </Typography>
+                <DescriptionOutlinedIcon
+                  onClick={() => {
+                    viewResume(candidate?.candidate_id);
+                  }}
+                  sx={{
+                    fontSize: 14,
+                    color: "#FF5F1F",
+                    ml: 0,
+                    cursor: "pointer",
+                  }}
+                />
+              </Box>
               <Typography
                 sx={{
                   fontSize: 11,
@@ -3650,12 +3729,13 @@ function AssignedCandidateCard({ candidate, primaryJob, orgJobCount, onView }) {
             sx={{
               display: "flex",
               justifyContent: "space-between",
+              mb: "6px",
             }}
           >
             <Typography
               sx={{
                 fontSize: { xs: 10, sm: 11 },
-                color: C.textSecondary,
+                color: "#000",
                 mb: "2px",
               }}
             >
@@ -3669,28 +3749,21 @@ function AssignedCandidateCard({ candidate, primaryJob, orgJobCount, onView }) {
             sx={{
               display: "flex",
               justifyContent: "space-between",
+              mb: "6px",
             }}
           >
-            <Typography
-              sx={{ fontSize: 11, color: C.textSecondary, mb: "2px" }}
-            >
+            <Typography sx={{ fontSize: 11, color: "#000", mb: "2px" }}>
               Jobs Here
             </Typography>
-            <Typography
-              sx={{ fontSize: 12, fontWeight: 700, color: C.textPrimary }}
-            >
+            <Typography sx={{ fontSize: 12, fontWeight: 700, color: "#000" }}>
               {orgJobCount}
             </Typography>
           </Box>
           <Box
             sx={{ display: "flex", justifyContent: "space-between", mb: "6px" }}
           >
-            <Typography sx={{ fontSize: 11, color: C.textSecondary }}>
-              Phone
-            </Typography>
-            <Typography
-              sx={{ fontSize: 11, fontWeight: 500, color: C.textPrimary }}
-            >
+            <Typography sx={{ fontSize: 11, color: "#000" }}>Phone</Typography>
+            <Typography sx={{ fontSize: 11, fontWeight: 500, color: "#000" }}>
               {candidate.phone_number}
             </Typography>
           </Box>
@@ -3745,7 +3818,7 @@ function AssignedCandidateCard({ candidate, primaryJob, orgJobCount, onView }) {
                 ),
             )}
           </Box>
-          <Box sx={{ mt: "auto" }}>
+          <Box sx={{ mt: "6px" }}>
             <Button
               variant="outlined"
               fullWidth
