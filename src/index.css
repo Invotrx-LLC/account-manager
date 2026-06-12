@@ -20,3 +20,16 @@ svg:focus-visible {
 *:focus-visible {
   outline: none !important;
 }
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #E54E10;
+  border-radius: 20px;
+}

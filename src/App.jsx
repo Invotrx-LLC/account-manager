@@ -28,6 +28,7 @@ import CandidatesPage from "./pages/Candidates/Candidate";
 import CandidateDetailPage from "./pages/Candidates/CandidateDetailsPage";
 import Settings from "./pages/Settings";
 import ChangePasswordPage from "./pages/Settings/ChangePasswordPage";
+import CreateRequisition from "./pages/OrgRequisitions/createJob";
 
 const App = () => {
   return (
@@ -56,7 +57,7 @@ const App = () => {
 
             {/* Organizations */}
             <Route path="organization" element={<AmOrganizations />} />
-
+            <Route path="create-requisition" element={<CreateRequisition/>}/>
             {/* User Management */}
             <Route path="user-management" element={<AccountManagement />} />
 

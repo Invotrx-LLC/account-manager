@@ -110,10 +110,10 @@ const CARD_SX = {
 const fmtDate = (d) =>
   d
     ? new Date(d).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "long",
-        year: "numeric",
-      })
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    })
     : "—";
 
 const fmtTime = (t) => {
@@ -505,8 +505,8 @@ function InterviewDetailDialog({ open, onClose, interviewId }) {
                 <Typography sx={{ fontSize: 11, color: "#9696A6", mt: "2px" }}>
                   {iv.date
                     ? new Date(iv.date).toLocaleDateString("en-GB", {
-                        weekday: "long",
-                      })
+                      weekday: "long",
+                    })
                     : ""}
                 </Typography>
               </Box>
@@ -848,11 +848,11 @@ function StatusPill({ status }) {
 function OrgHeroHeader({ org, analytics }) {
   const initials = org.organisation_name
     ? org.organisation_name
-        .split(" ")
-        .map((w) => w[0])
-        .slice(0, 2)
-        .join("")
-        .toUpperCase()
+      .split(" ")
+      .map((w) => w[0])
+      .slice(0, 2)
+      .join("")
+      .toUpperCase()
     : "?";
 
   const statPills = [
@@ -1122,6 +1122,7 @@ export default function OrgDetail() {
   const [tab, setTab] = useState(location.state?.activeTab ?? 0);
 
   const { data: orgsData, isLoading } = useGetMyOrganisationsQuery();
+  console.log("orgsData", orgsData)
   const org =
     location.state?.org ??
     orgsData?.data?.find((o) => String(o.id) === String(orgId));
@@ -1221,30 +1222,30 @@ function OrgOverviewTab({ org, orgId }) {
 
   const funnelData = analytics
     ? [
-        { name: "Matched", value: analytics.candidate_stage_breakdown.matched },
-        {
-          name: "Shortlisted",
-          value: analytics.candidate_stage_breakdown.shortlisted,
-        },
-        {
-          name: "Interviewing",
-          value:
-            analytics.candidate_stage_breakdown.interview_scheduled +
-            analytics.candidate_stage_breakdown.interview_rescheduled,
-        },
-        {
-          name: "Selected",
-          value: analytics.candidate_stage_breakdown.selected,
-        },
-        {
-          name: "Rejected",
-          value: analytics.candidate_stage_breakdown.rejected,
-        },
-        {
-          name: "Onboarded",
-          value: analytics.candidate_stage_breakdown.onboarded,
-        },
-      ].filter((d) => d.value > 0)
+      { name: "Matched", value: analytics.candidate_stage_breakdown.matched },
+      {
+        name: "Shortlisted",
+        value: analytics.candidate_stage_breakdown.shortlisted,
+      },
+      {
+        name: "Interviewing",
+        value:
+          analytics.candidate_stage_breakdown.interview_scheduled +
+          analytics.candidate_stage_breakdown.interview_rescheduled,
+      },
+      {
+        name: "Selected",
+        value: analytics.candidate_stage_breakdown.selected,
+      },
+      {
+        name: "Rejected",
+        value: analytics.candidate_stage_breakdown.rejected,
+      },
+      {
+        name: "Onboarded",
+        value: analytics.candidate_stage_breakdown.onboarded,
+      },
+    ].filter((d) => d.value > 0)
     : [];
 
   const candidateTrendData =
@@ -1269,31 +1270,31 @@ function OrgOverviewTab({ org, orgId }) {
 
   const overviewCards = analytics
     ? [
-        {
-          label: "Total Jobs",
-          value: analytics.job_overview.total_jobs,
-          color: C.accent,
-          soft: C.accentSoft,
-        },
-        {
-          label: "Open Jobs",
-          value: analytics.job_overview.open_jobs,
-          color: C.green,
-          soft: C.greenSoft,
-        },
-        {
-          label: "Closed Jobs",
-          value: analytics.job_overview.closed_jobs,
-          color: "#6B7280",
-          soft: "#F3F4F6",
-        },
-        {
-          label: "Total Candidates",
-          value: analytics.total_candidates,
-          color: C.indigo,
-          soft: C.indigoSoft,
-        },
-      ]
+      {
+        label: "Total Jobs",
+        value: analytics.job_overview.total_jobs,
+        color: C.accent,
+        soft: C.accentSoft,
+      },
+      {
+        label: "Open Jobs",
+        value: analytics.job_overview.open_jobs,
+        color: C.green,
+        soft: C.greenSoft,
+      },
+      {
+        label: "Closed Jobs",
+        value: analytics.job_overview.closed_jobs,
+        color: "#6B7280",
+        soft: "#F3F4F6",
+      },
+      {
+        label: "Total Candidates",
+        value: analytics.total_candidates,
+        color: C.indigo,
+        soft: C.indigoSoft,
+      },
+    ]
     : [];
 
   return (
@@ -2114,10 +2115,10 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
             <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
                 : "—"}
             </Typography>
           );
@@ -2133,10 +2134,10 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
             <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
                 : "—"}
             </Typography>
           );
@@ -2209,6 +2210,11 @@ function OrgRequisitionsTab({ orgId, orgName, navigate }) {
             borderRadius: "8px",
             cursor: "pointer",
           }}
+          onClick={() =>
+            navigate("/account-manager/create-requisition", {
+              state: { orgId },
+            })
+          }
         >
           <ControlPointIcon sx={{ fontSize: 16, color: "#fff" }} />
           <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#fff" }}>
@@ -2271,8 +2277,8 @@ function OrgCandidatesTab({ orgId, navigate, orgName }) {
     statusFilter === "all"
       ? candidates
       : candidates.filter((c) =>
-          c.jobs?.some((j) => j.current_stage === statusFilter),
-        );
+        c.jobs?.some((j) => j.current_stage === statusFilter),
+      );
 
   const goToCandidate = (candidate, matchedCandidateId, job) =>
     navigate(`/account-manager/candidate/${candidate.candidate_id}`, {
@@ -2637,8 +2643,8 @@ function OrgInterviewsTab({ orgId }) {
     statusFilter === "all"
       ? interviews
       : interviews.filter(
-          (iv) => (iv.interview_status ?? "scheduled") === statusFilter,
-        );
+        (iv) => (iv.interview_status ?? "scheduled") === statusFilter,
+      );
 
   const searchedInterviews = filtered.filter((iv) => {
     const value = search.toLowerCase();
@@ -2740,10 +2746,10 @@ function OrgInterviewsTab({ orgId }) {
             <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
                 : "—"}
             </Typography>
           );
@@ -3150,10 +3156,10 @@ function OrgEmployeesTab({ orgId }) {
             <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
                 : "—"}
             </Typography>
           );
@@ -3172,10 +3178,10 @@ function OrgEmployeesTab({ orgId }) {
             <Typography sx={{ fontSize: 12 }} color={C.textPrimary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
                 : "—"}
             </Typography>
           );
@@ -3194,10 +3200,10 @@ function OrgEmployeesTab({ orgId }) {
             <Typography sx={{ fontSize: 12 }} color={C.textSecondary}>
               {v
                 ? new Date(v).toLocaleDateString("en-GB", {
-                    day: "2-digit",
-                    month: "short",
-                    year: "numeric",
-                  })
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
                 : "—"}
             </Typography>
           );
@@ -3380,17 +3386,17 @@ function RequisitionCard({ job, onOpen }) {
   const chip = statusChip(status);
   const Created = job.created_at
     ? new Date(job.created_at).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
     : null;
   const closingDate = job.closing_date
     ? new Date(job.closing_date).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
     : null;
   const theme = getCardTheme(title);
 
@@ -4157,10 +4163,10 @@ function InterviewCard({ interview }) {
 
   const formattedDate = interview.interview_date
     ? new Date(interview.interview_date).toLocaleDateString("en-GB", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    })
     : "—";
 
   return (
