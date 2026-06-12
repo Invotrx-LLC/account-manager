@@ -274,49 +274,6 @@ useEffect(() => {
     return !Object.values(newErrors).some(Boolean);
   };
 
-  // const handleSubmit = async (e) => {
-  //   e.preventDefault();
-  //   if (!validateForm()) return;
-
-  //   const isIndia = localData.country?.toLowerCase() === "india";
-
-  //   // ✅ JSON PAYLOAD (ARRAY INCLUDED)
-  //   const payload = {
-  //     job_type: localData.jobType || "",
-  //     country: localData.country || "",
-  //     salary_range: isIndia ? null : localData.salaryRange || null,
-  //     salary_unit: isIndia ? null : localData.salaryUnit || null,
-  //     mode_of_work: localData.modeOfWork || "",
-  //     additional_skill_1: " ",
-  //     additional_skill_2: " ",
-  //     job_approver: localData.selectedManager?.id || "",
-
-  //     // ✅ THIS IS WHAT YOU WANT
-  //     recruiter: localData.selectedRecruiterIds, // ["id1","id2"]
-  //   };
-
-  //   try {
-  //     const response = await api.post(
-  //       `/add-new-job_additional_details/${jobId}`,
-  //       payload, // ✅ send JSON
-  //       {
-  //         headers: {
-  //           accept: "application/json",
-  //           "Content-Type": "application/json",
-  //         },
-  //       }
-  //     );
-
-  //     if (response?.data?.success) {
-  //       setEmployerStepperData(response?.data?.data);
-  //       onSubmitSuccess();
-  //       toast.success("Job details saved successfully!");
-  //     }
-  //   } catch (error) {
-  //     console.error("Submission error:", error);
-  //     toast.error("Failed to save job details.");
-  //   }
-  // };
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;

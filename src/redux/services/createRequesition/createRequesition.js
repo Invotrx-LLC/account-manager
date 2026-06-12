@@ -4,14 +4,14 @@ export const createRequisitionService = api.injectEndpoints({
     endpoints: (builder) => ({
         getCountries: builder.query({
             query: () => ({
-                url: "/acc/countries",
+                url: "/acc/dropdown/countries",
                 method: "GET",
             }),
         }),
 
         getCitiesByCountry: builder.query({
             query: (country) => ({
-                url: `/acc/cities/${country}`,
+                url: `/acc/dropdown/locations?country=${country}`,
                 method: "GET",
             }),
         }),
@@ -52,6 +52,7 @@ export const createRequisitionService = api.injectEndpoints({
             }),
             transformResponse: (response) => response.data,
         }),
+
         getApprovers: builder.query({
             query: ({ orgID }) => ({
                 url: `/acc/get_employee_details_by_organisation/${orgID}`,
@@ -74,8 +75,6 @@ export const createRequisitionService = api.injectEndpoints({
             transformResponse: (response) => response.data,
         }),
 
-        // ── New endpoints ──────────────────────────────────────────────────────
-
         getEdcTools: builder.query({
             query: () => ({
                 url: "/acc/edc-tools",
@@ -96,9 +95,7 @@ export const createRequisitionService = api.injectEndpoints({
             query: (mode = "normal") => ({
                 url: "/acc/raveprogrammer/skills",
                 method: "GET",
-                params: {
-                    mode,
-                },
+                params: { mode },
             }),
             transformResponse: (response) => response.data,
         }),
@@ -108,25 +105,45 @@ export const createRequisitionService = api.injectEndpoints({
                 url: `/acc/raveprogrammerskills/remaining`,
                 method: "POST",
                 params: { mode },
-                body: {
-                    selected_skill_keys: selectedSkills,
-                },
+                body: { selected_skill_keys: selectedSkills },
             }),
             transformResponse: (response) => response.data,
         }),
 
         getTemplates: builder.query({
-            query: () => ({
-                url: "/acc/templates",
+            query: ({ orgID }) => ({
+                url: `/acc/job-templates?organisation_id=${orgID}`,
                 method: "GET",
             }),
         }),
 
-        // Optional: wire this up when a delete endpoint is ready
         deleteTemplate: builder.mutation({
             query: (templateId) => ({
                 url: `/acc/templates/${templateId}`,
                 method: "DELETE",
+            }),
+        }),
+
+        // ── KEY FIX: pass FormData directly, no Content-Type header ──
+        createRequisition: builder.mutation({
+            query: (formData) => ({
+                url: "/acc/account_manager/create-new-job",
+                method: "POST",
+                body: formData,
+                // fetchBaseQuery detects FormData and skips JSON serialization
+                // DO NOT set headers here — browser sets multipart/form-data + boundary
+            }),
+        }),
+        getMatchingCandidates: builder.mutation({
+            query: ({ jobId, orgEmpId }) => ({
+                url: `/acc/get_matching_candidates/${jobId}`,
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                },
+                body: new URLSearchParams({
+                    org_emp_id: orgEmpId,
+                }).toString(),
             }),
         }),
     }),
@@ -150,4 +167,6 @@ export const {
     useDeleteTemplateMutation,
     useGetCPSkillsQuery,
     useGetApproversQuery,
+    useCreateRequisitionMutation,
+    useGetMatchingCandidatesMutation,
 } = createRequisitionService;

@@ -29,6 +29,7 @@ import CandidateDetailPage from "./pages/Candidates/CandidateDetailsPage";
 import Settings from "./pages/Settings";
 import ChangePasswordPage from "./pages/Settings/ChangePasswordPage";
 import CreateRequisition from "./pages/OrgRequisitions/createJob";
+import MatchedCandidates from "./pages/OrgRequisitions/createJob/matchedCandidates";
 
 const App = () => {
   return (
@@ -58,6 +59,8 @@ const App = () => {
             {/* Organizations */}
             <Route path="organization" element={<AmOrganizations />} />
             <Route path="create-requisition" element={<CreateRequisition/>}/>
+            <Route path="matched-candidates" element={<MatchedCandidates/>}/>
+            {/*
             {/* User Management */}
             <Route path="user-management" element={<AccountManagement />} />
 

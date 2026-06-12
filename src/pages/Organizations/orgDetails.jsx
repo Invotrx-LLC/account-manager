@@ -856,31 +856,34 @@ function OrgHeroHeader({ org, analytics }) {
     : "?";
 
   const statPills = [
-    {
-      label: "Total Jobs",
-      value: analytics?.job_overview?.total_jobs ?? org.total_jobs ?? "—",
-      accent: C.accent,
-      soft: C.accentSoft,
-      border: C.accentBorder,
-    },
-    {
-      label: "Candidates",
-      value: analytics?.total_candidates ?? "—",
-      accent: C.indigo,
-      soft: C.indigoSoft,
-      border: C.indigoBorder,
-    },
-    {
-      label: "Hires",
-      value:
-        analytics?.candidate_stage_breakdown?.onboarded ??
-        org.total_hires ??
-        "—",
-      accent: C.green,
-      soft: C.greenSoft,
-      border: C.greenBorder,
-    },
-  ];
+  {
+    label: "Total Jobs",
+    value:
+      analytics?.job_overview?.total_jobs?.value ??
+      org.total_jobs ??
+      "—",
+    accent: C.accent,
+    soft: C.accentSoft,
+    border: C.accentBorder,
+  },
+  {
+    label: "Candidates",
+    value: analytics?.total_candidates ?? "—",
+    accent: C.indigo,
+    soft: C.indigoSoft,
+    border: C.indigoBorder,
+  },
+  {
+    label: "Hires",
+    value:
+      analytics?.candidate_stage_breakdown?.onboarded ??
+      org.total_hires ??
+      "—",
+    accent: C.green,
+    soft: C.greenSoft,
+    border: C.greenBorder,
+  },
+];
   const metaItems = [
     org.industry && {
       label: org.industry,
@@ -1268,34 +1271,32 @@ function OrgOverviewTab({ org, orgId }) {
 
   const PIE_COLORS = [C.accent, C.green, C.indigo, "#F59E0B", C.red, "#8B5CF6"];
 
-  const overviewCards = analytics
-    ? [
-      {
-        label: "Total Jobs",
-        value: analytics.job_overview.total_jobs,
-        color: C.accent,
-        soft: C.accentSoft,
-      },
-      {
-        label: "Open Jobs",
-        value: analytics.job_overview.open_jobs,
-        color: C.green,
-        soft: C.greenSoft,
-      },
-      {
-        label: "Closed Jobs",
-        value: analytics.job_overview.closed_jobs,
-        color: "#6B7280",
-        soft: "#F3F4F6",
-      },
-      {
-        label: "Total Candidates",
-        value: analytics.total_candidates,
-        color: C.indigo,
-        soft: C.indigoSoft,
-      },
-    ]
-    : [];
+  const overviewCards = [
+  {
+    label: "Total Jobs",
+    value: analytics.job_overview.total_jobs?.value ?? 0,
+    color: C.accent,
+    soft: C.accentSoft,
+  },
+  {
+    label: "Open Jobs",
+    value: analytics.job_overview.open_jobs?.value ?? 0,
+    color: C.green,
+    soft: C.greenSoft,
+  },
+  {
+    label: "Closed Jobs",
+    value: analytics.job_overview.closed_jobs?.value ?? 0,
+    color: "#6B7280",
+    soft: "#F3F4F6",
+  },
+  {
+    label: "Total Candidates",
+    value: analytics.total_candidates ?? 0,
+    color: C.indigo,
+    soft: C.indigoSoft,
+  },
+];
 
   return (
     <Grid

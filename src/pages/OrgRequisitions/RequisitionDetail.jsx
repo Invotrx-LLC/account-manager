@@ -1727,9 +1727,9 @@ function ReqInterviewCard({ interview }) {
 function CandidateCard({ candidate, onView }) {
   const [hovered, setHovered] = React.useState(false);
   const matchColor =
-    candidate.match_score >= 80
+    candidate?.match_score >= 80
       ? { bg: "#E7F8EE", color: "#0F6E56" }
-      : candidate.match_score >= 60
+      : candidate?.match_score >= 60
         ? { bg: "#FFF8E1", color: "#B45309" }
         : { bg: "#FEE2E2", color: "#B91C1C" };
   const getStageColor = (stage) => {
@@ -1862,7 +1862,7 @@ function CandidateCard({ candidate, onView }) {
             </Box>
           </Box>
           <Chip
-            label={`SkillIntel ${candidate.match_score}%`}
+            label={`SkillIntel ${candidate?.match_score}%`}
             size="small"
             sx={{
               fontSize: 11,
