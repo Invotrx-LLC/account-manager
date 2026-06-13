@@ -30,6 +30,7 @@ import Settings from "./pages/Settings";
 import ChangePasswordPage from "./pages/Settings/ChangePasswordPage";
 import CreateRequisition from "./pages/OrgRequisitions/createJob";
 import MatchedCandidates from "./pages/OrgRequisitions/createJob/matchedCandidates";
+import ViewProfileDetails from "./pages/OrgRequisitions/createJob/ViewProfileDetails";
 
 const App = () => {
   return (
@@ -60,6 +61,7 @@ const App = () => {
             <Route path="organization" element={<AmOrganizations />} />
             <Route path="create-requisition" element={<CreateRequisition/>}/>
             <Route path="matched-candidates" element={<MatchedCandidates/>}/>
+            <Route path="view-profile" element={<ViewProfileDetails/>}/>
             {/*
             {/* User Management */}
             <Route path="user-management" element={<AccountManagement />} />

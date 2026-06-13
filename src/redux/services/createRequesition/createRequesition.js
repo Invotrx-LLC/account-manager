@@ -146,6 +146,13 @@ export const createRequisitionService = api.injectEndpoints({
                 }).toString(),
             }),
         }),
+        getMatchedCandidateDetails: builder.query({
+            query: (candidateId) => ({
+                url: `/acc/get_matched_candidates_details/${candidateId}`,
+                method: "GET",
+            }),
+            transformResponse: (response) => response.data,
+        }),
     }),
 });
 
@@ -169,4 +176,6 @@ export const {
     useGetApproversQuery,
     useCreateRequisitionMutation,
     useGetMatchingCandidatesMutation,
+    useGetMatchedCandidateDetailsQuery,
+    useLazyGetMatchedCandidateDetailsQuery
 } = createRequisitionService;

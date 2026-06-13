@@ -13,7 +13,9 @@ import PersonAddAltIcon from "@mui/icons-material/PersonAddAlt";
 import EditIcon from "@mui/icons-material/Edit";
 
 import CandidateCard from "./CandidateCard";
-
+  // import { useLazyGetMatchedCandidateDetailsQuery } from "../../../services/createRequisitionService";
+import { toast } from "react-toastify";
+import {useLazyGetMatchedCandidateDetailsQuery} from "../../../../redux/services/createRequesition/createRequesition"
 const MatchedCandidates = () => {
   const location = useLocation();
   const [viewMode, setViewMode] = useState("tile");
@@ -21,6 +23,32 @@ const MatchedCandidates = () => {
   const { candidates = [], job_details_id, requisitionData ,orgId} = location.state || {};
 
   const validCandidates = candidates.filter((candidate) => candidate?.id);
+
+
+// inside component:
+const [fetchCandidateDetails] = useLazyGetMatchedCandidateDetailsQuery();
+const [loadingId, setLoadingId] = useState(null);
+
+const handleViewProfile = async (candidate) => {
+  setLoadingId(candidate.id);
+  try {
+    const result = await fetchCandidateDetails(candidate.id).unwrap();
+    navigate("/account-manager//view-profile", {
+      state: {
+        profileResponse: result,   // already transformed → response.data
+        job_details_id,
+        status: candidate.status,
+        list: validCandidates,
+        orgId,
+      },
+    });
+  } catch (err) {
+    toast.error("Failed to load candidate profile.");
+  } finally {
+    setLoadingId(null);
+  }
+};
+
 
   return (
     <Box p={3}>
@@ -146,7 +174,7 @@ const MatchedCandidates = () => {
               <CandidateCard
                 candidate={candidate}
                 index={index}
-                handleClick={() => console.log(candidate)}
+                handleClick={() => handleViewProfile(candidate)}
               />
             </Grid>
           ))}
