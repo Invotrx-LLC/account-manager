@@ -72,8 +72,8 @@ const CandidateCard = ({ candidate, handleClick, index = 0 }) => {
               candidate.status === "matched"
                 ? "#F59E0B"
                 : candidate.status === "shortlisted"
-                ? "#10B981"
-                : "#EF4444",
+                  ? "#10B981"
+                  : "#EF4444",
             color: "#fff",
             fontWeight: 600,
             borderRadius: "8px 8px 8px 0",
@@ -133,9 +133,9 @@ const CandidateCard = ({ candidate, handleClick, index = 0 }) => {
               sx={{
                 height: 22,
                 borderRadius: 999,
-                backgroundColor: "#E5E7EB",
+                backgroundColor: "#FF5722",
                 "& .MuiLinearProgress-bar": {
-                  background: "linear-gradient(90deg, #2563EB, #06B6D4)",
+                  background: "linear-gradient(90deg, #FF5722 0%, #FF9800 100%)",
                   borderRadius: 999,
                 },
               }}
@@ -160,36 +160,37 @@ const CandidateCard = ({ candidate, handleClick, index = 0 }) => {
 
         {/* Details */}
         <Box display="flex" flexDirection="column" gap={1.5}>
-          <Box display="flex" alignItems="center" gap={1}>
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 1, mt: 1 }}>
             <CalendarTodayIcon fontSize="small" sx={{ color: "#6B7280" }} />
             <Tooltip title={candidate?.designation || ""}>
               <Typography
-                fontSize={14}
+                // fontSize={14}
                 noWrap
-                sx={{ maxWidth: 200 }}
+                sx={{ maxWidth: 200, fontSize: 14 }}
               >
                 {candidate?.designation || "-"}
               </Typography>
             </Tooltip>
           </Box>
-
-          <Box display="flex" alignItems="center" gap={1}>
+          {console.log("candidate...", candidate)}
+          <Box sx={{ display: 'flex', gap: 1, alignItems: "center", mb: 1 }}>
             <WorkIcon fontSize="small" sx={{ color: "#6B7280" }} />
-            <Typography fontSize={14}>
-              {formatExperience(candidate?.experience)}
+            <Typography sx={{ ml: 1, maxWidth: 200, fontSize: 14 }}>
+              {formatExperience(candidate?.
+                total_experience)}
             </Typography>
           </Box>
 
-          <Box display="flex" alignItems="center" gap={1}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: "center", mb: 1 }}>
             <AccessTimeIcon fontSize="small" sx={{ color: "#6B7280" }} />
-            <Typography fontSize={14}>
+            <Typography sx={{ ml: 1, maxWidth: 200, fontSize: 14 }}>
               {formatAvailability(candidate?.availability)}
             </Typography>
           </Box>
 
-          <Box display="flex" alignItems="center" gap={1}>
+          <Box sx={{ display: 'flex', gap: 1, alignItems: "center", mb: 1 }}>
             <LocationOnIcon fontSize="small" sx={{ color: "#6B7280" }} />
-            <Typography fontSize={14}>
+            <Typography sx={{ ml: 1, maxWidth: 200, fontSize: 14 }}>
               {candidate?.location || "Not specified"}
             </Typography>
           </Box>
@@ -213,9 +214,9 @@ const CandidateCard = ({ candidate, handleClick, index = 0 }) => {
             mt: 3,
             textTransform: "none",
             borderRadius: 2,
-            background: "#00BBD4",
+            background: "#FF5722",
             fontWeight: 600,
-            "&:hover": { background: "#009FB5" },
+            "&:hover": { background: "#FF5722" },
           }}
         >
           View Profile

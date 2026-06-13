@@ -5,7 +5,7 @@ import {
   Grid,
   Typography,
 } from "@mui/material";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import GridViewIcon from "@mui/icons-material/GridView";
 import MapIcon from "@mui/icons-material/Map";
@@ -17,8 +17,8 @@ import CandidateCard from "./CandidateCard";
 const MatchedCandidates = () => {
   const location = useLocation();
   const [viewMode, setViewMode] = useState("tile");
-
-  const { candidates = [], job_details_id } = location.state || {};
+  const navigate = useNavigate();
+  const { candidates = [], job_details_id, requisitionData ,orgId} = location.state || {};
 
   const validCandidates = candidates.filter((candidate) => candidate?.id);
 
@@ -103,29 +103,27 @@ const MatchedCandidates = () => {
         <Button
           variant="outlined"
           startIcon={<EditIcon />}
-          sx={{
-            textTransform: "none",
-            borderRadius: 2,
-            borderColor: "#374151",
-            color: "#374151",
-            fontWeight: 600,
-            "&:hover": {
-              borderColor: "#111827",
-              background: "#F9FAFB",
-            },
-          }}
+          onClick={() =>
+            navigate("/account-manager/create-requisition", {
+              state: {
+                editMode: true,
+                requisitionData,
+                orgId
+              },
+            })
+          }
         >
           Edit Job
         </Button>
       </Box>
 
-      {/* Page Header */}
+      {/* Page Header
       <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>
         Matched Candidates
       </Typography>
       <Typography sx={{ color: "#6B7280", mb: 3 }}>
         Job ID: {job_details_id}
-      </Typography>
+      </Typography> */}
 
       {/* Cards Grid — pt: 2 gives room for the overflowing status chip */}
       {validCandidates.length === 0 ? (
@@ -134,7 +132,7 @@ const MatchedCandidates = () => {
         <Grid
           container
           spacing={3}
-          sx={{ pt: 2 }} // ← space for chip overflowing card top
+          sx={{ pt: 2, display: 'flex', justifyContent: "center" }} // ← space for chip overflowing card top
         >
           {validCandidates.map((candidate, index) => (
             <Grid

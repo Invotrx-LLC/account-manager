@@ -1274,25 +1274,25 @@ function OrgOverviewTab({ org, orgId }) {
   const overviewCards = [
   {
     label: "Total Jobs",
-    value: analytics.job_overview.total_jobs?.value ?? 0,
+    value: analytics?.job_overview.total_jobs?.value ?? 0,
     color: C.accent,
     soft: C.accentSoft,
   },
   {
     label: "Open Jobs",
-    value: analytics.job_overview.open_jobs?.value ?? 0,
+    value: analytics?.job_overview.open_jobs?.value ?? 0,
     color: C.green,
     soft: C.greenSoft,
   },
   {
     label: "Closed Jobs",
-    value: analytics.job_overview.closed_jobs?.value ?? 0,
+    value: analytics?.job_overview.closed_jobs?.value ?? 0,
     color: "#6B7280",
     soft: "#F3F4F6",
   },
   {
     label: "Total Candidates",
-    value: analytics.total_candidates ?? 0,
+    value: analytics?.total_candidates ?? 0,
     color: C.indigo,
     soft: C.indigoSoft,
   },

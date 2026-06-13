@@ -12,31 +12,35 @@ const SummaryPage = ({
   summary,
   jobDetailsId,
   setActiveStep,
-  orgEmpId
+  orgEmpId,
+  formData,
+  orgId
 }) => {
   const navigate = useNavigate();
 
-const [getMatchingCandidates, { isLoading }] =
-  useGetMatchingCandidatesMutation();
+  const [getMatchingCandidates, { isLoading }] =
+    useGetMatchingCandidatesMutation();
   const handleAgree = async () => {
-  try {
-    const response = await getMatchingCandidates({
-      jobId: jobDetailsId,
-      orgEmpId,
-    }).unwrap();
+    try {
+      const response = await getMatchingCandidates({
+        jobId: jobDetailsId,
+        orgEmpId,
+      }).unwrap();
 
-    console.log("MATCHED RESPONSE", response);
+      console.log("MATCHED RESPONSE", response);
 
-    navigate("/account-manager/matched-candidates", {
-      state: {
-        job_details_id: jobDetailsId,
-        candidates: response?.data || [],
-      },
-    });
-  } catch (err) {
-    console.error(err);
-  }
-};
+      navigate("/account-manager/matched-candidates", {
+        state: {
+          job_details_id: jobDetailsId,
+          candidates: response?.data || [],
+          requisitionData: formData,
+          orgId
+        },
+      });
+    } catch (err) {
+      console.error(err);
+    }
+  };
 
   return (
     <Box
