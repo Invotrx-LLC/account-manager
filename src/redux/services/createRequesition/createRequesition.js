@@ -134,6 +134,13 @@ export const createRequisitionService = api.injectEndpoints({
                 // DO NOT set headers here — browser sets multipart/form-data + boundary
             }),
         }),
+        editJob: builder.mutation({
+            query: ({ jobId, formData }) => ({
+                url: `/acc/edit-job_v1/${jobId}`,
+                method: "PUT",
+                body: formData,
+            }),
+        }),
         getMatchingCandidates: builder.mutation({
             query: ({ jobId, orgEmpId }) => ({
                 url: `/acc/get_matching_candidates/${jobId}`,
@@ -152,6 +159,13 @@ export const createRequisitionService = api.injectEndpoints({
                 method: "GET",
             }),
             transformResponse: (response) => response.data,
+        }),
+        updateCandidateStatus: builder.mutation({
+            query: ({ candidateId, status, reason }) => ({
+                url: `/acc/matched_candidates/update_status_v1?candidate_id=${candidateId}&new_status=${status}&reason=${encodeURIComponent(reason)}`,
+                method: "POST",
+                body: "",
+            }),
         }),
     }),
 });
@@ -177,5 +191,7 @@ export const {
     useCreateRequisitionMutation,
     useGetMatchingCandidatesMutation,
     useGetMatchedCandidateDetailsQuery,
-    useLazyGetMatchedCandidateDetailsQuery
+    useLazyGetMatchedCandidateDetailsQuery,
+    useUpdateCandidateStatusMutation,
+    useEditJobMutation,
 } = createRequisitionService;

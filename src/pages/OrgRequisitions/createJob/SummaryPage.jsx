@@ -14,13 +14,16 @@ const SummaryPage = ({
   setActiveStep,
   orgEmpId,
   formData,
-  orgId
+  orgId,
+  isEditMode,
+  setIsEditAfterSummary,
 }) => {
   const navigate = useNavigate();
 
   const [getMatchingCandidates, { isLoading }] =
     useGetMatchingCandidatesMutation();
   const handleAgree = async () => {
+    { console.log("fromSummaryPage orgEmpId", orgEmpId) }
     try {
       const response = await getMatchingCandidates({
         jobId: jobDetailsId,
@@ -34,7 +37,8 @@ const SummaryPage = ({
           job_details_id: jobDetailsId,
           candidates: response?.data || [],
           requisitionData: formData,
-          orgId
+          orgId,
+          orgEmpId,
         },
       });
     } catch (err) {
@@ -47,65 +51,10 @@ const SummaryPage = ({
       sx={{
         maxWidth: 1000,
         mx: "auto",
-        p: 3,
+        p: 2,
       }}
     >
-      {/* Header */}
-      <Box
-        sx={{
-          background: "#fff",
-          border: "1px solid #E5E7EB",
-          borderRadius: "16px",
-          p: 3,
-          mb: 3,
-        }}
-      >
-        <Box
-          sx={{
-            display: "flex",
-            alignItems: "center",
-            gap: 2,
-            mb: 2,
-          }}
-        >
-          <CheckCircleOutlineOutlined
-            sx={{
-              color: "#16A34A",
-              fontSize: 32,
-            }}
-          />
 
-          <Box>
-            <Typography
-              sx={{
-                fontSize: 24,
-                fontWeight: 700,
-                color: "#111827",
-              }}
-            >
-              Requisition Summary
-            </Typography>
-
-            <Typography
-              sx={{
-                fontSize: 14,
-                color: "#6B7280",
-              }}
-            >
-              Review the generated summary before proceeding
-            </Typography>
-          </Box>
-        </Box>
-
-        <Chip
-          label={`Job ID: ${jobDetailsId}`}
-          sx={{
-            backgroundColor: "#EEF2FF",
-            color: "#1D4ED8",
-            fontWeight: 600,
-          }}
-        />
-      </Box>
 
       {/* Summary Card */}
       <Box
@@ -118,17 +67,6 @@ const SummaryPage = ({
           boxShadow: "0px 2px 10px rgba(0,0,0,0.04)",
         }}
       >
-        <Typography
-          sx={{
-            fontSize: 18,
-            fontWeight: 600,
-            mb: 2,
-            color: "#111827",
-          }}
-        >
-          AI Generated Summary
-        </Typography>
-
         <Box
           sx={{
             backgroundColor: "#F9FAFB",
@@ -162,7 +100,11 @@ const SummaryPage = ({
         <Button
           variant="outlined"
           startIcon={<EditOutlinedIcon />}
-          onClick={() => setActiveStep(1)}
+          onClick={() => {
+            setIsEditAfterSummary(true);
+            setActiveStep(1);
+            setReturnTo("summary");
+          }}
           sx={{
             minWidth: 180,
             height: 46,
@@ -173,7 +115,6 @@ const SummaryPage = ({
         >
           Edit Job Details
         </Button>
-
         <Button
           variant="contained"
           endIcon={<ArrowForwardIcon />}
@@ -187,7 +128,7 @@ const SummaryPage = ({
             backgroundColor: PRIMARY.primary,
           }}
         >
-          Agree & Continue
+          {isEditMode ? "Update & Continue" : "Agree & Continue"}
         </Button>
       </Box>
     </Box>
