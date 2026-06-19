@@ -1,8 +1,9 @@
 import React, { useMemo, useState, useCallback, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { useUpdateCandidateStatusMutation, useGetMatchingCandidatesMutation } from "../../../redux/services/createRequesition/createRequesition";
+import { useUpdateCandidateStatusMutation, useGetMatchingCandidatesMutation, useLazyGetThreeMatchedCandidateDetailsQuery } from "../../../redux/services/createRequesition/createRequesition";
 import { Button, Dialog, DialogActions, DialogContent, DialogTitle, TextField } from "@mui/material";
 import { toast } from "react-toastify";
+import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 
 // ─── Colour tokens ────────────────────────────────────────────────────────────
 const C = {
@@ -58,12 +59,93 @@ const Chip = ({ label, bg, color, border }) => (
   </span>
 );
 
+// ─── Fallback bar comparison for <3 skills (radar needs ≥3 points for a polygon) ──
+const SkillBarCompare = ({ scoreIntel, size = 350 }) => {
+  const barWidth = 64;
+  const chartH = 220;
+  const gridVals = [0, 25, 50, 75, 100];
 
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+      <div style={{ display: "flex", gap: 16, marginBottom: 24, alignSelf: "flex-end" }}>
+        {[{ dot: "#818CF8", label: "Candidate" }, { dot: "#22C55E", label: "Desired" }].map(({ dot, label }) => (
+          <div key={label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: dot }} />
+            <span style={{ fontSize: 13, fontWeight: 500, color: C.gray900 }}>{label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", width: "100%", maxWidth: size + 150 }}>
+        {/* Y-axis labels + gridlines */}
+        <div style={{ position: "relative", height: chartH, width: 36, flexShrink: 0 }}>
+          {gridVals.map((v) => (
+            <span
+              key={v}
+              style={{
+                position: "absolute",
+                right: 8,
+                bottom: (v / 100) * chartH - 6,
+                fontSize: 12,
+                color: C.gray400,
+              }}
+            >
+              {v}
+            </span>
+          ))}
+        </div>
+
+        {/* Chart area */}
+        <div style={{ position: "relative", flex: 1, height: chartH, borderLeft: `1px solid ${C.gray200}`, borderBottom: `1px solid ${C.gray200}` }}>
+          {/* Gridlines */}
+          {gridVals.map((v) => (
+            <div
+              key={v}
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: (v / 100) * chartH,
+                borderTop: v === 0 ? "none" : "1px dashed #E5E7EB",
+              }}
+            />
+          ))}
+
+          {/* Bars */}
+          <div style={{ display: "flex", justifyContent: "center", gap: 56, height: "100%", position: "relative" }}>
+            {scoreIntel.map((d, i) => {
+              const candH = (Math.min(d.candidate, 100) / 100) * chartH;
+              const desH = (Math.min(d.desired, 100) / 100) * chartH;
+              return (
+                <div key={i} style={{ display: "flex", alignItems: "flex-end", gap: 4 }}>
+                  <div style={{ position: "relative", width: barWidth / 2, height: candH, background: "#818CF8", borderRadius: "4px 4px 0 0" }} />
+                  <div style={{ position: "relative", width: barWidth / 2, height: desH, background: "#22C55E", borderRadius: "4px 4px 0 0" }} />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Skill labels under chart, aligned to bar groups */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 56, width: "100%", maxWidth: size + 150, marginLeft: 36, marginTop: 8 }}>
+        {scoreIntel.map((d, i) => (
+          <div key={i} style={{ width: barWidth, textAlign: "center", fontSize: 13, fontWeight: 600, color: "#475569" }}>
+            {d.skill}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 
 // ─── Custom SVG Radar Chart (matching CandidateDetail style) ──────────────────
 const RadarChart = ({ scoreIntel, size = 350 }) => {
   if (!scoreIntel?.length) return null;
-
+// Radar needs ≥3 points to form a polygon — fall back to bar comparison otherwise
+  if (scoreIntel.length < 3) {
+    return <SkillBarCompare scoreIntel={scoreIntel} size={size} />;
+  }
   const [tooltip, setTooltip] = useState({ visible: false, x: 0, y: 0, data: null });
   const svgRef = useRef(null);
   const wrapRef = useRef(null);
@@ -302,7 +384,7 @@ const SkillNoteRow = ({ skill, note, score }) => {
   const pct = score ?? 0;
 
   const barColor = pct >= 80 ? "#10B981" : pct >= 50 ? "#F59E0B" : "#DC2626";
-  const badgeBg  = pct >= 80 ? "#ECFDF5" : pct >= 50 ? "#FFFBEB" : "#FEF2F2";
+  const badgeBg = pct >= 80 ? "#ECFDF5" : pct >= 50 ? "#FFFBEB" : "#FEF2F2";
   const badgeColor = pct >= 80 ? "#059669" : pct >= 50 ? "#D97706" : "#DC2626";
 
   const noteText = typeof note === "object" && note !== null ? note.value : note;
@@ -555,7 +637,9 @@ const ViewProfileDetails = () => {
   const [reason, setReason] = useState("");
 
   const [updateCandidateStatus, { isLoading: updating }] = useUpdateCandidateStatusMutation();
-  const [getMatchingCandidates] = useGetMatchingCandidatesMutation();
+  // const [getMatchingCandidates] = useGetMatchingCandidatesMutation();
+  const [getThreeMatchedCandidates] =
+    useLazyGetThreeMatchedCandidateDetailsQuery();
 
   const totalExperience = useMemo(() => {
     const cur = candidate?.employment?.find(e => e.is_current);
@@ -588,19 +672,24 @@ const ViewProfileDetails = () => {
     : { label: matchStatus.toUpperCase(), bg: C.gray100, color: C.gray700, border: C.gray200 };
 
   const handleStatusUpdate = async () => {
-    if (!reason.trim()) { toast.error("Please enter reason"); return; }
+    // if (!reason.trim()) { toast.error("Please enter reason"); return; }
     try {
       await updateCandidateStatus({ candidateId: profile?.candidate_id1, status: selectedStatus, reason }).unwrap();
-      const refreshedResponse = await getMatchingCandidates({ jobId: state.job_details_id, orgEmpId: state.orgEmpId }).unwrap();
+      // const refreshedResponse = await getMatchingCandidates({ jobId: state.job_details_id, orgEmpId: state.orgEmpId }).unwrap();
+      const refreshedResponse =
+        await getThreeMatchedCandidates({
+          jobId: state.job_details_id,
+          orgEmpId: state.orgEmpId,
+        }).unwrap();
       toast.success(`Candidate ${selectedStatus} successfully`);
+      console.log("THREE MATCHED RESPONSE", refreshedResponse);
       navigate("/account-manager/matched-candidates", {
-        replace: true,
         state: {
+          candidates: refreshedResponse,
           job_details_id: state.job_details_id,
-          candidates: refreshedResponse?.data || [],
-          requisitionData: state.requisitionData,
           orgId: state.orgId,
           orgEmpId: state.orgEmpId,
+          requisitionData: state.requisitionData,
         },
       });
     } catch (error) {
@@ -617,9 +706,10 @@ const ViewProfileDetails = () => {
 
         {/* LEFT */}
         <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          <button onClick={() => navigate(-1)} style={{ width: 38, height: 38, borderRadius: "50%", border: `1px solid ${C.gray200}`, background: C.white, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: C.gray700, flexShrink: 0 }}>
+          {/* <button onClick={() => navigate(-1)} style={{ width: 38, height: 38, borderRadius: "50%", border: `1px solid ${C.gray200}`, background: C.white, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", color: C.gray700, flexShrink: 0 }}>
             <Ic.Back />
-          </button>
+          </button> */}
+          <ArrowBackIcon sx={{ fontSize: 16, cursor: "pointer" }} onClick={() => navigate(-1)} />
 
           <div style={{ width: 64, height: 64, borderRadius: "50%", background: C.orange, color: C.white, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700, flexShrink: 0 }}>
             {initials}
@@ -701,14 +791,59 @@ const ViewProfileDetails = () => {
           {/* Shortlist / Reject */}
           <div style={{ display: "flex", gap: 10, padding: "8px 0" }}>
             <button
-              onClick={() => { setSelectedStatus("shortlisted"); setReason(""); setReasonModal(true); }}
-              style={{ background: C.green, color: "#fff", border: "none", borderRadius: 8, padding: "9px 28px", cursor: "pointer" }}
+              disabled={matchStatus?.toLowerCase() === "shortlisted"}
+              onClick={() => {
+                setSelectedStatus("shortlisted");
+                setReason("");
+                setReasonModal(true);
+              }}
+              style={{
+                background:
+                  matchStatus?.toLowerCase() === "shortlisted"
+                    ? "#D1D5DB"
+                    : C.green,
+                color: "#fff",
+                border: "none",
+                borderRadius: 8,
+                padding: "9px 28px",
+                cursor:
+                  matchStatus?.toLowerCase() === "shortlisted"
+                    ? "not-allowed"
+                    : "pointer",
+                opacity:
+                  matchStatus?.toLowerCase() === "shortlisted"
+                    ? 0.7
+                    : 1,
+              }}
             >
               Shortlist
             </button>
+
             <button
-              onClick={() => { setSelectedStatus("rejected"); setReason(""); setReasonModal(true); }}
-              style={{ background: "#F44336", color: "#fff", border: "none", borderRadius: 8, padding: "9px 28px", cursor: "pointer" }}
+              disabled={matchStatus?.toLowerCase() === "rejected"}
+              onClick={() => {
+                setSelectedStatus("rejected");
+                setReason("");
+                setReasonModal(true);
+              }}
+              style={{
+                background:
+                  matchStatus?.toLowerCase() === "rejected"
+                    ? "#D1D5DB"
+                    : "#F44336",
+                color: "#fff",
+                border: "none",
+                borderRadius: 8,
+                padding: "9px 28px",
+                cursor:
+                  matchStatus?.toLowerCase() === "rejected"
+                    ? "not-allowed"
+                    : "pointer",
+                opacity:
+                  matchStatus?.toLowerCase() === "rejected"
+                    ? 0.7
+                    : 1,
+              }}
             >
               Reject
             </button>

@@ -395,10 +395,89 @@ function ConnectorLine({ state, minHeight }) {
 /* ═══════════════════════════════════════════════
    RADAR CHART
 ═══════════════════════════════════════════════ */
+const SkillBarCompare = ({ scoreIntel, size = 350 }) => {
+  const barWidth = 64;
+  const chartH = 220;
+  const gridVals = [0, 25, 50, 75, 100];
 
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: "100%" }}>
+      <div style={{ display: "flex", gap: 16, marginBottom: 24, alignSelf: "flex-end" }}>
+        {[{ dot: "#818CF8", label: "Candidate" }, { dot: "#22C55E", label: "Desired" }].map(({ dot, label }) => (
+          <div key={label} style={{ display: "flex", alignItems: "center", gap: 5 }}>
+            <div style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: dot }} />
+            <span style={{ fontSize: 13, fontWeight: 500, color: C.gray900 }}>{label}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ display: "flex", width: "100%", maxWidth: size + 150 }}>
+        {/* Y-axis labels + gridlines */}
+        <div style={{ position: "relative", height: chartH, width: 36, flexShrink: 0 }}>
+          {gridVals.map((v) => (
+            <span
+              key={v}
+              style={{
+                position: "absolute",
+                right: 8,
+                bottom: (v / 100) * chartH - 6,
+                fontSize: 12,
+                color: C.gray400,
+              }}
+            >
+              {v}
+            </span>
+          ))}
+        </div>
+
+        {/* Chart area */}
+        <div style={{ position: "relative", flex: 1, height: chartH, borderLeft: `1px solid ${C.gray200}`, borderBottom: `1px solid ${C.gray200}` }}>
+          {/* Gridlines */}
+          {gridVals.map((v) => (
+            <div
+              key={v}
+              style={{
+                position: "absolute",
+                left: 0,
+                right: 0,
+                bottom: (v / 100) * chartH,
+                borderTop: v === 0 ? "none" : "1px dashed #E5E7EB",
+              }}
+            />
+          ))}
+
+          {/* Bars */}
+          <div style={{ display: "flex", justifyContent: "center", gap: 56, height: "100%", position: "relative" }}>
+            {scoreIntel.map((d, i) => {
+              const candH = (Math.min(d.candidate, 100) / 100) * chartH;
+              const desH = (Math.min(d.desired, 100) / 100) * chartH;
+              return (
+                <div key={i} style={{ display: "flex", alignItems: "flex-end", gap: 4 }}>
+                  <div style={{ position: "relative", width: barWidth / 2, height: candH, background: "#818CF8", borderRadius: "4px 4px 0 0" }} />
+                  <div style={{ position: "relative", width: barWidth / 2, height: desH, background: "#22C55E", borderRadius: "4px 4px 0 0" }} />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      {/* Skill labels under chart, aligned to bar groups */}
+      <div style={{ display: "flex", justifyContent: "center", gap: 56, width: "100%", maxWidth: size + 150, marginLeft: 36, marginTop: 8 }}>
+        {scoreIntel.map((d, i) => (
+          <div key={i} style={{ width: barWidth, textAlign: "center", fontSize: 13, fontWeight: 600, color: "#475569" }}>
+            {d.skill}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
 function RadarChart({ scoreIntel, size = 400 }) {
   if (!scoreIntel?.length) return null;
-
+ if (scoreIntel.length < 3) {
+    return <SkillBarCompare scoreIntel={scoreIntel} size={size} />;
+  }
   const [tooltip, setTooltip] = useState({
     visible: false,
     x: 0,
@@ -854,9 +933,10 @@ function ExperienceList({ candidate }) {
             <Box
               sx={{
                 width: "100%",
-                border: "1px solid #FFD6C7",
+                border: emp.is_current ?"1px solid #FFD6C7":"1px solid #E8E8EC",
                 borderRadius: "14px",
-                backgroundColor: "#FFFAF7",
+                // backgroundColor: "#FFFAF7",
+                backgroundColor: emp.is_current ? "#FFFAF7" : "#fff",
                 p: "16px",
                 mb: 3,
               }}

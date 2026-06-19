@@ -17,6 +17,7 @@ import {
   useGetApproversQuery,
   useCreateRequisitionMutation,
   useEditJobMutation,
+  useDeleteTemplateMutation
 } from "../../../redux/services/createRequesition/createRequesition";
 import GroupedSkillAutocomplete from "../../../components/autocomplete";
 import { useLocation, useNavigate } from "react-router-dom";
@@ -27,7 +28,7 @@ import dayjs from "dayjs";
 import CloseIcon from "@mui/icons-material/Close";
 import CloudUploadOutlinedIcon from "@mui/icons-material/CloudUploadOutlined";
 import SummaryPage from "./SummaryPage";
-
+import DeleteOutlineOutlinedIcon from '@mui/icons-material/DeleteOutlineOutlined';
 // ─────────────────────────────────────────────────────────────────────────────
 // STATIC DATA
 // ─────────────────────────────────────────────────────────────────────────────
@@ -342,7 +343,7 @@ const TemplatToastBanner = ({ onLoadNow, onDismiss }) => (
 // ─────────────────────────────────────────────────────────────────────────────
 // SIDEBAR
 // ─────────────────────────────────────────────────────────────────────────────
-const Sidebar = ({ sections, sectionStatus, activeSection, onSectionClick }) => (
+export const Sidebar = ({ sections, sectionStatus, activeSection, onSectionClick }) => (
   <div style={{
     width: 220, minWidth: 220, background: C.surface, borderRadius: 12,
     padding: "20px 14px", border: `1px solid ${C.border}`,
@@ -442,10 +443,13 @@ const TemplateDialog = ({ templates, onClose, onApply, onDelete }) => (
                   <span style={{ fontSize: 11, color: C.textHint }}>
                     {t.created_at ? new Date(t.created_at).toLocaleDateString("en-GB") : ""}
                   </span>
-                  <button onClick={e => { e.stopPropagation(); onDelete(t.template_id); }}
+                  {/* <button onClick={e => { e.stopPropagation(); onDelete(t.template_id); }}
                     style={{ background: "none", border: "none", cursor: "pointer", color: C.danger, padding: 4 }}>
                     <i className="ti ti-trash" style={{ fontSize: 14 }} />
-                  </button>
+                  </button> */}
+                  <DeleteOutlineOutlinedIcon onClick={e => { e.stopPropagation(); onDelete(t.template_id);}}
+                    sx={{fontSize:15,color:"#FF5722"}}
+                    />
                 </div>
               </div>
               <div style={{ display: "flex", gap: 4, marginTop: 7, flexWrap: "wrap" }}>
@@ -752,6 +756,7 @@ const CreateRequisitionForm = () => {
     { skip: !currentOrgId }
   );
   const allTemplates = templatesResponse?.data || [];
+  const [deleteTemplate] = useDeleteTemplateMutation();
 
   const { data: subFunctionsData = [] } = useGetSubFunctionsQuery(selectedFunction, {
     skip: !selectedFunction || selectedDomain !== "clinical",
@@ -1034,9 +1039,26 @@ const handleApplyTemplate = (template) => {
   setMinimizeTemplatePrompt(true);
   };  
 
-  const handleDeleteTemplate = (templateId) => {
-    setDeletedTemplateIds(prev => [...prev, templateId]);
-  };
+  const handleDeleteTemplate = async (templateId) => {
+    console.log("templateId =", templateId);
+  console.log("type =", typeof templateId);
+  try {
+    await deleteTemplate({
+      templateId,
+      organisationId:orgId,
+    }).unwrap();
+
+    setDeletedTemplateIds((prev) => [...prev, templateId]);
+
+    // optional success toast
+    // toast.success("Template deleted successfully");
+  } catch (error) {
+    console.error("Delete template failed", error);
+
+    // optional error toast
+    // toast.error("Failed to delete template");
+  }
+};
 
   // ─────────────────────────────────────────────────────────────────────────
   // EFFECTS
@@ -1174,10 +1196,58 @@ const handleApplyTemplate = (template) => {
 
   // ── Step 2: Summary Page ──
   if (activeStep === 2) {
-    return (
-      <>
-        {console.log("fromCreateJob orgEmpId", creator?.employee_id)}
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: 14,
+        padding: 14,
+        background: "#fff",
+      }}
+    >
+      {/* Sidebar */}
+      <div
+        style={{
+          width: 240,
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        <Sidebar
+          sections={SECTIONS}
+          sectionStatus={sectionStatus}
+          activeSection={activeSection}
+          onSectionClick={scrollTo}
+        />
+{/* 
+        {minimizeTemplatePrompt && (
+          <div
+            onClick={() => {
+              setShowTemplatePrompt(true);
+              setMinimizeTemplatePrompt(false);
+            }}
+            style={{
+              background:
+                "linear-gradient(135deg,#E8532A 0%,#F06830 100%)",
+              borderRadius: 12,
+              padding: 12,
+              color: "#fff",
+              cursor: "pointer",
+            }}
+          >
+            <div style={{ fontWeight: 700 }}>Templates</div>
+            <div style={{ fontSize: 12 }}>
+              Click to load saved templates
+            </div>
+          </div>
+        )} */}
+      </div>
+
+      {/* Main Content */}
+      <div style={{ flex: 1 }}>
         <StepperHeader activeStep={activeStep} />
+
         <SummaryPage
           summary={summaryData}
           jobDetailsId={jobDetailsId}
@@ -1187,10 +1257,12 @@ const handleApplyTemplate = (template) => {
           orgId={orgId}
           isEditMode={isEditMode}
           setIsEditAfterSummary={setIsEditAfterSummary}
+          SECTIONS={SECTIONS}
         />
-      </>
-    );
-  }
+      </div>
+    </div>
+  );
+}
 
   return (
     <div style={{

@@ -10,7 +10,7 @@ import {
     Typography,
 } from "@mui/material";
 import { PRIMARY } from "../../theme/index";
-
+import CloseIcon from "@mui/icons-material/Close";
 const C = {
     primary: PRIMARY.primary,
     primaryLight: "#EBF0FB",
@@ -53,9 +53,21 @@ export default function GroupedSkillAutocomplete({
             onChange={(_, selected) => onChange(selected.map((s) => s.key))}
             sx={{
                 "& .MuiAutocomplete-tag": {
-                    margin: "1px !important",
+                    height: "20px !important",
+                    margin: "2px !important",
+                    borderRadius: "10px !important",
+                    fontSize: "11px !important",
+                    "& .MuiChip-label": {
+                        fontSize: "11px !important",
+                        padding: "0 6px !important",
+                    },
+                    "& .MuiChip-deleteIcon": {
+                        fontSize: "13px !important",
+                        width: "13px !important",
+                        height: "13px !important",
+                        margin: "0 4px 0 -2px !important",
+                    },
                 },
-
                 "& .MuiAutocomplete-inputRoot": {
                     gap: "2px",
                 },
@@ -251,38 +263,71 @@ export default function GroupedSkillAutocomplete({
                 );
             }}
 
+            // renderTags={(tagValue, getTagProps) =>
+            //     tagValue.map((option, index) => (
+            //         <Chip
+            //             label={option.label}
+            //             {...getTagProps({ index })}
+            //             key={option.key}
+            //             size="small"
+            //             sx={{
+            //                 fontFamily: PRIMARY.fontFamily,
+            //                 fontSize: "5px",
+            //                 fontWeight: 500,
+            //                 color: C.tagText,
+            //                 background: C.tag,
+            //                 border: `1px solid ${C.tagBorder}`,
+            //                 borderRadius: "14px",
+            //                 height: 20,
+            //                 margin: "1px !important",
+            //                 "& .MuiChip-label": {
+            //                     px: 0.75,
+            //                     py: 0,
+            //                 },
+            //                 "& .MuiChip-deleteIcon": {
+            //                     fontSize: 12,
+            //                     marginRight: "2px",
+            //                     marginLeft: "-2px",
+            //                     color: C.tagText,
+            //                 },
+            //             }}
+            //         />
+            //     ))
+            // }
             renderTags={(tagValue, getTagProps) =>
                 tagValue.map((option, index) => (
                     <Chip
                         label={option.label}
                         {...getTagProps({ index })}
                         key={option.key}
-                        size="small"
+                        deleteIcon={<CloseIcon />}
                         sx={{
                             fontFamily: PRIMARY.fontFamily,
-                            fontSize: "5px",
                             fontWeight: 500,
                             color: C.tagText,
                             background: C.tag,
                             border: `1px solid ${C.tagBorder}`,
-                            borderRadius: "14px",
-                            height: 20,
-                            margin: "1px !important",
+                            margin: "2px !important",
+                            "&.MuiChip-root": {
+                                height: "20px !important",
+                                borderRadius: "10px !important",
+                            },
                             "& .MuiChip-label": {
-                                px: 0.75,
-                                py: 0,
+                                fontSize: "11px !important",
+                                padding: "0 6px !important",
+                                lineHeight: "18px !important",
                             },
                             "& .MuiChip-deleteIcon": {
-                                fontSize: 12,
-                                marginRight: "2px",
-                                marginLeft: "-2px",
+                                fontSize: "13px !important",
+                                width: "13px !important",
+                                height: "13px !important",
+                                margin: "0 4px 0 -2px !important",
                                 color: C.tagText,
                             },
                         }}
                     />
                 ))
             }
-
             renderInput={(params) => (
                 <TextField
                     {...params}
@@ -290,7 +335,7 @@ export default function GroupedSkillAutocomplete({
                     size="small"
                     sx={{
                         "& .MuiOutlinedInput-root": {
-                            padding: "3px 6px !important",
+                            padding: "0px 6px !important",
                             minHeight: "38px",
                             alignItems: "center",
                         },

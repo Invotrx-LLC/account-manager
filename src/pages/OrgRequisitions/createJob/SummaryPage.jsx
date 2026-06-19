@@ -19,11 +19,11 @@ const SummaryPage = ({
   setIsEditAfterSummary,
 }) => {
   const navigate = useNavigate();
+  { console.log("fromSummaryPage jobDetailsId",jobDetailsId) }
 
   const [getMatchingCandidates, { isLoading }] =
     useGetMatchingCandidatesMutation();
   const handleAgree = async () => {
-    { console.log("fromSummaryPage orgEmpId", orgEmpId) }
     try {
       const response = await getMatchingCandidates({
         jobId: jobDetailsId,

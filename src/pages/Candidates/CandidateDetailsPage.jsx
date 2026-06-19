@@ -59,6 +59,7 @@ import ThumbDownOutlinedIcon from "@mui/icons-material/ThumbDownOutlined";
 import EmojiEventsOutlinedIcon from "@mui/icons-material/EmojiEventsOutlined";
 import { WorkOutlineOutlined } from "@mui/icons-material";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import { PRIMARY } from "../../theme";
 /* ══════════════════════════════════════════════════════════
    DESIGN TOKENS
 ══════════════════════════════════════════════════════════ */
@@ -605,7 +606,8 @@ function ExperienceCard({ job, isLast }) {
                 <Box
                   key={i}
                   sx={{
-                    fontSize: 11,
+                    fontSize:PRIMARY.label.fontSize,
+                    fontFamily:PRIMARY.fontFamily,
                     fontWeight: 500,
                     px: "8px",
                     py: "3px",

@@ -19,7 +19,6 @@ import LocationOnIcon from "@mui/icons-material/LocationOn";
 import PersonAddAltIcon from "@mui/icons-material/PersonAddAlt";
 import { PersonOutlineOutlined } from "@mui/icons-material";
 
-// Shared truncation style — apply to any Typography that can overflow
 const truncate = {
   overflow: "hidden",
   textOverflow: "ellipsis",
@@ -64,15 +63,13 @@ const CandidateCard = ({ candidate, handleClick, index = 0, orgId }) => {
   const status = candidate?.status?.toLowerCase() || "matched";
   const showOpenRequisition = status !== "matched";
 
-  // ─── Info row helper ────────────────────────────────────────────────────────
-  // Wraps icon + truncated text; tooltip shows full value on hover
   const InfoRow = ({ icon, value, tooltipTitle }) => (
-    <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, width: "100%", overflow: "hidden" }}>
-      <Box sx={{ flexShrink: 0, display: "flex", alignItems: "center", color: "#6B7280" }}>
+    <Box sx={{ display: "flex", alignItems: "center", gap: 1, width: "100%", overflow: "hidden" }}>
+      <Box sx={{ flexShrink: 0, display: "flex", alignItems: "center", color: "#9CA3AF" }}>
         {icon}
       </Box>
       <Tooltip title={tooltipTitle ?? value ?? ""} placement="top" arrow disableHoverListener={!value}>
-        <Typography sx={{ ...truncate, fontSize: 14, color: "#374151" }}>
+        <Typography sx={{ ...truncate, fontSize: 13, color: "#374151" }}>
           {value || "-"}
         </Typography>
       </Tooltip>
@@ -83,33 +80,34 @@ const CandidateCard = ({ candidate, handleClick, index = 0, orgId }) => {
     <Card
       sx={{
         width: "100%",
-        borderRadius: 4,
+        borderRadius: 3,
         border: "1px solid #E5E7EB",
         background,
         overflow: "visible",
         position: "relative",
-        transition: "all 0.25s ease",
+        boxShadow: "none",
+        transition: "box-shadow 0.2s ease",
         "&:hover": {
-          transform: "translateY(-4px)",
-          boxShadow: "0 12px 30px rgba(0,0,0,0.08)",
+          boxShadow: "0 4px 14px rgba(0,0,0,0.06)",
         },
       }}
     >
-      {/* Status Badge */}
+      {/* Status Badge — small pill, top-left, like reference */}
       {candidate?.status && (
         <Chip
           label={candidate.status.charAt(0).toUpperCase() + candidate.status.slice(1)}
           size="small"
           sx={{
             position: "absolute",
-            top: -12,
-            left: 16,
+            top: -10,
+            left: 14,
             background: statusColors[status] || "#64748B",
             color: "#fff",
-            fontWeight: 700,
-            borderRadius: "8px 8px 8px 0",
-            height: 28,
-            px: 0.5,
+            fontWeight: 600,
+            fontSize: 11,
+            borderRadius: "999px",
+            height: 22,
+            "& .MuiChip-label": { px: 1.2 },
             zIndex: 2,
           }}
         />
@@ -122,33 +120,34 @@ const CandidateCard = ({ candidate, handleClick, index = 0, orgId }) => {
           size="small"
           sx={{
             position: "absolute",
-            top: 12,
-            right: 12,
+            top: 10,
+            right: 10,
             background: "#16A34A",
             color: "#fff",
-            fontWeight: 700,
+            fontWeight: 600,
+            fontSize: 11,
+            height: 20,
             zIndex: 2,
           }}
         />
       )}
 
-      <CardContent sx={{ pt: 4 }}>
-        {/* ── Profile ── */}
-        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 2 }}>
-          <Avatar sx={{ width: 64, height: 64, bgcolor: "#F3F4F6", mb: 1 }}>
-            <PersonOutlineOutlined sx={{ fontSize: 36, color: "#6B7280" }} />
+      <CardContent sx={{ pt: 3.5, px: 2.25, pb: 2.25 }}>
+        {/* Profile */}
+        <Box sx={{ display: "flex", flexDirection: "column", alignItems: "center", mb: 1 }}>
+          <Avatar sx={{ width: 48, height: 48, bgcolor: "#F3F4F6", mb: 1 }}>
+            <PersonOutlineOutlined sx={{ fontSize: 26, color: "#6B7280" }} />
           </Avatar>
 
-          {/* CLIN ID — truncated if somehow very long */}
           <Tooltip title={`CLIN${candidate?.clin_id}`} placement="top" arrow>
             <Typography
               sx={{
                 fontWeight: 700,
-                fontSize: 20,
+                fontSize: 16,
                 color: "#1E3A8A",
                 maxWidth: "100%",
                 ...truncate,
-                flex: "unset",        // override flex:1 from truncate for centered block
+                flex: "unset",
                 textAlign: "center",
               }}
             >
@@ -157,20 +156,18 @@ const CandidateCard = ({ candidate, handleClick, index = 0, orgId }) => {
           </Tooltip>
         </Box>
 
-        {/* ── SkillIntel Bar ── */}
-        <Box mb={2}>
+        {/* SkillIntel Bar — slim, navy fill like reference (not big orange) */}
+        <Box mb={1.5}>
           <Box sx={{ position: "relative" }}>
             <LinearProgress
               variant="determinate"
               value={candidate?.match_score || 0}
               sx={{
-                height: 22,
+                height: 16,
                 borderRadius: 999,
                 backgroundColor: "#E5E7EB",
                 "& .MuiLinearProgress-bar": {
-                  // background: "linear-gradient(90deg,#0F4C8A 0%,#FF5722 100%)",
-                  background:
-  "linear-gradient(90deg, #F59E0B 0%, #FF5722 100%)",
+                  background: "linear-gradient(90deg, #F59E0B 0%, #FF5722 100%)",
                   borderRadius: 999,
                 },
               }}
@@ -183,8 +180,8 @@ const CandidateCard = ({ candidate, handleClick, index = 0, orgId }) => {
                 transform: "translateY(-50%)",
                 textAlign: "center",
                 color: "#fff",
-                fontWeight: 700,
-                fontSize: 12,
+                fontWeight: 600,
+                fontSize: 10,
                 pointerEvents: "none",
               }}
             >
@@ -193,29 +190,29 @@ const CandidateCard = ({ candidate, handleClick, index = 0, orgId }) => {
           </Box>
         </Box>
 
-        {/* ── Candidate Details ── */}
-        <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5 ,mt:1}}>
+        {/* Candidate Details */}
+        <Box sx={{ display: "flex", flexDirection: "column", gap: 1 ,mt:1}}>
           <InfoRow
-            icon={<CalendarTodayIcon fontSize="small" />}
+            icon={<CalendarTodayIcon sx={{ fontSize: 15 }} />}
             value={candidate?.designation || "-"}
           />
           <InfoRow
-            icon={<WorkIcon fontSize="small" />}
+            icon={<WorkIcon sx={{ fontSize: 15 }} />}
             value={formatExperience(candidate?.total_experience)}
           />
           <InfoRow
-            icon={<AccessTimeIcon fontSize="small" />}
+            icon={<AccessTimeIcon sx={{ fontSize: 15 }} />}
             value={formatAvailability(candidate?.availability)}
           />
           <InfoRow
-            icon={<LocationOnIcon fontSize="small" />}
+            icon={<LocationOnIcon sx={{ fontSize: 15 }} />}
             value={candidate?.location || "Not specified"}
           />
         </Box>
 
-        {/* ── Skills ── */}
+        {/* Skills */}
         {candidate?.skills?.length > 0 && (
-          <Box mt={2} sx={{ display: "flex", flexWrap: "wrap", gap: 1 }}>
+          <Box mt={1.5} sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
             {candidate.skills.slice(0, 3).map((skill) => (
               <Tooltip key={skill} title={skill} placement="top" arrow>
                 <Chip
@@ -223,18 +220,20 @@ const CandidateCard = ({ candidate, handleClick, index = 0, orgId }) => {
                   size="small"
                   variant="outlined"
                   sx={{
-                    maxWidth: 100,
+                    maxWidth: 90,
+                    height: 22,
+                    fontSize: 11,
                     "& .MuiChip-label": {
                       overflow: "hidden",
                       textOverflow: "ellipsis",
                       whiteSpace: "nowrap",
                       display: "block",
+                      px: 0.8,
                     },
                   }}
                 />
               </Tooltip>
             ))}
-            {/* +N more chip if skills > 3 */}
             {candidate.skills.length > 3 && (
               <Tooltip
                 title={candidate.skills.slice(3).join(", ")}
@@ -245,6 +244,8 @@ const CandidateCard = ({ candidate, handleClick, index = 0, orgId }) => {
                   label={`+${candidate.skills.length - 3} more`}
                   size="small"
                   sx={{
+                    height: 22,
+                    fontSize: 11,
                     background: "#F3F4F6",
                     color: "#6B7280",
                     fontWeight: 600,
@@ -256,55 +257,49 @@ const CandidateCard = ({ candidate, handleClick, index = 0, orgId }) => {
           </Box>
         )}
 
-        {/* ── Actions ── */}
-        <Box sx={{ mt: 1 }}>
-          {/* Reserve space so cards stay same height */}
-          <Box
-            sx={{
-              minHeight: 42,
-              mb: 1.5,
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-          >
-            {showOpenRequisition && (
-              <Button
-                fullWidth
-                variant="text"
-                startIcon={<PersonAddAltIcon />}
-                onClick={() =>
-                  navigate(`/account-manager/org/${orgId}`, {
-                    state: {
-                      editMode: true,
-                      requisitionId: candidate?.job_details_id,
-                    },
-                  })
-                }
-                sx={{
-                  color: "#FF5722",
-                  fontWeight: 700,
-                  textTransform: "none",
-                  "&:hover": { background: "rgba(255,87,34,0.06)" },
-                }}
-              >
-                Open Requisition
-              </Button>
-            )}
-          </Box>
+        {/* Actions */}
+        <Box sx={{ mt: 1.5 }}>
+          {showOpenRequisition && (
+            <Button
+              fullWidth
+              variant="text"
+              size="small"
+              startIcon={<PersonAddAltIcon sx={{ fontSize: 16 }} />}
+              onClick={() =>
+                navigate(`/account-manager/org/${orgId}`, {
+                  state: {
+                    editMode: true,
+                    requisitionId: candidate?.job_details_id,
+                  },
+                })
+              }
+              sx={{
+                color: "#FF5722",
+                fontWeight: 600,
+                fontSize: 12,
+                textTransform: "none",
+                mb: 1,
+                "&:hover": { background: "rgba(255,87,34,0.06)" },
+              }}
+            >
+              Open Requisition
+            </Button>
+          )}
 
           <Button
             fullWidth
             variant="contained"
+            size="small"
             onClick={handleClick}
             sx={{
               textTransform: "none",
-              borderRadius: 2,
+              borderRadius: 1.5,
               background: "#FF5722",
-              fontWeight: 700,
-              py: 1.2,
-              boxShadow: "0 4px 12px rgba(255,87,34,0.25)",
-              "&:hover": { background: "#E64A19" },
+              fontWeight: 600,
+              fontSize: 13,
+              py: 0.9,
+              boxShadow: "none",
+              "&:hover": { background: "#E64A19", boxShadow: "none" },
             }}
           >
             View Profile

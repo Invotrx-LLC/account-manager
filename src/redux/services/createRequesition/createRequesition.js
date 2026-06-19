@@ -116,14 +116,6 @@ export const createRequisitionService = api.injectEndpoints({
                 method: "GET",
             }),
         }),
-
-        deleteTemplate: builder.mutation({
-            query: (templateId) => ({
-                url: `/acc/templates/${templateId}`,
-                method: "DELETE",
-            }),
-        }),
-
         // ── KEY FIX: pass FormData directly, no Content-Type header ──
         createRequisition: builder.mutation({
             query: (formData) => ({
@@ -143,7 +135,7 @@ export const createRequisitionService = api.injectEndpoints({
         }),
         getMatchingCandidates: builder.mutation({
             query: ({ jobId, orgEmpId }) => ({
-                url: `/acc/get_matching_candidates/${jobId}`,
+                url: `/acc/get_matching_candidates/${jobId}?org_emp_id=${orgEmpId}`,
                 method: "POST",
                 headers: {
                     "Content-Type": "application/x-www-form-urlencoded",
@@ -160,11 +152,28 @@ export const createRequisitionService = api.injectEndpoints({
             }),
             transformResponse: (response) => response.data,
         }),
+        getThreeMatchedCandidateDetails: builder.query({
+            query: ({ jobId, orgEmpId }) => ({
+                url: `/acc/get_three_matched_candidates/${jobId}?org_emp_id=${orgEmpId}`,
+                method: "GET",
+            }),
+            transformResponse: (response) => response.data,
+        }),
+
         updateCandidateStatus: builder.mutation({
             query: ({ candidateId, status, reason }) => ({
                 url: `/acc/matched_candidates/update_status_v1?candidate_id=${candidateId}&new_status=${status}&reason=${encodeURIComponent(reason)}`,
                 method: "POST",
                 body: "",
+            }),
+        }),
+        deleteTemplate: builder.mutation({
+            query: ({ templateId, organisationId }) => ({
+                url: `/acc/job-templates/${templateId}`,
+                method: "DELETE",
+                params: {
+                    organisation_id: organisationId,
+                },
             }),
         }),
     }),
@@ -194,4 +203,7 @@ export const {
     useLazyGetMatchedCandidateDetailsQuery,
     useUpdateCandidateStatusMutation,
     useEditJobMutation,
+    useGetThreeMatchedCandidateDetailsQuery,
+    useLazyGetThreeMatchedCandidateDetailsQuery,
+    
 } = createRequisitionService;
