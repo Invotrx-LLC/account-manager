@@ -925,9 +925,9 @@ function AddCandidateToJobDialog({ open, onClose, jobId, onSuccess }) {
       const fd = new FormData();
       fd.append("job_id", jobId);
       fd.append("availability", form.availability);
-      fd.append("domain", form.domain);
-      fd.append("function", form.function);
-      fd.append("sub_function", form.sub_function);
+      // fd.append("domain", form.domain);
+      // fd.append("function", form.function);
+      // fd.append("sub_function", form.sub_function);
       fd.append("resume", form.resume);
 
       await uploadCandidateResume(fd).unwrap();
@@ -991,7 +991,7 @@ function AddCandidateToJobDialog({ open, onClose, jobId, onSuccess }) {
         <Box
           sx={{ display: "flex", flexDirection: "column", gap: "14px", mt: 1 }}
         >
-          {/* Domain */}
+          {/* Domain
           <FormControl fullWidth size="small">
             <InputLabel sx={{ fontSize: 13 }}>Domain</InputLabel>
             <Select
@@ -1010,9 +1010,9 @@ function AddCandidateToJobDialog({ open, onClose, jobId, onSuccess }) {
                 </MenuItem>
               ))}
             </Select>
-          </FormControl>
+          </FormControl> */}
 
-          {/* Function */}
+          {/* Function
           <FormControl fullWidth size="small">
             <InputLabel sx={{ fontSize: 13 }}>Function</InputLabel>
             <Select
@@ -1033,9 +1033,9 @@ function AddCandidateToJobDialog({ open, onClose, jobId, onSuccess }) {
                 </MenuItem>
               ))}
             </Select>
-          </FormControl>
+          </FormControl> */}
 
-          {/* Sub-function */}
+          {/* Sub-function
           <FormControl fullWidth size="small" disabled={!form.function}>
             <InputLabel sx={{ fontSize: 13 }}>Sub-function</InputLabel>
             <Select
@@ -1056,7 +1056,7 @@ function AddCandidateToJobDialog({ open, onClose, jobId, onSuccess }) {
                 </MenuItem>
               ))}
             </Select>
-          </FormControl>
+          </FormControl> */}
 
           {/* Availability */}
           <TextField
@@ -1519,9 +1519,12 @@ function ReqCandidatesTab({ jobId, orgId, navigate, orgName, jobTitle }) {
 function ReqInterviewsTab({ orgId, jobPositionId, jobId }) {
   const [statusFilter, setStatusFilter] = useState("all");
   const { data, isLoading, isError } = useGetJobInterviewsQuery(jobId);
+  console.log("iNTERVIEWSdata", data);
   const all = (data?.data ?? []).filter(
     (iv) => iv.job_position_id === jobPositionId,
   );
+  console.log("all",all, "jobPositionId", jobPositionId);
+  
 
   const interviewStatuses = [
     { key: "scheduled", value: "Scheduled" },
@@ -1536,7 +1539,7 @@ function ReqInterviewsTab({ orgId, jobPositionId, jobId }) {
     statusFilter === "all"
       ? all
       : all.filter((iv) => (iv.status ?? "scheduled") === statusFilter);
-
+  console.log("filtered interviews", filtered);
   if (isLoading)
     return (
       <Box display="flex" justifyContent="center" py={6}>

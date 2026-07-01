@@ -358,6 +358,7 @@ function buildColumns(handleToggleActive, navigate, openResume, onDelete) {
               }}
             >
               {row.original.full_name}
+              
             </Typography>
             <Typography
               sx={{
@@ -378,6 +379,16 @@ function buildColumns(handleToggleActive, navigate, openResume, onDelete) {
       accessorKey: "phone_number",
       header: "Phone",
       size: 140,
+      Cell: ({ cell }) => (
+        <Typography sx={{ fontSize: 12, color: C.textSecondary }}>
+          {cell.getValue() ?? "—"}
+        </Typography>
+      ),
+    },
+    {
+      accessorKey:"clin_id",
+      header:"Clin ID",
+      size: 120,
       Cell: ({ cell }) => (
         <Typography sx={{ fontSize: 12, color: C.textSecondary }}>
           {cell.getValue() ?? "—"}
@@ -1939,7 +1950,7 @@ function CandidateCard({ candidate, onStatusChange, onViewResume, onDelete }) {
   const [updateStatus, { isLoading: updating }] =
     useUpdateCandidateActiveStatusMutation();
   const navigate = useNavigate();
-
+  console.log("From Candidate",candidate.clin_id)
   const handleToggle = async (e) => {
     e.stopPropagation();
     const next = !localActive;
@@ -2026,6 +2037,11 @@ function CandidateCard({ candidate, onStatusChange, onViewResume, onDelete }) {
             >
               {candidate.full_name}
             </Typography>
+              <Typography
+              sx={{
+                fontSize: 11}}>
+                  {candidate.clin_id}
+                </Typography>
             <Typography
               sx={{
                 fontSize: 11,

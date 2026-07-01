@@ -20,6 +20,18 @@ export const requisitionApi = api.injectEndpoints({
         { type: "OrganisationJobs", id: orgId },
       ],
     }),
+    updateOrganisationUpdatedScores: builder.mutation({
+      query: ({ organisationId, updated_scores }) => ({
+        url: `/acc/organisations/${organisationId}/updated-scores`,
+        method: "PUT",
+        body: {
+          updated_scores,
+        },
+      }),
+      invalidatesTags: (result, error, { organisationId }) => [
+        { type: "Organisation", id: organisationId },
+      ],
+    }),
 
     getJobMatchedCandidates: builder.query({
       query: (jobId) => ({
@@ -30,12 +42,55 @@ export const requisitionApi = api.injectEndpoints({
         { type: "JobMatchedCandidates", id: jobId },
       ],
     }),
+    // Add inside the `endpoints: (builder) => ({ ... })` block
+    updateCandidateStatus: builder.mutation({
+      query: ({ candidateId, newStatus }) => ({
+        url: `/acc/matched_candidates/update_status_v1`,
+        method: "POST",
+        params: {
+          candidate_id: candidateId,
+          new_status: newStatus, // "shortlisted" | "rejected" etc.
+        },
+      }),
+      // if you tag candidate detail queries, invalidate here so the page refetches
+      invalidatesTags: (result, error, arg) => [
+        { type: "CandidateDetail", id: arg.candidateId },
+      ],
+    }),
 
+    // Optional - only if you have a real endpoint for scheduling.
+    // Swap the URL/body to match your backend contract.
+    scheduleInterview: builder.mutation({
+      query: ({ candidateId, payload }) => ({
+        url: `/acc/matched_candidates/${candidateId}/schedule_interview`,
+        method: "POST",
+        body: payload,
+      }),
+      invalidatesTags: (result, error, arg) => [
+        { type: "CandidateDetail", id: arg.candidateId },
+      ],
+    }),
+    getEmployeesByRole: builder.query({
+      query: ({ organisationId, employeeExcludeIds }) => ({
+        url: "/acc/user-employees/by-role_v1",
+        method: "GET",
+        params: {
+          organisation_id: organisationId,
+          ...(employeeExcludeIds && {
+            employee_exclude_ids: employeeExcludeIds,
+          }),
+        },
+      }),
+      providesTags: ["EmployeesByRole"],
+    }),
     getCandidateDetail: builder.query({
       query: (matched_candidate_id) => ({
         url: `/acc/get_matched_candidates_details/${matched_candidate_id}`,
         method: "GET",
       }),
+      providesTags: (result, error, matched_candidate_id) => [
+        { type: "CandidateDetail", id: matched_candidate_id },
+      ],
     }),
 
     getCandidateStageTimeline: builder.query({
@@ -233,4 +288,9 @@ export const {
   useLazyGetInterviewDetailsQuery,
   useGetCandidateSkillInfoQuery,
   useUpdateCandidateSkillsMutation,
+  useUpdateOrganisationUpdatedScoresMutation,
+  useUpdateCandidateStatusMutation,
+  useScheduleInterviewMutation,
+  useGetEmployeesByRoleQuery,
+  useLazyGetEmployeesByRoleQuery,
 } = requisitionApi;

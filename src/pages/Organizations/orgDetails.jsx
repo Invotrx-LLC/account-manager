@@ -22,6 +22,7 @@ import {
   InputLabel,
   TextField,
   InputAdornment,
+  Switch,
 } from "@mui/material";
 import WorkOutlineRoundedIcon from "@mui/icons-material/WorkOutlineRounded";
 import ArrowForwardIcon from "@mui/icons-material/ArrowForward";
@@ -69,6 +70,7 @@ import {
   useGetOrganisationJobAnalyticsQuery,
   useGetOrganisationCandidatesQuery,
   useLazyGetResumeViewQuery,
+  useUpdateOrganisationUpdatedScoresMutation,
 } from "../../redux/services/requisition/requisition";
 import { useGetEmployeeDetailsQuery } from "../../redux/services/orgEmployees/orgEmployees";
 
@@ -91,6 +93,8 @@ import PsychologyOutlinedIcon from "@mui/icons-material/PsychologyOutlined";
 import CustomSelect from "../../components/Select/index";
 import ControlPointIcon from "@mui/icons-material/ControlPoint";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
+import CandidatePipelineFunnel from "./CandidatePipeline";
+import { toast } from "react-toastify";
 
 const LABEL_SX = {
   fontSize: 10,
@@ -845,7 +849,7 @@ function StatusPill({ status }) {
     </Box>
   );
 }
-function OrgHeroHeader({ org, analytics }) {
+function OrgHeroHeader({ org, analytics, orgId }) {
   const initials = org.organisation_name
     ? org.organisation_name
       .split(" ")
@@ -854,36 +858,58 @@ function OrgHeroHeader({ org, analytics }) {
       .join("")
       .toUpperCase()
     : "?";
+  const [updatedScores, setUpdatedScores] = useState(false);
+  const [updateOrganisationUpdatedScores] =
+    useUpdateOrganisationUpdatedScoresMutation();
+  const handleToggle = async (event) => {
+    const checked = event.target.checked;
+
+    try {
+      const response = await updateOrganisationUpdatedScores({
+        organisationId: orgId,
+        updated_scores: checked,
+      }).unwrap();
+
+      setUpdatedScores(checked);
+
+      toast.success(response.updated_scores ? "Switched to updated scores." : "Switched to original scores.");
+    } catch (err) {
+      toast.error(
+        err?.data?.message || "Failed to update organisation."
+      );
+      console.error(err);
+    }
+  };
 
   const statPills = [
-  {
-    label: "Total Jobs",
-    value:
-      analytics?.job_overview?.total_jobs?.value ??
-      org.total_jobs ??
-      "—",
-    accent: C.accent,
-    soft: C.accentSoft,
-    border: C.accentBorder,
-  },
-  {
-    label: "Candidates",
-    value: analytics?.total_candidates ?? "—",
-    accent: C.indigo,
-    soft: C.indigoSoft,
-    border: C.indigoBorder,
-  },
-  {
-    label: "Hires",
-    value:
-      analytics?.candidate_stage_breakdown?.onboarded ??
-      org.total_hires ??
-      "—",
-    accent: C.green,
-    soft: C.greenSoft,
-    border: C.greenBorder,
-  },
-];
+    {
+      label: "Total Jobs",
+      value:
+        analytics?.job_overview?.total_jobs?.value ??
+        org.total_jobs ??
+        "—",
+      accent: C.accent,
+      soft: C.accentSoft,
+      border: C.accentBorder,
+    },
+    {
+      label: "Candidates",
+      value: analytics?.total_candidates ?? "—",
+      accent: C.indigo,
+      soft: C.indigoSoft,
+      border: C.indigoBorder,
+    },
+    {
+      label: "Hires",
+      value:
+        analytics?.candidate_stage_breakdown?.onboarded ??
+        org.total_hires ??
+        "—",
+      accent: C.green,
+      soft: C.greenSoft,
+      border: C.greenBorder,
+    },
+  ];
   const metaItems = [
     org.industry && {
       label: org.industry,
@@ -1073,7 +1099,75 @@ function OrgHeroHeader({ org, analytics }) {
           gap: "8px",
           flexWrap: "wrap",
         }}
-      >
+      >{/* Updated Scores pill */}
+        <Box
+          onClick={() => handleToggle({ target: { checked: !updatedScores } })}
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            px: "14px",
+            py: "8px",
+            borderRadius: "10px",
+            backgroundColor: updatedScores ? C.greenSoft : "#F3F4F6",
+            border: `1px solid ${updatedScores ? C.greenBorder : C.border}`,
+            cursor: "pointer",
+            transition: "background-color 0.15s, border-color 0.15s",
+            userSelect: "none",
+          }}
+        >
+          <Box>
+            <Typography
+              sx={{
+                fontSize: 12,
+                fontWeight: 700,
+                color: updatedScores ? C.green : C.textSecondary,
+                lineHeight: 1,
+                whiteSpace: "nowrap",
+              }}
+            >
+              Score Mode
+            </Typography>
+            <Typography
+              sx={{
+                fontSize: 10,
+                fontWeight: 600,
+                color: updatedScores ? C.green : C.textTertiary,
+                opacity: 0.8,
+                mt: "3px",
+              }}
+            >
+              {updatedScores ? "Enabled" : "Disabled"}
+            </Typography>
+          </Box>
+
+          {/* Custom switch */}
+          <Box
+            sx={{
+              width: 36,
+              height: 20,
+              borderRadius: "999px",
+              backgroundColor: updatedScores ? C.green : "#D1D5DB",
+              position: "relative",
+              transition: "background-color 0.2s ease",
+              flexShrink: 0,
+            }}
+          >
+            <Box
+              sx={{
+                width: 16,
+                height: 16,
+                borderRadius: "50%",
+                backgroundColor: "#fff",
+                position: "absolute",
+                top: 2,
+                left: updatedScores ? 18 : 2,
+                boxShadow: "0 1px 3px rgba(0,0,0,0.25)",
+                transition: "left 0.2s ease",
+              }}
+            />
+          </Box>
+        </Box>
         {statPills.map(({ label, value, accent, soft, border }) => (
           <Box
             key={label}
@@ -1148,7 +1242,7 @@ export default function OrgDetail() {
 
   return (
     <Box sx={{ p: 0, height: "100%" }}>
-      <OrgHeroHeader org={org} analytics={analyticsData?.data} />
+      <OrgHeroHeader org={org} analytics={analyticsData?.data} orgId={orgId} />
 
       <Tabs value={tab} onChange={(_, v) => setTab(v)} sx={TAB_SX}>
         <Tab label="Overview" />
@@ -1214,6 +1308,30 @@ function OrgOverviewTab({ org, orgId }) {
     { label: "Industry", value: org.industry ?? "—" },
     { label: "Timezone", value: org.time_zone ?? "—" },
   ];
+  const pipelineData = useMemo(() => {
+    const stage = analytics?.candidate_stage_breakdown;
+
+    if (!stage) return {};
+
+    return {
+      matched: stage.matched ?? 0,
+      shortlisted: stage.shortlisted ?? 0,
+
+      // Interview stage
+      interviewing: stage.interviewing?.total ?? 0,
+
+      selected: stage.selected ?? 0,
+
+      // Offer stage
+      offer_released: stage.offers?.offer_released?.total ?? 0,
+      offer_accepted: stage.offers?.offer_released?.offer_accepted ?? 0,
+      offer_rejected: stage.offers?.offer_released?.offer_rejected ?? 0,
+      offer_revoked: stage.offers?.offer_released?.offer_revoked ?? 0,
+
+      onboarded: stage.onboarded ?? 0,
+      rejected: stage.rejected ?? 0,
+    };
+  }, [analytics]);
 
   /* ── Derived chart data ── */
   const jobTrendData =
@@ -1272,31 +1390,31 @@ function OrgOverviewTab({ org, orgId }) {
   const PIE_COLORS = [C.accent, C.green, C.indigo, "#F59E0B", C.red, "#8B5CF6"];
 
   const overviewCards = [
-  {
-    label: "Total Jobs",
-    value: analytics?.job_overview.total_jobs?.value ?? 0,
-    color: C.accent,
-    soft: C.accentSoft,
-  },
-  {
-    label: "Open Jobs",
-    value: analytics?.job_overview.open_jobs?.value ?? 0,
-    color: C.green,
-    soft: C.greenSoft,
-  },
-  {
-    label: "Closed Jobs",
-    value: analytics?.job_overview.closed_jobs?.value ?? 0,
-    color: "#6B7280",
-    soft: "#F3F4F6",
-  },
-  {
-    label: "Total Candidates",
-    value: analytics?.total_candidates ?? 0,
-    color: C.indigo,
-    soft: C.indigoSoft,
-  },
-];
+    {
+      label: "Total Jobs",
+      value: analytics?.job_overview.total_jobs?.value ?? 0,
+      color: C.accent,
+      soft: C.accentSoft,
+    },
+    {
+      label: "Open Jobs",
+      value: analytics?.job_overview.open_jobs?.value ?? 0,
+      color: C.green,
+      soft: C.greenSoft,
+    },
+    {
+      label: "Closed Jobs",
+      value: analytics?.job_overview.closed_jobs?.value ?? 0,
+      color: "#6B7280",
+      soft: "#F3F4F6",
+    },
+    {
+      label: "Total Candidates",
+      value: analytics?.total_candidates ?? 0,
+      color: C.indigo,
+      soft: C.indigoSoft,
+    },
+  ];
 
   return (
     <Grid
@@ -1331,10 +1449,12 @@ function OrgOverviewTab({ org, orgId }) {
           <ErrAlert msg="Could not load analytics" />
         ) : (
           <Box sx={{ display: "flex", flexDirection: "column", gap: 3 }}>
+
             {/* ── KPI cards ── */}
             <Grid container spacing={1.5}>
               {overviewCards.map(({ label, value, color, soft }) => (
                 <Grid size={{ xs: 6, sm: 3 }} key={label}>
+
                   <Box
                     sx={{
                       borderRadius: "10px",
@@ -1362,7 +1482,11 @@ function OrgOverviewTab({ org, orgId }) {
                 </Grid>
               ))}
             </Grid>
-
+            {/* <CandidatePipelineFunnel/> */}
+            <CandidatePipelineFunnel
+              data={pipelineData}
+              totalCount={analytics?.total_candidates ?? 0}
+            />
             {/* ── Candidate funnel trend ── */}
             <ChartCard
               title={

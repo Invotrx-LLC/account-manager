@@ -2896,9 +2896,9 @@ export default function CandidateDetailPage() {
   const { data: skillInfoData, isLoading: skillLoading } =
     useGetCandidateSkillInfoQuery(candidateId, { skip: !candidateId });
 
-  console.log("data", data);
+  console.log("data...", data?.data?.clin_id);
   console.log("jobs", data?.jobs);
-
+  const clinId = data?.data?.clin_id || "";
   const c = data?.data || {};
   const name = c.full_name || "";
   const email = c.email || "";
@@ -3046,7 +3046,8 @@ export default function CandidateDetailPage() {
                 <Box sx={{ display: "flex", alignItems: "center", gap: 0 }}>
                   <Typography sx={T.valueLg}>{fmt(name)}</Typography>
                   {console.log("name...", name)}
-                  <DescriptionOutlinedIcon
+                  <Box sx={{display:'flex',alignItems:"centre"}}>
+                    <DescriptionOutlinedIcon
                     onClick={() => {
                       viewResume(candidateId);
                     }}
@@ -3057,6 +3058,10 @@ export default function CandidateDetailPage() {
                       cursor: "pointer",
                     }}
                   />
+                  <Typography sx={{ ...T.meta, ml: 1, fontSize: 12, color: C.muted }}>
+                    {clinId}
+                  </Typography>
+                  </Box>
                 </Box>
                 {(currentRole || currentComp) && (
                   <Typography

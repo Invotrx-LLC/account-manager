@@ -19,7 +19,8 @@ export default function InterviewHeatmap() {
   );
 
   return (
-    <Card sx={{ borderRadius: 3, boxShadow: "0 1px 6px rgba(0,0,0,0.08)" }}>
+    <Card sx={{ width: "100%",
+    height: "100%", borderRadius: 3, boxShadow: "0 1px 6px rgba(0,0,0,0.08)" }}>
       <CardContent>
         {/* Header */}
         <Box

@@ -22,6 +22,12 @@ import {
   Link,
   DialogActions,
   Tooltip,
+  TextField,
+  MenuItem,
+  Select,
+  InputLabel,
+  FormControl,
+  Autocomplete,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
@@ -37,6 +43,10 @@ import DialogContent from "@mui/material/DialogContent";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
 import Person2OutlinedIcon from '@mui/icons-material/Person2Outlined';
+import PersonAddAltOutlinedIcon from "@mui/icons-material/PersonAddAltOutlined";
+// import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
+import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
+import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
 
 import {
   setDynamicLabels,
@@ -48,6 +58,12 @@ import {
   useLazyGetResumeViewQuery,
   useGetInterviewDetailsQuery,
   useLazyGetInterviewDetailsQuery,
+  // NOTE: adjust these hook names to match whatever you generated
+  // when you added the RTK query endpoints.
+  // useUpdateCandidateStatusV1Mutation,
+  useScheduleInterviewMutation,
+  useUpdateCandidateStatusMutation,
+  useLazyGetEmployeesByRoleQuery,
 } from "../../redux/services/requisition/requisition";
 import {
   PersonOutlineOutlined,
@@ -55,6 +71,7 @@ import {
   EmailOutlined,
   PhoneOutlined,
   AccessTimeOutlined,
+  CheckCircleOutlineOutlined,
 } from "@mui/icons-material";
 import ExpandMoreIcon from "@mui/icons-material/ExpandMore";
 import AutoAwesomeIcon from "@mui/icons-material/AutoAwesome";
@@ -83,6 +100,7 @@ const STAGE_GROUP = {
   shortlisted: "shortlisted",
   interview_scheduled: "interviewing",
   interview_completed: "interviewing",
+  interview_cancelled: "interviewing",
   interview_passed: "interviewing",
   interview_failed: "interviewing",
   selected: "selected",
@@ -96,6 +114,7 @@ const STAGE_GROUP = {
 const SUB_LABEL = {
   interview_scheduled: "scheduled",
   interview_completed: "completed",
+  interview_cancelled: "Cancelled",
   interview_passed: "passed",
   interview_failed: "failed",
   offer_released: "released",
@@ -103,7 +122,13 @@ const SUB_LABEL = {
   offer_accepted: "accepted",
   offer_declined: "declined",
 };
-
+const BADGE_COLOR = {
+  interview_scheduled: "scheduled",
+  interview_completed: "completed",
+  interview_passed: "completed",
+  interview_failed: "failed",
+  interview_cancelled: "failed",
+};
 const STATE_COLORS = {
   completed: { bg: "#22C55E", border: "#22C55E", icon: "#fff" },
   current: { bg: "#FF5F1F", border: "#FF5F1F", icon: "#fff" },
@@ -223,6 +248,1045 @@ function SectionHeader({ icon, label }) {
 }
 
 /* ═══════════════════════════════════════════════
+   PLATFORM ICON — real brand logos for interview modal
+═══════════════════════════════════════════════ */
+function PlatformIcon({ platform, size = 20 }) {
+  const p = (platform || "").toLowerCase();
+
+  if (p.includes("zoom")) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="7" fill="#2D8CFF" />
+        <path
+          d="M8 12.5C8 11.67 8.67 11 9.5 11H17.5C18.33 11 19 11.67 19 12.5V19.5C19 20.33 18.33 21 17.5 21H9.5C8.67 21 8 20.33 8 19.5V12.5Z"
+          fill="white"
+        />
+        <path d="M20 14.2L24 11.8V20.2L20 17.8V14.2Z" fill="white" />
+      </svg>
+    );
+  }
+
+  if (p.includes("meet") || p.includes("google")) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="7" fill="white" />
+        <path d="M8 11h5.5L17 15.5V11H8z" fill="#2684FC" />
+        <path d="M8 21h5.5L17 16.5V21H8z" fill="#00AC47" />
+        <path d="M17 15.5L13.5 11H17v4.5z" fill="#FFBA00" />
+        <path d="M17 16.5L13.5 21H17v-4.5z" fill="#00832D" />
+        <path d="M17 14.5l6-4v11l-6-4v-3z" fill="#00AC47" />
+      </svg>
+    );
+  }
+
+  if (p.includes("teams") || p.includes("microsoft")) {
+    return (
+      <svg width={size} height={size} viewBox="0 0 32 32" fill="none">
+        <rect width="32" height="32" rx="7" fill="#5059C9" />
+        <circle cx="21.5" cy="10.5" r="2.5" fill="#7B83EB" />
+        <rect x="17" y="13" width="8" height="8.5" rx="2" fill="#7B83EB" />
+        <circle cx="12.5" cy="10" r="3.2" fill="#5059C9" />
+        <rect x="8" y="13.2" width="9" height="9.3" rx="2.2" fill="white" />
+        <path
+          d="M10.2 15.8h4.6M12.5 15.8v5.2"
+          stroke="#5059C9"
+          strokeWidth="1"
+          strokeLinecap="round"
+        />
+      </svg>
+    );
+  }
+
+  // Generic fallback (in-person / phone / other)
+  return (
+    <Box
+      sx={{
+        width: size,
+        height: size,
+        borderRadius: "6px",
+        bgcolor: "#E6F1FB",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+    >
+      <VideocamOutlinedIcon sx={{ fontSize: size * 0.62, color: "#185FA5" }} />
+    </Box>
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   INTERVIEW DETAILS MODAL — redesigned
+═══════════════════════════════════════════════ */
+function InterviewDetailsModal({ open, onClose, selectedInterview, isFetching }) {
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth={false}
+      PaperProps={{
+        sx: {
+          width: 480,
+          maxWidth: "95vw",
+          minWidth: 0,
+          borderRadius: "20px",
+          overflow: "hidden",
+          boxShadow: "0 20px 50px rgba(0,0,0,0.12)",
+        },
+      }}
+    >
+      {selectedInterview && (
+        <>
+          {/* HEADER */}
+          <Box
+            sx={{
+              px: 2.5,
+              pt: 2.5,
+              pb: 2,
+              bgcolor: "background.paper",
+              position: "relative",
+            }}
+          >
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              mb={1.5}
+            >
+              <Typography sx={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
+                Interview Details
+              </Typography>
+              <Chip
+                label={selectedInterview.status}
+                size="small"
+                sx={{
+                  bgcolor:
+                    selectedInterview.status === "Cancelled" ? "#FEF2F2" : "#ECFDF5",
+                  color:
+                    selectedInterview.status === "Cancelled" ? "#991B1B" : "#065F46",
+                  border: `1px solid ${selectedInterview.status === "Cancelled" ? "#FECACA" : "#A7F3D0"
+                    }`,
+                  borderRadius: "20px",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  height: 26,
+                }}
+              />
+            </Stack>
+
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Chip
+                icon={<CalendarMonthOutlinedIcon sx={{ fontSize: 13 }} />}
+                label={selectedInterview.interview_step_name ?? "Round-1"}
+                size="small"
+                sx={{
+                  bgcolor: "#FFF7ED",
+                  color: "#B45309",
+                  border: "1px solid #FED7AA",
+                  borderRadius: "20px",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  height: 26,
+                  "& .MuiChip-icon": { color: "#B45309", ml: "8px" },
+                }}
+              />
+              <Chip
+                icon={<PhoneOutlined sx={{ fontSize: 13 }} />}
+                label={selectedInterview.interview_step_type ?? "Telephonic"}
+                size="small"
+                sx={{
+                  bgcolor: "#ECFDF5",
+                  color: "#065F46",
+                  border: "1px solid #A7F3D0",
+                  borderRadius: "20px",
+                  fontSize: 12,
+                  fontWeight: 500,
+                  height: 26,
+                  "& .MuiChip-icon": { color: "#065F46", ml: "8px" },
+                }}
+              />
+            </Stack>
+          </Box>
+
+          {/* CANDIDATE ROW */}
+          <Box sx={{ px: 2.5, pb: 2 }}>
+            <Stack
+              direction="row"
+              spacing={1.2}
+              alignItems="center"
+              sx={{
+                p: 1.2,
+                borderRadius: "14px",
+                bgcolor: "#F9FAFB",
+                border: "1px solid #F0F1F3",
+              }}
+            >
+              <Avatar
+                sx={{
+                  width: 40,
+                  height: 40,
+                  bgcolor: "#E6F1FB",
+                  color: "#185FA5",
+                  fontSize: 15,
+                  fontWeight: 700,
+                }}
+              >
+                {selectedInterview.candidate_name?.charAt(0)}
+              </Avatar>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography
+                  sx={{
+                    fontSize: 14,
+                    fontWeight: 600,
+                    color: "#111827",
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {selectedInterview.candidate_name}
+                </Typography>
+                <Typography sx={{ fontSize: 12, color: "#6B7280" }}>
+                  {selectedInterview.candidate_experience}
+                </Typography>
+              </Box>
+            </Stack>
+          </Box>
+
+          <Divider />
+
+          <DialogContent
+            sx={{
+              p: 0,
+              bgcolor: "#fff",
+              width: 480,
+              maxWidth: "95vw",
+              overflowX: "hidden",
+              overflowY: "auto",
+            }}
+          >
+            {isFetching ? (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
+                <CircularProgress />
+              </Box>
+            ) : (
+              <>
+                {/* DATE / TIME / PLATFORM CARD */}
+                <Box sx={{ px: 2.5, py: 2 }}>
+                  <Box
+                    sx={{
+                      borderRadius: "14px",
+                      border: "1px solid #E5E7EB",
+                      overflow: "hidden",
+                    }}
+                  >
+                    <Stack direction="row" divider={<Divider orientation="vertical" flexItem />}>
+                      <Box sx={{ flex: 1, px: 1.8, py: 1.4 }}>
+                        <Stack direction="row" spacing={0.8} alignItems="center" mb={0.4}>
+                          <CalendarMonthOutlinedIcon sx={{ fontSize: 14, color: "#6B7280" }} />
+                          <Typography sx={{ fontSize: 11, color: "#6B7280", fontWeight: 500 }}>
+                            Date
+                          </Typography>
+                        </Stack>
+                        <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>
+                          {selectedInterview.date}
+                        </Typography>
+                      </Box>
+
+                      <Box sx={{ flex: 1, px: 1.8, py: 1.4 }}>
+                        <Stack direction="row" spacing={0.8} alignItems="center" mb={0.4}>
+                          <AccessTimeOutlined sx={{ fontSize: 14, color: "#6B7280" }} />
+                          <Typography sx={{ fontSize: 11, color: "#6B7280", fontWeight: 500 }}>
+                            Time
+                          </Typography>
+                        </Stack>
+                        <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>
+                          {selectedInterview.start_time}–{selectedInterview.end_time}
+                        </Typography>
+                        <Typography sx={{ fontSize: 11, color: "#9CA3AF" }}>
+                          {selectedInterview.duration} min
+                        </Typography>
+                      </Box>
+                    </Stack>
+
+                    <Divider />
+
+                    {/* PLATFORM ROW WITH REAL LOGO */}
+                    <Box sx={{ px: 1.8, py: 1.4 }}>
+                      <Stack direction="row" spacing={1.2} alignItems="center">
+                        <PlatformIcon platform={selectedInterview.platform} size={26} />
+                        <Box sx={{ flex: 1, minWidth: 0 }}>
+                          <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>
+                            {selectedInterview.platform}
+                          </Typography>
+                          {selectedInterview.meeting_url && (
+                            <Typography
+                              sx={{
+                                fontSize: 11,
+                                color: "#9CA3AF",
+                                whiteSpace: "nowrap",
+                                overflow: "hidden",
+                                textOverflow: "ellipsis",
+                              }}
+                            >
+                              Online meeting link
+                            </Typography>
+                          )}
+                        </Box>
+                        {selectedInterview.meeting_url && (
+                          <Button
+                            component="a"
+                            href={selectedInterview.meeting_url}
+                            target="_blank"
+                            size="small"
+                            variant="contained"
+                            sx={{
+                              textTransform: "none",
+                              borderRadius: "8px",
+                              fontSize: 12.5,
+                              fontWeight: 600,
+                              bgcolor: "#185FA5",
+                              px: 1.6,
+                              py: 0.6,
+                              boxShadow: "none",
+                              flexShrink: 0,
+                              "&:hover": { bgcolor: "#134C86", boxShadow: "none" },
+                            }}
+                          >
+                            Join
+                          </Button>
+                        )}
+                      </Stack>
+                    </Box>
+                  </Box>
+                </Box>
+
+                <Divider />
+
+                {/* PRIMARY INTERVIEWER */}
+                <Box sx={{ px: 2.5, py: 2 }}>
+                  <Stack direction="row" spacing={0.8} alignItems="center" mb={1.2}>
+                    <PersonOutlineOutlined sx={{ fontSize: 16, color: "#6B7280" }} />
+                    <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>
+                      Interviewer
+                    </Typography>
+                  </Stack>
+                  <Stack spacing={1} sx={{ ml: 0.2 }}>
+                    {selectedInterview.primary_interviewer?.name && (
+                      <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        sx={{
+                          p: 1.2,
+                          borderRadius: "12px",
+                          bgcolor: "#F9FAFB",
+                          border: "1px solid #F0F1F3",
+                        }}
+                      >
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Avatar sx={{ width: 28, height: 28, fontSize: 12, bgcolor: "#E6F1FB", color: "#185FA5" }}>
+                            {selectedInterview.primary_interviewer.name.charAt(0)}
+                          </Avatar>
+                          <Typography sx={{ fontSize: 13, color: "#111827", fontWeight: 500 }}>
+                            {selectedInterview.primary_interviewer.name}
+                          </Typography>
+                        </Stack>
+                        <Typography sx={{ fontSize: 11, color: "#6B7280", fontWeight: 500 }}>
+                          Primary
+                        </Typography>
+                      </Stack>
+                    )}
+                    {selectedInterview.created_by?.name && (
+                      <Stack
+                        direction="row"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        sx={{
+                          p: 1.2,
+                          borderRadius: "12px",
+                          bgcolor: "#F9FAFB",
+                          border: "1px solid #F0F1F3",
+                        }}
+                      >
+                        <Stack direction="row" spacing={1} alignItems="center">
+                          <Avatar sx={{ width: 28, height: 28, fontSize: 12, bgcolor: "#F3F4F6", color: "#6B7280" }}>
+                            {selectedInterview.created_by.name.charAt(0)}
+                          </Avatar>
+                          <Typography sx={{ fontSize: 13, color: "#111827", fontWeight: 500 }}>
+                            {selectedInterview.created_by.name}
+                          </Typography>
+                        </Stack>
+                        <Typography sx={{ fontSize: 11, color: "#6B7280", fontWeight: 500 }}>
+                          Created by
+                        </Typography>
+                      </Stack>
+                    )}
+                  </Stack>
+                </Box>
+              </>
+            )}
+          </DialogContent>
+
+          {/* FOOTER */}
+          <DialogActions
+            sx={{
+              px: 2.5,
+              py: 1.8,
+              borderTop: "1px solid #E5E7EB",
+              bgcolor: "#fff",
+              gap: 1,
+            }}
+          >
+            <Button
+              variant="outlined"
+              onClick={onClose}
+              sx={{
+                flex: 1,
+                textTransform: "none",
+                borderRadius: "10px",
+                fontWeight: 500,
+                fontSize: 14,
+                color: "#111827",
+                borderColor: "#E5E7EB",
+              }}
+            >
+              Close
+            </Button>
+          </DialogActions>
+        </>
+      )}
+    </Dialog>
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   CANDIDATE ACTION BUTTONS
+   matched      -> Shortlist / Reject
+   shortlisted  -> Interview / Reject
+   anything else (hired/offer/rejected/...) -> nothing
+═══════════════════════════════════════════════ */
+function CandidateActionButtons({ status, onShortlist, onReject, onInterview }) {
+  const normalized = (status ?? "").toLowerCase().trim();
+
+  if (normalized === "shortlisted") {
+    return (
+      <Stack direction="row" spacing={1}>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<PersonAddAltOutlinedIcon sx={{ fontSize: 16 }} />}
+          onClick={onInterview}
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: 13,
+            borderRadius: "8px",
+            backgroundColor: "#16A34A",
+            boxShadow: "none",
+            px: 2,
+            "&:hover": { backgroundColor: "#15803D", boxShadow: "none" },
+          }}
+        >
+          Interview
+        </Button>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<BlockOutlinedIcon sx={{ fontSize: 16 }} />}
+          onClick={onReject}
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: 13,
+            borderRadius: "8px",
+            backgroundColor: "#EF4444",
+            boxShadow: "none",
+            px: 2,
+            "&:hover": { backgroundColor: "#DC2626", boxShadow: "none" },
+          }}
+        >
+          Reject
+        </Button>
+      </Stack>
+    );
+  }
+
+  if (normalized === "matched") {
+    return (
+      <Stack direction="row" spacing={1}>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<CheckCircleOutlineOutlined sx={{ fontSize: 16 }} />}
+          onClick={onShortlist}
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: 13,
+            borderRadius: "8px",
+            backgroundColor: "#B8860B",
+            boxShadow: "none",
+            px: 2,
+            "&:hover": { backgroundColor: "#9A6F09", boxShadow: "none" },
+          }}
+        >
+          Shortlist
+        </Button>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<BlockOutlinedIcon sx={{ fontSize: 16 }} />}
+          onClick={onReject}
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: 13,
+            borderRadius: "8px",
+            backgroundColor: "#EF4444",
+            boxShadow: "none",
+            px: 2,
+            "&:hover": { backgroundColor: "#DC2626", boxShadow: "none" },
+          }}
+        >
+          Reject
+        </Button>
+      </Stack>
+    );
+  }
+
+  return null;
+}
+
+/* ═══════════════════════════════════════════════
+   STATUS CONFIRM MODAL (Shortlist / Reject)
+═══════════════════════════════════════════════ */
+const STATUS_DISPLAY = {
+  shortlisted: { label: "Shortlisted", color: "#16A34A" },
+  rejected: { label: "Rejected", color: "#DC2626" },
+};
+
+function StatusConfirmModal({ open, onClose, action, onConfirm, loading }) {
+  const [comment, setComment] = useState("");
+  const display = STATUS_DISPLAY[action] ?? { label: action, color: "#111827" };
+  const isReject = action === "rejected";
+
+  useEffect(() => {
+    if (open) setComment("");
+  }, [open]);
+
+  return (
+    <Dialog
+      open={open}
+      onClose={loading ? undefined : onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: "14px", p: 0 } }}
+    >
+      <DialogContent sx={{ px: 3, py: 3 }}>
+        <Typography sx={{ fontSize: 15, color: "#374151", mb: 2 }}>
+          This action will update the candidate status to:{" "}
+          <Box component="span" sx={{ fontWeight: 700, color: display.color }}>
+            {display.label}
+          </Box>
+        </Typography>
+
+        <TextField
+          fullWidth
+          multiline
+          minRows={3}
+          placeholder="Add a comment (optional)"
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          sx={{
+            "& .MuiOutlinedInput-root": {
+              borderRadius: "10px",
+              fontSize: 14,
+            },
+          }}
+        />
+      </DialogContent>
+      <DialogActions sx={{ px: 3, pb: 3, pt: 0, gap: 1.5 }}>
+        <Button
+          onClick={onClose}
+          disabled={loading}
+          sx={{
+            textTransform: "none",
+            borderRadius: "8px",
+            fontWeight: 600,
+            fontSize: 14,
+            color: "#111827",
+            backgroundColor: "#F3F4F6",
+            px: 3,
+            "&:hover": { backgroundColor: "#E5E7EB" },
+          }}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={() => onConfirm(comment)}
+          variant="contained"
+          disabled={loading}
+          sx={{
+            textTransform: "none",
+            borderRadius: "8px",
+            fontWeight: 600,
+            fontSize: 14,
+            boxShadow: "none",
+            px: 3,
+            backgroundColor: isReject ? "#DC2626" : "#2563EB",
+            "&:hover": {
+              backgroundColor: isReject ? "#B91C1C" : "#1D4ED8",
+              boxShadow: "none",
+            },
+          }}
+        >
+          {loading ? <CircularProgress size={18} sx={{ color: "#fff" }} /> : "Confirm"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+/* ═══════════════════════════════════════════════
+   SCHEDULE INTERVIEW MODAL
+═══════════════════════════════════════════════ */
+const INTERVIEW_TYPES = ["Technical", "HR", "Managerial", "Telephonic", "Final Round"];
+const DURATIONS = ["15 mins", "30 mins", "45 mins", "60 mins", "90 mins"];
+const PLATFORMS = [
+  { key: "google_meet", label: "Google Meet", icon: "📅" },
+  { key: "zoom", label: "Zoom", icon: "🎥" },
+  { key: "teams", label: "Teams", icon: "🟣" },
+  { key: "other", label: "Other", icon: "🔗" },
+];
+
+function ScheduleInterviewModal({
+  open,
+  onClose,
+  candidate,
+  // interviewerOptions = [],
+  skillOptions = [],
+  onSchedule,
+  loading,
+  orgId
+}) {
+  const [form, setForm] = useState({
+    round: "",
+    type: "",
+    interviewer: null,
+    panelMembers: [],
+    duration: "",
+    dateTime: "",
+    platform: "google_meet",
+    meetingUrl: "",
+    skills: [],
+  });
+  const [interviewerOptions, setInterviewerOptions] = useState([]);
+  const [panelOptions, setPanelOptions] = useState([]);
+  const [getEmployeesByRole, { data: interviewersData, isLoading }] =
+    useLazyGetEmployeesByRoleQuery();
+  console.log("interviewersData", interviewersData)
+  const [slotDialogOpen, setSlotDialogOpen] = useState(false);
+  useEffect(() => {
+    if (!open || !orgId) return;
+
+    getEmployeesByRole({
+      organisationId: orgId,
+    })
+      .unwrap()
+      .then((res) => {
+        const users = res.data.map((u) => ({
+          id: u.id,
+          name: u.name,
+          role: u.role,
+          designation: u.designation,
+        }));
+
+        setInterviewerOptions(users);   // Keep interviewer list fixed
+        setPanelOptions(users);         // Initial panel list
+      });
+  }, [open, orgId]);
+
+  useEffect(() => {
+    if (open) {
+      setForm({
+        round: "",
+        type: "",
+        interviewer: null,
+        panelMembers: [],
+        duration: "",
+        dateTime: "",
+        platform: "google_meet",
+        meetingUrl: "",
+        skills: [],
+      });
+    }
+  }, [open]);
+
+  const setField = (key) => (value) => setForm((f) => ({ ...f, [key]: value }));
+
+  const isValid = form.round.trim() && form.type && form.interviewer && form.dateTime;
+
+  const handleSubmit = () => {
+    if (!isValid) return;
+    onSchedule({
+      candidate_id: candidate?.id,
+      round_name: form.round,
+      interview_type: form.type,
+      interviewer_id: form.interviewer?.id ?? form.interviewer,
+      panel_member_ids: form.panelMembers.map((p) => p.id ?? p),
+      duration: form.duration,
+      scheduled_at: form.dateTime,
+      platform: form.platform,
+      meeting_url: form.meetingUrl,
+      skills_to_evaluate: form.skills.map((s) => s.label ?? s),
+    });
+  };
+
+  return (
+    <Dialog
+      open={open}
+      onClose={loading ? undefined : onClose}
+      maxWidth="sm"
+      fullWidth
+      PaperProps={{ sx: { borderRadius: "16px", overflow: "hidden" } }}
+    >
+      {/* Header */}
+      <Box sx={{ px: 3, pt: 2.5, pb: 2, borderBottom: `1px solid ${C.border}` }}>
+        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+          <Box>
+            <Typography sx={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
+              Schedule Interview
+            </Typography>
+            <Typography sx={{ fontSize: 13, color: "#9CA3AF", mt: 0.25 }}>
+              Reserve an interview slot by choosing your preferred schedule.
+            </Typography>
+          </Box>
+          <IconButton
+            size="small"
+            onClick={onClose}
+            disabled={loading}
+            sx={{ width: 30, height: 30, borderRadius: "8px", backgroundColor: "#F3F4F6" }}
+          >
+            <CloseIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Box>
+      </Box>
+
+      <DialogContent sx={{ px: 3, py: 2.5, maxHeight: "70vh" }}>
+        <Grid container spacing={2}>
+          {/* Interview Round */}
+          <Grid item size={{ xs: 12, sm: 6 }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+              Interview Round <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
+            </Typography>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="e.g. Technical Round 1"
+              value={form.round}
+              onChange={(e) => setField("round")(e.target.value)}
+              sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
+            />
+          </Grid>
+
+          {/* Interview Type */}
+          <Grid item size={{ xs: 12, sm: 6 }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+              Interview Type <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
+            </Typography>
+            <FormControl fullWidth size="small">
+              <Select
+                displayEmpty
+                value={form.type}
+                onChange={(e) => setField("type")(e.target.value)}
+                sx={{ borderRadius: "8px" }}
+                renderValue={(v) => v || <span style={{ color: "#9CA3AF" }}>Select type</span>}
+              >
+                {INTERVIEW_TYPES.map((t) => (
+                  <MenuItem key={t} value={t}>{t}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+
+          {/* Interviewer */}
+          <Grid item size={{ xs: 12, sm: 6 }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+              Interviewer <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
+            </Typography>
+            <Autocomplete
+              size="small"
+              options={interviewerOptions}
+              value={form.interviewer}
+              onChange={async (_, val) => {
+                setField("interviewer")(val);
+
+                if (!val) return;
+
+                const res = await getEmployeesByRole({
+                  organisationId: orgId,
+                  employeeExcludeIds: val.id,
+                }).unwrap();
+
+                setPanelOptions(
+                  res.data.map((u) => ({
+                    id: u.id,
+                    name: u.name,
+                    role: u.role,
+                    designation: u.designation,
+                  }))
+                );
+              }}
+              getOptionLabel={(option) => option.name || ""}
+              isOptionEqualToValue={(option, value) => option.id === value?.id}
+              renderOption={(props, option) => {
+                const initials = option.name
+                  ?.split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .slice(0, 2)
+                  .toUpperCase();
+
+                return (
+                  <Box
+                    component="li"
+                    {...props}
+                    key={option.id}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1.5,
+                      py: 1,
+                    }}
+                  >
+                    <Avatar
+                      sx={{
+                        width: 34,
+                        height: 34,
+                        bgcolor: "#FF5F1F",
+                        fontSize: 13,
+                        fontWeight: 700,
+                      }}
+                    >
+                      {initials}
+                    </Avatar>
+
+                    <Box>
+                      <Typography
+                        sx={{
+                          fontSize: 15,
+                          fontWeight: 500,
+                          color: "#1F2937",
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {option.name}
+                      </Typography>
+
+                      <Typography
+                        sx={{
+                          fontSize: 13,
+                          color: "#9CA3AF",
+                        }}
+                      >
+                        ({option.role})
+                      </Typography>
+                    </Box>
+                  </Box>
+                );
+              }}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Select interviewer"
+                  sx={{
+                    "& .MuiOutlinedInput-root": {
+                      borderRadius: "8px",
+                    },
+                  }}
+                />
+              )}
+            />
+          </Grid>
+
+          {/* Panel Members */}
+          <Grid item size={{ xs: 12, sm: 6 }} >
+            <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+              Panel Members <Box component="span" sx={{ color: "#9CA3AF" }}>(optional)</Box>
+            </Typography>
+            <Autocomplete
+              multiple
+              size="small"
+              options={panelOptions}
+              getOptionLabel={(o) => o.name ?? o.label ?? ""}
+              value={form.panelMembers}
+              onChange={(_, val) => setField("panelMembers")(val)}
+              renderInput={(params) => (
+                <TextField
+                  {...params}
+                  placeholder="Add panel members"
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
+                />
+              )}
+            />
+          </Grid>
+
+          {/* Duration */}
+          <Grid item size={{ xs: 12, sm: 6 }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+              Duration
+            </Typography>
+            <FormControl fullWidth size="small">
+              <Select
+                displayEmpty
+                value={form.duration}
+                onChange={(e) => setField("duration")(e.target.value)}
+                sx={{ borderRadius: "8px" }}
+                renderValue={(v) => v || <span style={{ color: "#9CA3AF" }}>Select duration</span>}
+              >
+                {DURATIONS.map((d) => (
+                  <MenuItem key={d} value={d}>{d}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
+
+          {/* Select Day & Time */}
+          <Grid item size={{ xs: 12, sm: 6 }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+              Select Day & Time
+            </Typography>
+            <TextField
+              fullWidth
+              size="small"
+              type="datetime-local"
+              value={form.dateTime}
+              onChange={(e) => setField("dateTime")(e.target.value)}
+              sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
+            />
+          </Grid>
+
+          {/* Platform */}
+          <Grid item size={{ xs: 12 }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 1 }}>
+              Platform
+            </Typography>
+            <Grid container spacing={1}>
+              {PLATFORMS.map((p) => (
+                <Grid item size={{ xs: 6, sm: 3 }} key={p.key}>
+                  <Box
+                    onClick={() => setField("platform")(p.key)}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      justifyContent: "center",
+                      border: `1.5px solid ${form.platform === p.key ? C.accent : C.border}`,
+                      backgroundColor: form.platform === p.key ? C.accentSoft : "#fff",
+                      borderRadius: "8px",
+                      py: 1,
+                      cursor: "pointer",
+                      fontSize: 13,
+                      fontWeight: 600,
+                      color: form.platform === p.key ? C.accent : "#374151",
+                      userSelect: "none",
+                    }}
+                  >
+                    <span>{p.icon}</span> {p.label}
+                  </Box>
+                </Grid>
+              ))}
+            </Grid>
+          </Grid>
+
+          {/* Meeting URL */}
+          <Grid item size={{ xs: 12, }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+              Meeting URL
+            </Typography>
+            <TextField
+              fullWidth
+              size="small"
+              placeholder="https://meet.google.com/abc-def-ghi"
+              value={form.meetingUrl}
+              onChange={(e) => setField("meetingUrl")(e.target.value)}
+              sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
+            />
+          </Grid>
+
+          {/* Skills to Evaluate */}
+          <Grid item size={{ xs: 12 }}>
+            <Box sx={{ border: `1px solid ${C.border}`, borderRadius: "10px", overflow: "hidden" }}>
+              <Box
+                sx={{
+                  px: 2,
+                  py: 1.2,
+                  backgroundColor: "#F9FAFB",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  borderBottom: `1px solid ${C.border}`,
+                }}
+              >
+                <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>
+                  ⭐ Skills to Evaluate
+                </Typography>
+              </Box>
+              <Box sx={{ p: 1.5 }}>
+                <Autocomplete
+                  multiple
+                  freeSolo
+                  size="small"
+                  options={skillOptions}
+                  value={form.skills}
+                  onChange={(_, val) => setField("skills")(val)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Search or add skills"
+                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
+                    />
+                  )}
+                />
+              </Box>
+            </Box>
+          </Grid>
+        </Grid>
+      </DialogContent>
+
+      <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${C.border}`, gap: 1 }}>
+        <Button
+          onClick={onClose}
+          variant="outlined"
+          disabled={loading}
+          sx={{ textTransform: "none", borderRadius: "8px", color: "#111827", borderColor: "#E5E7EB" }}
+        >
+          Cancel
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          variant="contained"
+          disabled={!isValid || loading}
+          sx={{
+            textTransform: "none",
+            borderRadius: "8px",
+            boxShadow: "none",
+            background: "#FF5F1F",
+            "&:hover": {
+              boxShadow: "none",
+              background: "linear-gradient(90deg, #0C9090 0%, #0596B0 100%)",
+            },
+          }}
+        >
+          {loading ? <CircularProgress size={18} sx={{ color: "#fff" }} /> : "Schedule Interview →"}
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+
+/* ═══════════════════════════════════════════════
    TIMELINE SMALL COMPONENTS
 ═══════════════════════════════════════════════ */
 function CheckIcon({ color }) {
@@ -335,31 +1399,38 @@ function SubStageCircle({ state, size = 20 }) {
   );
 }
 
-function StatusBadge({ state }) {
-  if (state === "pending") return null;
-  const map = {
-    completed: { label: "Completed", bg: "#E7F8EE", color: "#0F6E56" },
-    current: { label: "In Progress", bg: "#FFF0E8", color: "#FF5F1F" },
-    failed: { label: "Failed", bg: "#FEE2E2", color: "#DC2626" },
+function StatusBadge({ label, color = "orange" }) {
+  const styles = {
+    completed: {
+      bg: "#EAF8EE",
+      color: "#22863A",
+    },
+    scheduled: {
+      bg: "#FFF3E8",
+      color: "#F97316",
+    },
+    failed: {
+      bg: "#FEECEC",
+      color: "#DC2626",
+    },
   };
-  const s = map[state];
+
+  const s = styles[color];
+
   return (
     <Box
-      component="span"
       sx={{
-        display: "inline-flex",
-        alignItems: "center",
-        px: "10px",
-        py: "2px",
+        ml: 1.5,
+        px: 1.5,
+        py: "5px",
         borderRadius: "999px",
-        backgroundColor: s.bg,
-        ml: "8px",
-        fontSize: 11,
-        fontWeight: 700,
+        bgcolor: s.bg,
         color: s.color,
+        fontSize: 12,
+        fontWeight: 600,
       }}
     >
-      {s.label}
+      {label}
     </Box>
   );
 }
@@ -475,7 +1546,7 @@ const SkillBarCompare = ({ scoreIntel, size = 350 }) => {
 };
 function RadarChart({ scoreIntel, size = 400 }) {
   if (!scoreIntel?.length) return null;
- if (scoreIntel.length < 3) {
+  if (scoreIntel.length < 3) {
     return <SkillBarCompare scoreIntel={scoreIntel} size={size} />;
   }
   const [tooltip, setTooltip] = useState({
@@ -847,17 +1918,6 @@ function RadarChart({ scoreIntel, size = 400 }) {
   );
 }
 
-// Usage example:
-// const data = [
-//   { skill: "JavaScript", candidate: 80, desired: 90 },
-//   { skill: "React",      candidate: 70, desired: 85 },
-//   { skill: "Node.js",    candidate: 65, desired: 75 },
-//   { skill: "CSS",        candidate: 90, desired: 80 },
-//   { skill: "Testing",    candidate: 55, desired: 70 },
-//   { skill: "TypeScript", candidate: 60, desired: 85 },
-// ];
-// <RadarChart scoreIntel={data} size={400} />
-
 /* ═══════════════════════════════════════════════
    PROFILE: EXPERIENCE LIST
 ═══════════════════════════════════════════════ */
@@ -933,7 +1993,7 @@ function ExperienceList({ candidate }) {
             <Box
               sx={{
                 width: "100%",
-                border: emp.is_current ?"1px solid #FFD6C7":"1px solid #E8E8EC",
+                border: emp.is_current ? "1px solid #FFD6C7" : "1px solid #E8E8EC",
                 borderRadius: "14px",
                 // backgroundColor: "#FFFAF7",
                 backgroundColor: emp.is_current ? "#FFFAF7" : "#fff",
@@ -1252,9 +2312,9 @@ function SkillsPanel({ candidate }) {
   const keySkills = candidate?.skill_info?.[0]?.key_skills ?? "";
   const skills = keySkills
     ? keySkills
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean)
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean)
     : [];
 
   const matchedPrimary = (candidate?.matched_primary_skills ?? []).map((s) =>
@@ -1646,32 +2706,6 @@ function SkillIntelPanel({ candidate }) {
         </Box>
       )}
 
-      {/* {Object.keys(skillNotes).length > 0 && (
-        <Box sx={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-          {Object.entries(skillNotes).map(([key, note]) => {
-            const noteText =
-              typeof note === "object" && note !== null ? note.value : note;
-            if (!noteText) return null;
-            return (
-              <Box key={key} sx={{ display: "flex", gap: "6px" }}>
-                <Typography
-                  color={C.textPrimary}
-                  sx={{
-                    minWidth: "fit-content",
-                    fontWeight: T.labelFontWeight,
-                    fontSize: 14,
-                  }}
-                >
-                  {key} :
-                </Typography>
-                <Typography sx={{ fontSize: 14 }} lineHeight={1.65}>
-                  {noteText}
-                </Typography>
-              </Box>
-            );
-          })}
-        </Box>
-      )} */}
       <SkillNotesAccordion
         skillNotes={candidate?.skill_notes ?? {}}
         scoreIntel={candidate?.score_intel ?? []}
@@ -1927,7 +2961,7 @@ function SkillIntelPanel({ candidate }) {
                       fontSize: 12,
                       fontWeight: 700,
                       color: barColor,
-                      ml: "auto", // pushes badge to right
+                      ml: "auto",
                       minWidth: "55px",
                       textAlign: "right",
                       px: "10px",
@@ -1939,30 +2973,6 @@ function SkillIntelPanel({ candidate }) {
                     {s.candidate}%
                   </Typography>
                 </Box>
-
-                {/* Match % */}
-                {/* <Box
-                  sx={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    px: "7px",
-                    py: "3px",
-                    borderRadius: "999px",
-                    backgroundColor: badgeBg,
-                  }}
-                >
-                  <Typography
-                    sx={{
-                      fontSize: 12,
-                      fontWeight: 700,
-                      color: barColor,
-                      lineHeight: 1,
-                    }}
-                  >
-                    {pct}%
-                  </Typography>
-                </Box> */}
               </Box>
             );
           })}
@@ -2063,7 +3073,6 @@ function ExperienceTab({ candidate }) {
   return (
     <Box
       sx={{
-        // border: `1px solid ${C.border}`,
         borderRadius: "14px",
         backgroundColor: "#fff",
         px: "5px",
@@ -2223,7 +3232,6 @@ function TimelineTab({ candidate, onInterviewClick }) {
   );
 
   const entries = data?.data ?? [];
-  console.log("Timeline entries:", entries);
   const grouped = {};
   entries.forEach((e) => {
     const g = STAGE_GROUP[e.stage?.toLowerCase()];
@@ -2278,8 +3286,25 @@ function TimelineTab({ candidate, onInterviewClick }) {
             const state = groupState(stage.key, entries, currentStage);
             const firstEntry = stageEntries[0];
 
-            const subEntries = stageEntries.filter((e) => SUB_LABEL[e.stage]);
-            console.log("subEntries", subEntries);
+            const subEntries = Object.values(
+              stageEntries.reduce((acc, item) => {
+                // Ignore entries that are not interview sub stages
+                if (!SUB_LABEL[item.stage]) return acc;
+
+                const step = item.step_number;
+                if (!step) return acc;
+
+                // Keep only the latest event for each round
+                if (
+                  !acc[step] ||
+                  new Date(item.created_at) > new Date(acc[step].created_at)
+                ) {
+                  acc[step] = item;
+                }
+
+                return acc;
+              }, {})
+            ).sort((a, b) => a.step_number - b.step_number);
             const hasSubEntries = subEntries.length > 0;
 
             const interviewEntry = stageEntries.filter(
@@ -2341,7 +3366,6 @@ function TimelineTab({ candidate, onInterviewClick }) {
                       >
                         {stage.label}
                       </Typography>
-                      <StatusBadge state={state} />
                     </Box>
                     {stage.key !== "interviewing" && (
                       <>
@@ -2407,16 +3431,16 @@ function TimelineTab({ candidate, onInterviewClick }) {
                         {subEntries.map((sub, si) => {
                           const subState =
                             sub.stage === "offer_revoked" ||
-                            sub.stage === "interview_failed"
+                              sub.stage === "interview_failed"
                               ? "failed"
                               : "completed";
                           const isLastInterviewEntry =
                             sub.interview_id &&
                             si ===
-                              subEntries
-                                .map((e, index) => ({ ...e, index }))
-                                .filter((e) => e.interview_id)
-                                .slice(-1)[0]?.index;
+                            subEntries
+                              .map((e, index) => ({ ...e, index }))
+                              .filter((e) => e.interview_id)
+                              .slice(-1)[0]?.index;
                           return (
                             <Box
                               key={si}
@@ -2425,8 +3449,8 @@ function TimelineTab({ candidate, onInterviewClick }) {
                                 alignItems: "center",
                                 justifyContent: "space-between",
                                 gap: "10px",
-                                // border:1,
                                 width: "100%",
+                                mt: -1.5,
                               }}
                             >
                               <Box
@@ -2437,64 +3461,65 @@ function TimelineTab({ candidate, onInterviewClick }) {
                                   mt: "2px",
                                 }}
                               >
-                                <SubStageCircle state={subState} size={20} />
-                                <Box>
-                                  <Box
-                                    sx={{
-                                      display: "flex",
-                                      alignItems: "center",
-                                    }}
-                                  >
+                                <Box sx={{ mt: 1 }}>
+                                  <Box sx={{ display: 'flex' }}>
                                     <Typography
                                       sx={{
-                                        fontSize: 14,
-                                        fontWeight: 600,
-                                        color: "#374151",
+                                        fontSize: 15,
+                                        fontWeight: 700,
+                                        color: "#111827",
                                       }}
                                     >
-                                      {sub.step_number
-                                        ? `Round ${sub.step_number} — `
-                                        : ""}
+                                      {`Round-${sub.step_number}`}
                                     </Typography>
-                                    <Typography
-                                      sx={{
-                                        fontSize: 14,
-                                        fontWeight: 500,
-                                        color: "#6B7280",
-                                        ml: 1,
-                                      }}
-                                    >
-                                      {SUB_LABEL[sub.stage] ??
-                                        sub.stage.replace(/_/g, " ")}
-                                    </Typography>
+                                    <StatusBadge
+                                      label={SUB_LABEL[sub.stage]}
+                                      color={BADGE_COLOR[sub.stage]}
+                                    />
                                   </Box>
-                                  <Box
+                                  <Typography
                                     sx={{
+                                      fontSize: 12,
+                                      color: "#6B7280",
+                                      mt: 0.5,
                                       display: "flex",
                                       alignItems: "center",
                                     }}
                                   >
-                                    <Typography
-                                      sx={{
-                                        fontSize: 12,
-                                        fontWeight: 500,
-                                        color: "#9CA3AF",
-                                      }}
-                                    >
-                                      IST :
-                                    </Typography>
-
-                                    <Typography
-                                      sx={{
-                                        fontSize: 12,
-                                        fontWeight: 500,
-                                        ml: 1,
-                                        color: "#9CA3AF",
-                                      }}
-                                    >
+                                    IST:
+                                    <Typography sx={{ ml: 1, fontSize: 12, color: "#4B5563", fontWeight: 600 }}>
                                       {fmtDateIST(sub.created_at)}
                                     </Typography>
-                                  </Box>
+                                  </Typography>
+                                  <Typography
+                                    sx={{
+                                      fontSize: 12,
+                                      color: "#6B7280",
+                                      mt: 0.3,
+                                      display: "flex",
+                                      alignItems: "center",
+                                    }}
+                                  >
+                                    Interview Time: IST:
+                                    <Typography sx={{ ml: 1, fontSize: 12, color: "#4B5563", fontWeight: 600 }}>
+                                      {fmtDateIST(firstEntry.interview_time)}
+                                    </Typography>
+                                  </Typography>
+
+                                  <Typography
+                                    sx={{
+                                      fontSize: 12,
+                                      color: "#6B7280",
+                                      mt: 0.3,
+                                      display: "flex",
+                                      alignItems: "center",
+                                    }}
+                                  >
+                                    By:
+                                    <Typography sx={{ ml: 1, fontSize: 12, color: "#4B5563", fontWeight: 600 }}>
+                                      {firstEntry.triggered_by}
+                                    </Typography>
+                                  </Typography>
                                 </Box>
                               </Box>
                               <Box>
@@ -2714,28 +3739,30 @@ function DocumentsTab({ candidate }) {
 /* ═══════════════════════════════════════════════
    MAIN PAGE
 ═══════════════════════════════════════════════ */
+
 export default function CandidateDetail() {
   const { candidateId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
   const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState(0);
-
+  console.log("candidateId...", candidateId);
   const matched_candidate_id =
     location.state?.matched_candidate_id ?? candidateId;
   const { data, isLoading, isError, error } =
     useGetCandidateDetailQuery(matched_candidate_id);
   const candidate = data?.data?.candidate ?? null;
+  const orgId = location.state?.orgId;
   const enriched = candidate
     ? {
-        ...candidate,
-        matched_primary_skills: data?.data?.matched_primary_skills ?? [],
-        matched_secondary_skills: data?.data?.matched_secondary_skills ?? [],
-        matched_mandatory_skills: data?.data?.matched_mandatory_skills ?? [],
-        skill_notes: data?.data?.skill_notes ?? {},
-        score_intel: data?.data?.score_intel ?? [],
-        status: data?.data?.status,
-      }
+      ...candidate,
+      matched_primary_skills: data?.data?.matched_primary_skills ?? [],
+      matched_secondary_skills: data?.data?.matched_secondary_skills ?? [],
+      matched_mandatory_skills: data?.data?.matched_mandatory_skills ?? [],
+      skill_notes: data?.data?.skill_notes ?? {},
+      score_intel: data?.data?.score_intel ?? [],
+      status: data?.data?.status,
+    }
     : null;
   const [interviewModalOpen, setInterviewModalOpen] = useState(false);
 
@@ -2752,6 +3779,45 @@ export default function CandidateDetail() {
       setInterviewModalOpen(true);
     } catch (error) {
       console.error(error);
+    }
+  };
+
+  /* ── Shortlist / Reject flow ── */
+  const [statusModal, setStatusModal] = useState({ open: false, action: null });
+  const [updateCandidateStatus, { isLoading: statusUpdating }] =
+    useUpdateCandidateStatusMutation();
+
+  const handleConfirmStatus = async (comment) => {
+    if (!enriched?.id || !statusModal.action) return;
+    console.log("enriched", enriched)
+    try {
+      await updateCandidateStatus({
+        candidateId: candidateId,
+        newStatus: statusModal.action, // "shortlisted" | "rejected"
+        comment: comment || undefined,
+      }).unwrap();
+
+      setStatusModal({ open: false, action: null });
+    } catch (err) {
+      console.error("Status update failed:", err);
+    }
+  };
+
+  /* ── Schedule Interview flow ── */
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [scheduleInterview, { isLoading: schedulingInterview }] =
+    useScheduleInterviewMutation();
+
+  const handleScheduleInterview = async (payload) => {
+    if (!enriched?.id) return;
+    try {
+      await scheduleInterview({
+        candidate_id: enriched.id,
+        ...payload,
+      }).unwrap();
+      setScheduleModalOpen(false);
+    } catch (err) {
+      console.error("Schedule interview failed:", err);
     }
   };
 
@@ -2811,17 +3877,6 @@ export default function CandidateDetail() {
     (enriched.score_intel ?? []).length > 0 ||
     enriched.skill_info?.[0]?.summary ||
     Object.keys(enriched.skill_notes ?? {}).length > 0;
-
-  // ── Top skills chips (matched mandatory/primary) ──
-  const topSkillChips = (() => {
-    const mandatory = enriched.matched_mandatory_skills ?? [];
-    const primary = enriched.matched_primary_skills ?? [];
-    const combined = [
-      ...mandatory.map((s) => ({ label: s, type: "mandatory" })),
-      ...primary.map((s) => ({ label: s, type: "primary" })),
-    ];
-    return combined.slice(0, 5);
-  })();
 
   // ── Total experience string ──
   const totalExp =
@@ -2930,16 +3985,16 @@ export default function CandidateDetail() {
                 {enriched.full_name}
               </Typography>
               <DescriptionOutlinedIcon
-                    onClick={() => {
-                      viewResume(enriched.id);
-                    }}
-                    sx={{
-                      fontSize: 14,
-                      color: "#FF5F1F",
-                      ml: 0,
-                      cursor: "pointer",
-                    }}
-                  />
+                onClick={() => {
+                  viewResume(enriched.id);
+                }}
+                sx={{
+                  fontSize: 14,
+                  color: "#FF5F1F",
+                  ml: 0,
+                  cursor: "pointer",
+                }}
+              />
               {enriched.status && (
                 <Box
                   sx={{
@@ -2948,7 +4003,7 @@ export default function CandidateDetail() {
                     borderRadius: "999px",
                     fontSize: 10,
                     fontWeight: 700,
-                     textTransform: "uppercase",
+                    textTransform: "uppercase",
                     backgroundColor:
                       enriched.status === "active"
                         ? "#DCFCE7"
@@ -2967,8 +4022,8 @@ export default function CandidateDetail() {
                 </Box>
               )}
               <Tooltip title="View Full Profile">
-                
-                <Person2OutlinedIcon sx={{ fontSize: 16, color: "#FF5722",cursor:"pointer" }} onClick={() => {
+
+                <Person2OutlinedIcon sx={{ fontSize: 16, color: "#FF5722", cursor: "pointer" }} onClick={() => {
                   navigate(`/account-manager/candidates/${candidate?.id}`)
                 }} />
               </Tooltip>
@@ -2993,14 +4048,14 @@ export default function CandidateDetail() {
             </Box>
 
             <Box sx={{ display: "flex", alignItems: "center", gap: "5px" }}>
-             
-              <Box sx={{display:"flex",alignItems:"center",gap:"5px"}}>
+
+              <Box sx={{ display: "flex", alignItems: "center", gap: "5px" }}>
                 <EmailOutlined sx={{ fontSize: 13, color: "#9CA3AF" }} />
-              <Typography sx={{ fontSize: 12, color: C.textSecondary }}>
-                {enriched.email}
-              </Typography>
+                <Typography sx={{ fontSize: 12, color: C.textSecondary }}>
+                  {enriched.email}
+                </Typography>
               </Box>
-               {enriched.clin_id && (
+              {enriched.clin_id && (
                 <Typography
                   sx={{
                     display: "flex",
@@ -3008,54 +4063,14 @@ export default function CandidateDetail() {
                     fontSize: 11,
                     color: "#000",
                     fontWeight: 500,
-                    ml:1
+                    ml: 1
                   }}
                 >
                   CLIN{enriched.clin_id}
-                  
+
                 </Typography>
               )}
             </Box>
-
-            {/* Skill match chips */}
-            {/* {topSkillChips.length > 0 && (
-              <Box
-                sx={{
-                  display: "flex",
-                  flexWrap: "wrap",
-                  gap: "6px",
-                  mt: "8px",
-                }}
-              >
-                {topSkillChips.map(({ label, type }) => (
-                  <Chip
-                    key={label}
-                    label={label}
-                    size="small"
-                    sx={{
-                      fontSize: 11,
-                      height: 22,
-                      fontWeight: 500,
-                      backgroundColor:
-                        type === "mandatory"
-                          ? "#FFF0E8"
-                          : type === "primary"
-                            ? "#EFF6FF"
-                            : "#F3F4F6",
-                      color:
-                        type === "mandatory"
-                          ? C.accent
-                          : type === "primary"
-                            ? "#2563EB"
-                            : "#374151",
-                      border: `1px solid ${type === "mandatory" ? "#FFCFB3" : type === "primary" ? "#BFDBFE" : "#E5E7EB"}`,
-                      borderRadius: "6px",
-                      "& .MuiChip-label": { px: "8px" },
-                    }}
-                  />
-                ))}
-              </Box>
-            )} */}
           </Box>
 
           {/* Right meta block — email, experience, phone */}
@@ -3161,152 +4176,176 @@ export default function CandidateDetail() {
               gap: "20px",
             }}
           >
-            <Tabs
-              value={activeTab}
-              onChange={(_, v) => setActiveTab(v)}
+            {/* Tabs row + action buttons (Shortlist/Reject or Interview/Reject) */}
+            <Box
               sx={{
-                ...TAB_SX,
-                mb: 0,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
                 px: "20px",
-                // borderTop: `1px solid ${C.border}`,
-                "& .MuiTabs-indicator": {
-                  backgroundColor: C.accent,
-                  height: 2,
-                  bottom: 0,
-                },
+                flexWrap: "wrap",
+                gap: "10px",
               }}
             >
-              <Tab
-                icon={<WorkOutlineOutlined sx={{ fontSize: 14 }} />}
-                iconPosition="start"
-                label={
-                  <Box
-                    sx={{ display: "flex", alignItems: "center", gap: "5px" }}
-                  >
-                    Experience{" "}
-                    {expCount > 0 && (
-                      <Box
-                        component="span"
-                        sx={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          backgroundColor:
-                            activeTab === 0 ? C.accent : "#E5E7EB",
-                          color: activeTab === 0 ? "#fff" : "#6B7280",
-                          borderRadius: "999px",
-                          px: "6px",
-                          py: "1px",
-                          lineHeight: 1.6,
-                        }}
-                      >
-                        {expCount}
-                      </Box>
-                    )}
-                  </Box>
-                }
-              />
-              <Tab
-                icon={<SchoolOutlinedIcon sx={{ fontSize: 14 }} />}
-                iconPosition="start"
-                label={
-                  <Box
-                    sx={{ display: "flex", alignItems: "center", gap: "5px" }}
-                  >
-                    Education{" "}
-                    {eduCount > 0 && (
-                      <Box
-                        component="span"
-                        sx={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          backgroundColor:
-                            activeTab === 1 ? C.accent : "#E5E7EB",
-                          color: activeTab === 1 ? "#fff" : "#6B7280",
-                          borderRadius: "999px",
-                          px: "6px",
-                          py: "1px",
-                          lineHeight: 1.6,
-                        }}
-                      >
-                        {eduCount}
-                      </Box>
-                    )}
-                  </Box>
-                }
-              />
-              <Tab
-                icon={<PsychologyOutlinedIcon sx={{ fontSize: 14 }} />}
-                iconPosition="start"
-                label={
-                  <Box
-                    sx={{ display: "flex", alignItems: "center", gap: "5px" }}
-                  >
-                    Skills{" "}
-                    {skillCount > 0 && (
-                      <Box
-                        component="span"
-                        sx={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          backgroundColor:
-                            activeTab === 2 ? C.accent : "#E5E7EB",
-                          color: activeTab === 2 ? "#fff" : "#6B7280",
-                          borderRadius: "999px",
-                          px: "6px",
-                          py: "1px",
-                          lineHeight: 1.6,
-                        }}
-                      >
-                        {skillCount}
-                      </Box>
-                    )}
-                  </Box>
-                }
-              />
-              {certCount > 0 && (
+              <Tabs
+                value={activeTab}
+                onChange={(_, v) => setActiveTab(v)}
+                sx={{
+                  ...TAB_SX,
+                  mb: 0,
+                  px: 0,
+                  "& .MuiTabs-indicator": {
+                    backgroundColor: C.accent,
+                    height: 2,
+                    bottom: 0,
+                  },
+                }}
+              >
                 <Tab
-                  icon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 14 }} />}
+                  icon={<WorkOutlineOutlined sx={{ fontSize: 14 }} />}
                   iconPosition="start"
                   label={
                     <Box
                       sx={{ display: "flex", alignItems: "center", gap: "5px" }}
                     >
-                      Certifications{" "}
-                      <Box
-                        component="span"
-                        sx={{
-                          fontSize: 11,
-                          fontWeight: 700,
-                          backgroundColor:
-                            activeTab === 3 ? C.accent : "#E5E7EB",
-                          color: activeTab === 3 ? "#fff" : "#6B7280",
-                          borderRadius: "999px",
-                          px: "6px",
-                          py: "1px",
-                          lineHeight: 1.6,
-                        }}
-                      >
-                        {certCount}
-                      </Box>
+                      Experience{" "}
+                      {expCount > 0 && (
+                        <Box
+                          component="span"
+                          sx={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            backgroundColor:
+                              activeTab === 0 ? C.accent : "#E5E7EB",
+                            color: activeTab === 0 ? "#fff" : "#6B7280",
+                            borderRadius: "999px",
+                            px: "6px",
+                            py: "1px",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          {expCount}
+                        </Box>
+                      )}
                     </Box>
                   }
                 />
-              )}
-              {hasSkillIntel && (
+                <Tab
+                  icon={<SchoolOutlinedIcon sx={{ fontSize: 14 }} />}
+                  iconPosition="start"
+                  label={
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: "5px" }}
+                    >
+                      Education{" "}
+                      {eduCount > 0 && (
+                        <Box
+                          component="span"
+                          sx={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            backgroundColor:
+                              activeTab === 1 ? C.accent : "#E5E7EB",
+                            color: activeTab === 1 ? "#fff" : "#6B7280",
+                            borderRadius: "999px",
+                            px: "6px",
+                            py: "1px",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          {eduCount}
+                        </Box>
+                      )}
+                    </Box>
+                  }
+                />
+                <Tab
+                  icon={<PsychologyOutlinedIcon sx={{ fontSize: 14 }} />}
+                  iconPosition="start"
+                  label={
+                    <Box
+                      sx={{ display: "flex", alignItems: "center", gap: "5px" }}
+                    >
+                      Skills{" "}
+                      {skillCount > 0 && (
+                        <Box
+                          component="span"
+                          sx={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            backgroundColor:
+                              activeTab === 2 ? C.accent : "#E5E7EB",
+                            color: activeTab === 2 ? "#fff" : "#6B7280",
+                            borderRadius: "999px",
+                            px: "6px",
+                            py: "1px",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          {skillCount}
+                        </Box>
+                      )}
+                    </Box>
+                  }
+                />
+                {certCount > 0 && (
+                  <Tab
+                    icon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 14 }} />}
+                    iconPosition="start"
+                    label={
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: "5px" }}
+                      >
+                        Certifications{" "}
+                        <Box
+                          component="span"
+                          sx={{
+                            fontSize: 11,
+                            fontWeight: 700,
+                            backgroundColor:
+                              activeTab === 3 ? C.accent : "#E5E7EB",
+                            color: activeTab === 3 ? "#fff" : "#6B7280",
+                            borderRadius: "999px",
+                            px: "6px",
+                            py: "1px",
+                            lineHeight: 1.6,
+                          }}
+                        >
+                          {certCount}
+                        </Box>
+                      </Box>
+                    }
+                  />
+                )}
+                {hasSkillIntel && (
+                  <Tab
+                    icon={<TrendingUpIcon sx={{ fontSize: 14 }} />}
+                    iconPosition="start"
+                    label="Skill Intel"
+                  />
+                )}
                 <Tab
                   icon={<TrendingUpIcon sx={{ fontSize: 14 }} />}
                   iconPosition="start"
-                  label="Skill Intel"
+                  label="Timeline"
                 />
-              )}
-              <Tab
-                icon={<TrendingUpIcon sx={{ fontSize: 14 }} />}
-                iconPosition="start"
-                label="Timeline"
+                {/* <Tab icon={<CalendarMonthOutlinedIcon sx={{ fontSize: 14 }} />} iconPosition="start" label="Interviews" />
+              <Tab icon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 14 }} />} iconPosition="start" label="Documents" /> */}
+              </Tabs>
+
+              {/* Shortlist/Reject OR Interview/Reject, driven by candidate status */}
+              <CandidateActionButtons
+                status={enriched.status}
+                onShortlist={() =>
+                  setStatusModal({ open: true, action: "shortlisted" })
+                }
+                onReject={() =>
+                  setStatusModal({ open: true, action: "rejected" })
+                }
+                onInterview={() => setScheduleModalOpen(true)}
               />
-              {/* <Tab icon={<CalendarMonthOutlinedIcon sx={{ fontSize: 14 }} />} iconPosition="start" label="Interviews" />
-          <Tab icon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 14 }} />} iconPosition="start" label="Documents" /> */}
-            </Tabs>
+            </Box>
+
             <Box sx={{ mt: -1 }}>
               {activeTab === EXP && <ExperienceTab candidate={enriched} />}
               {activeTab === EDU && <EducationTab candidate={enriched} />}
@@ -3314,7 +4353,7 @@ export default function CandidateDetail() {
                 <SkillsTab candidate={enriched} showCerts={false} />
               )}
               {CERT !== -1 && activeTab === CERT && (
-                <CertificationsTab candidate={enriched} />
+                <SkillsTab candidate={enriched} />
               )}
               {INTEL !== -1 && activeTab === INTEL && (
                 <SkillIntelTab candidate={enriched} />
@@ -3331,381 +4370,40 @@ export default function CandidateDetail() {
           </Box>
         );
       })()}
-      <Dialog
+
+      {/* ── Interview details Dialog (redesigned) ── */}
+      <InterviewDetailsModal
         open={interviewModalOpen}
         onClose={() => setInterviewModalOpen(false)}
-        maxWidth={false}
-        PaperProps={{
-          sx: {
-            width: 480,
-            maxWidth: "95vw",
-            minWidth: 0,
-            borderRadius: "20px",
-            overflow: "hidden",
-            boxShadow: "0 20px 50px rgba(0,0,0,0.12)",
-          },
-        }}
-      >
-        {selectedInterview && (
-          <>
-            {/* HEADER */}
-            <Box sx={{ px: 2.5, pt: 2.5, pb: 2, bgcolor: "background.paper" }}>
-              <Typography
-                sx={{
-                  fontSize: 18,
-                  fontWeight: 700,
-                  mb: 1.5,
-                  color: "#111827",
-                }}
-              >
-                Interview Details
-              </Typography>
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Chip
-                  icon={<CalendarMonthOutlinedIcon sx={{ fontSize: 13 }} />}
-                  label={selectedInterview.interview_step_name ?? "Round-1"}
-                  size="small"
-                  sx={{
-                    bgcolor: "#FFF7ED",
-                    color: "#B45309",
-                    border: "1px solid #FED7AA",
-                    borderRadius: "20px",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    height: 26,
-                    "& .MuiChip-icon": { color: "#B45309", ml: "8px" },
-                  }}
-                />
-                <Chip
-                  icon={<PhoneOutlined sx={{ fontSize: 13 }} />}
-                  label={selectedInterview.interview_step_type ?? "Telephonic"}
-                  size="small"
-                  sx={{
-                    bgcolor: "#ECFDF5",
-                    color: "#065F46",
-                    border: "1px solid #A7F3D0",
-                    borderRadius: "20px",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    height: 26,
-                    "& .MuiChip-icon": { color: "#065F46", ml: "8px" },
-                  }}
-                />
-                <Chip
-                  label={selectedInterview.status}
-                  size="small"
-                  sx={{
-                    bgcolor:
-                      selectedInterview.status === "Cancelled"
-                        ? "#FEF2F2"
-                        : "#ECFDF5",
-                    color:
-                      selectedInterview.status === "Cancelled"
-                        ? "#991B1B"
-                        : "#065F46",
-                    border: `1px solid ${selectedInterview.status === "Cancelled" ? "#FECACA" : "#A7F3D0"}`,
-                    borderRadius: "20px",
-                    fontSize: 12,
-                    fontWeight: 500,
-                    height: 26,
-                  }}
-                />
-              </Stack>
-            </Box>
+        selectedInterview={selectedInterview}
+        isFetching={isFetching}
+      />
 
-            {/* CANDIDATE ROW */}
-            <Box sx={{ px: 2.5, pb: 1.5 }}>
-              <Stack direction="row" spacing={1.2} alignItems="center">
-                <Avatar
-                  sx={{
-                    width: 36,
-                    height: 36,
-                    bgcolor: "#E6F1FB",
-                    color: "#185FA5",
-                    fontSize: 14,
-                    fontWeight: 600,
-                  }}
-                >
-                  {selectedInterview.candidate_name?.charAt(0)}
-                </Avatar>
-                <Box>
-                  <Typography
-                    sx={{ fontSize: 14, fontWeight: 600, color: "#111827" }}
-                  >
-                    {selectedInterview.candidate_name}
-                  </Typography>
-                  <Typography sx={{ fontSize: 12, color: "#6B7280" }}>
-                    {selectedInterview.candidate_experience}
-                  </Typography>
-                </Box>
-              </Stack>
-            </Box>
+      {/* ── Shortlist / Reject confirmation modal ── */}
+      <StatusConfirmModal
+        open={statusModal.open}
+        action={statusModal.action}
+        onClose={() =>
+          !statusUpdating && setStatusModal({ open: false, action: null })
+        }
+        onConfirm={handleConfirmStatus}
+        loading={statusUpdating}
+      />
 
-            <Divider />
-
-            <DialogContent
-              sx={{
-                p: 0,
-                bgcolor: "#fff",
-                // ✅ THIS is the critical fix — constrain width hard
-                width: 480,
-                maxWidth: "95vw",
-                overflowX: "hidden", // ✅ blocks horizontal expansion
-                overflowY: "auto", // ✅ allows vertical scroll
-              }}
-            >
-              {isFetching ? (
-                <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
-                  <CircularProgress />
-                </Box>
-              ) : (
-                <>
-                  {/* DATE / TIME / PLATFORM */}
-                  <Box
-                    sx={{
-                      px: 2.5,
-                      py: 1.5,
-                      // ✅ Hard clamp so children cannot push width
-                      width: "100%",
-                      boxSizing: "border-box",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <Stack spacing={1}>
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <CalendarMonthOutlinedIcon
-                          sx={{ fontSize: 15, color: "#6B7280", flexShrink: 0 }}
-                        />
-                        <Typography sx={{ fontSize: 13, color: "#111827" }}>
-                          {selectedInterview.date}
-                        </Typography>
-                      </Stack>
-
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <AccessTimeOutlined
-                          sx={{ fontSize: 15, color: "#6B7280", flexShrink: 0 }}
-                        />
-                        <Typography sx={{ fontSize: 13, color: "#111827" }}>
-                          {selectedInterview.start_time} –{" "}
-                          {selectedInterview.end_time} (
-                          {selectedInterview.duration} Min)
-                        </Typography>
-                      </Stack>
-
-                      <Stack direction="row" spacing={1} alignItems="center">
-                        <WorkOutlineOutlined
-                          sx={{ fontSize: 15, color: "#6B7280", flexShrink: 0 }}
-                        />
-                        <Typography sx={{ fontSize: 13, color: "#111827" }}>
-                          Platform: {selectedInterview.platform}
-                        </Typography>
-                      </Stack>
-
-                      {/* ✅ URL — fully contained, truncates with ellipsis */}
-                      {selectedInterview.meeting_url && (
-                        <Stack
-                          direction="row"
-                          spacing={1}
-                          alignItems="center"
-                          sx={{
-                            width: "100%",
-                            // ✅ These two together are the real fix
-                            minWidth: 0,
-                            overflow: "hidden",
-                          }}
-                        >
-                          <InsertDriveFileOutlinedIcon
-                            sx={{
-                              fontSize: 15,
-                              color: "#185FA5",
-                              flexShrink: 0,
-                            }}
-                          />
-                          <Box
-                            component="a"
-                            href={selectedInterview.meeting_url}
-                            target="_blank"
-                            title={selectedInterview.meeting_url}
-                            sx={{
-                              fontSize: 13,
-                              color: "#185FA5",
-                              textDecoration: "none",
-                              // ✅ Block + overflow = text clips at container edge
-                              display: "block",
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                              // ✅ Must have minWidth:0 and flex:1 together
-                              minWidth: 0,
-                              flex: 1,
-                              "&:hover": { textDecoration: "underline" },
-                            }}
-                          >
-                            {selectedInterview.meeting_url}
-                          </Box>
-                        </Stack>
-                      )}
-                    </Stack>
-                  </Box>
-
-                  <Divider />
-
-                  {/* PRIMARY INTERVIEWER */}
-                  <Box sx={{ px: 2.5, py: 1.5 }}>
-                    <Stack
-                      direction="row"
-                      spacing={0.8}
-                      alignItems="center"
-                      mb={1.2}
-                    >
-                      <PersonOutlineOutlined
-                        sx={{ fontSize: 16, color: "#6B7280" }}
-                      />
-                      <Typography
-                        sx={{ fontSize: 13, fontWeight: 600, color: "#111827" }}
-                      >
-                        Primary Interviewer
-                      </Typography>
-                    </Stack>
-                    <Box spacing={1} sx={{ ml: 2.5 }}>
-                      {selectedInterview.primary_interviewer?.name && (
-                        <Stack direction="row" justifyContent="space-between">
-                          <Typography sx={{ fontSize: 13 }}>
-                            {selectedInterview.primary_interviewer.name}
-                          </Typography>
-                          <Typography
-                            sx={{ ml: 2, fontSize: 12, color: "#6B7280" }}
-                          >
-                            Primary Interviewer
-                          </Typography>
-                        </Stack>
-                      )}
-                      {selectedInterview.created_by?.name && (
-                        <Stack direction="row" justifyContent="space-between">
-                          <Typography sx={{ fontSize: 13 }}>
-                            {selectedInterview.created_by.name}
-                          </Typography>
-                          <Typography
-                            sx={{ ml: 2, fontSize: 12, color: "#6B7280" }}
-                          >
-                            Created By
-                          </Typography>
-                        </Stack>
-                      )}
-                    </Box>
-                  </Box>
-
-                  <Divider />
-
-                  {/* JOB DETAILS */}
-                  <Box sx={{ px: 2.5, py: 1.5 }}>
-                    <Stack
-                      direction="row"
-                      spacing={0.8}
-                      alignItems="center"
-                      mb={1.2}
-                    >
-                      <WorkOutlineOutlined
-                        sx={{ fontSize: 16, color: "#6B7280" }}
-                      />
-                      <Typography
-                        sx={{ fontSize: 13, fontWeight: 600, color: "#111827" }}
-                      >
-                        Job Details
-                      </Typography>
-                    </Stack>
-                    <Box spacing={1} sx={{ ml: 2.5 }}>
-                      {[
-                        {
-                          label: "Round",
-                          value: selectedInterview.interview_step_name,
-                        },
-                        {
-                          label: "Type",
-                          value: selectedInterview.interview_step_type,
-                        },
-                        {
-                          label: "Duration",
-                          value: selectedInterview.duration
-                            ? `${selectedInterview.duration} mins`
-                            : null,
-                        },
-                      ].map(({ label, value }) =>
-                        value ? (
-                          <Stack
-                            key={label}
-                            direction="row"
-                            justifyContent="space-between"
-                          >
-                            <Typography sx={{ fontSize: 13, color: "#6B7280" }}>
-                              {label}
-                            </Typography>
-                            <Typography
-                              sx={{ ml: 2, fontSize: 13, color: "#111827" }}
-                            >
-                              {value}
-                            </Typography>
-                          </Stack>
-                        ) : null,
-                      )}
-                    </Box>
-                  </Box>
-                </>
-              )}
-            </DialogContent>
-
-            {/* FOOTER */}
-            <DialogActions
-              sx={{
-                px: 2.5,
-                py: 1.8,
-                borderTop: "1px solid #E5E7EB",
-                bgcolor: "#fff",
-                gap: 1,
-              }}
-            >
-              <Button
-                variant="outlined"
-                onClick={() => setInterviewModalOpen(false)}
-                sx={{
-                  flex: 1,
-                  textTransform: "none",
-                  borderRadius: "10px",
-                  fontWeight: 500,
-                  fontSize: 14,
-                  color: "#111827",
-                  borderColor: "#E5E7EB",
-                }}
-              >
-                Close
-              </Button>
-              {/* <Button
-                variant="contained"
-                href={selectedInterview.meeting_url}
-                target="_blank"
-                disabled={!selectedInterview.meeting_url}
-                sx={{
-                  flex: 2,
-                  textTransform: "none",
-                  borderRadius: "10px",
-                  fontWeight: 500,
-                  fontSize: 14,
-                  background:
-                    "linear-gradient(90deg, #4F6EF7 0%, #6C8EFF 100%)",
-                  boxShadow: "none",
-                  "&:hover": {
-                    background:
-                      "linear-gradient(90deg, #3B5BE3 0%, #5A7AEF 100%)",
-                    boxShadow: "none",
-                  },
-                }}
-              >
-                Reschedule
-              </Button> */}
-            </DialogActions>
-          </>
-        )}
-      </Dialog>
+      {/* ── Schedule Interview modal ── */}
+      <ScheduleInterviewModal
+        open={scheduleModalOpen}
+        candidate={enriched}
+        // interviewerOptions={[]}
+        skillOptions={(enriched.skill_info?.[0]?.key_skills ?? "")
+          .split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)}
+        onClose={() => !schedulingInterview && setScheduleModalOpen(false)}
+        onSchedule={handleScheduleInterview}
+        loading={schedulingInterview}
+        orgId={orgId}
+      />
     </Box>
   );
 }

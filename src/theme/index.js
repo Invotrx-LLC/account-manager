@@ -11,13 +11,17 @@ export const C = {
 export const PRIMARY = {
     fontFamily: "Helvetica",
     primary: "#E54E10",
+    bg: "#F9FAFB",
+    textMuted: "#9CA3AF",
+    textPrimary: "#1F242F",
+    textSecondary: "#6B7280",
     label: {
         fontSize: 12,
         fontWeight: 500,
         color: "#6B7280",
     },
-    dropDown:{
-        fontSize:5,
+    dropDown: {
+        fontSize: 5,
     },
 
     value: {
