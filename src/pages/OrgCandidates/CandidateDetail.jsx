@@ -1,7 +1,8 @@
 // src/pages/OrgCandidates/CandidateDetail.jsx
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
+import dayjs from "dayjs";
 import {
   Box,
   Typography,
@@ -28,6 +29,7 @@ import {
   InputLabel,
   FormControl,
   Autocomplete,
+  Checkbox,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
@@ -849,6 +851,366 @@ function StatusConfirmModal({ open, onClose, action, onConfirm, loading }) {
 }
 
 /* ═══════════════════════════════════════════════
+   SELECT DATE & TIME MODAL — calendar + live availability slots
+   (dayjs-driven, calls the availability API per selected date)
+═══════════════════════════════════════════════ */
+const WEEKDAY_LABELS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
+const AVAILABILITY_BASE_URL =
+  "https://dev-backend.invotrx.com/acc/employees/availability/slots/by-date";
+
+function buildCalendarWeeks(monthStart) {
+  // dayjs .day(): 0 = Sunday ... 6 = Saturday. Convert to Monday-first index.
+  const firstWeekdayIdx = (monthStart.day() + 6) % 7;
+  const daysInMonth = monthStart.daysInMonth();
+
+  const cells = [];
+  for (let i = 0; i < firstWeekdayIdx; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(monthStart.date(d));
+  while (cells.length % 7 !== 0) cells.push(null);
+
+  const weeks = [];
+  for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+  return weeks;
+}
+
+function parseDurationMinutes(durationLabel) {
+  const match = String(durationLabel ?? "").match(/\d+/);
+  return match ? parseInt(match[0], 10) : 30;
+}
+
+function SelectSlotModal({
+  open,
+  onClose,
+  employeeIds = [],
+  durationLabel,
+  initialDateTime,
+  onConfirm,
+}) {
+  const today = dayjs().startOf("day");
+  const [viewMonth, setViewMonth] = useState(today.startOf("month"));
+  const [selectedDate, setSelectedDate] = useState(today);
+  const [selectedSlot, setSelectedSlot] = useState(null);
+  const [slots, setSlots] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState("");
+
+  const slotDurationMinutes = parseDurationMinutes(durationLabel);
+
+  // Reset to a sensible starting point whenever the modal opens
+  useEffect(() => {
+    if (!open) return;
+    const base =
+      initialDateTime && dayjs(initialDateTime).isValid()
+        ? dayjs(initialDateTime).startOf("day")
+        : today;
+    setSelectedDate(base);
+    setViewMonth(base.startOf("month"));
+    setSelectedSlot(null);
+  }, [open]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fetchSlots = useCallback(
+    async (dateObj) => {
+      if (!employeeIds.length) {
+        setSlots([]);
+        setErrorMsg("Select an interviewer first to see availability.");
+        return;
+      }
+      setLoading(true);
+      setErrorMsg("");
+      try {
+        const params = new URLSearchParams({
+          employee_ids: employeeIds.join(","),
+          slot_duration_minutes: String(slotDurationMinutes),
+          selected_date: dateObj.format("YYYY-MM-DD"),
+        });
+        const res = await fetch(`${AVAILABILITY_BASE_URL}?${params.toString()}`, {
+          headers: { accept: "application/json" },
+        });
+        if (!res.ok) throw new Error(`Request failed with ${res.status}`);
+        const data = await res.json();
+        setSlots(data?.available_slots ?? []);
+      } catch (err) {
+        console.error("Failed to fetch availability slots:", err);
+        setErrorMsg("Could not load available slots. Please try again.");
+        setSlots([]);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [employeeIds, slotDurationMinutes],
+  );
+
+  useEffect(() => {
+    if (open) fetchSlots(selectedDate);
+  }, [open, selectedDate, fetchSlots]);
+
+  const handlePickDate = (d) => {
+    if (!d || d.isBefore(today, "day")) return;
+    setSelectedDate(d);
+    setSelectedSlot(null);
+  };
+
+  const handleConfirm = () => {
+    if (!selectedDate || !selectedSlot) return;
+    const startTime = selectedSlot.split("-")[0].trim();
+    const combined = dayjs(
+      `${selectedDate.format("YYYY-MM-DD")} ${startTime}`,
+      "YYYY-MM-DD HH:mm",
+    );
+    if (!combined.isValid()) return;
+    onConfirm(combined);
+  };
+
+  const weeks = buildCalendarWeeks(viewMonth);
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth={false}
+      PaperProps={{
+        sx: {
+          width: 760,
+          maxWidth: "95vw",
+          borderRadius: "18px",
+          overflow: "hidden",
+        },
+      }}
+    >
+      {/* Header */}
+      <Box
+        sx={{
+          px: 3,
+          pt: 2.5,
+          pb: 2,
+          display: "flex",
+          alignItems: "flex-start",
+          justifyContent: "space-between",
+          borderBottom: `1px solid ${C.border}`,
+        }}
+      >
+        <Box>
+          <Typography sx={{ fontSize: 19, fontWeight: 700, color: "#111827" }}>
+            Select Date & Time
+          </Typography>
+          <Typography sx={{ fontSize: 13, color: "#9CA3AF", mt: 0.3 }}>
+            Pick an available slot for the interview.
+          </Typography>
+        </Box>
+        <IconButton
+          size="small"
+          onClick={onClose}
+          sx={{ width: 30, height: 30, borderRadius: "8px", backgroundColor: "#F3F4F6" }}
+        >
+          <CloseIcon sx={{ fontSize: 15 }} />
+        </IconButton>
+      </Box>
+
+      <Box sx={{ display: "flex", flexDirection: { xs: "column", sm: "row" }, minHeight: 300, maxHeight: "70vh" }}>
+        {/* LEFT: calendar */}
+        <Box
+          sx={{
+            flex: "0 0 auto",
+            width: { xs: "100%", sm: 340 },
+            px: 3,
+            py: 2.5,
+            borderRight: { sm: `1px solid ${C.border}` },
+            borderBottom: { xs: `1px solid ${C.border}`, sm: "none" },
+          }}
+        >
+          <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#111827", mb: 1.5 }}>
+            Select Date
+          </Typography>
+
+          <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 2 }}>
+            <IconButton
+              size="small"
+              onClick={() => setViewMonth((m) => m.subtract(1, "month"))}
+              sx={{ width: 30, height: 30, border: `1px solid ${C.border}`, borderRadius: "8px" }}
+            >
+              <ArrowBackIcon sx={{ fontSize: 14 }} />
+            </IconButton>
+            <Typography sx={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+              {viewMonth.format("MMMM YYYY")}
+            </Typography>
+            <IconButton
+              size="small"
+              onClick={() => setViewMonth((m) => m.add(1, "month"))}
+              sx={{ width: 30, height: 30, border: `1px solid ${C.border}`, borderRadius: "8px" }}
+            >
+              <ArrowBackIcon sx={{ fontSize: 14, transform: "rotate(180deg)" }} />
+            </IconButton>
+          </Box>
+
+          <Box sx={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "6px", mb: 1 }}>
+            {WEEKDAY_LABELS.map((w) => (
+              <Typography key={w} sx={{ fontSize: 11, fontWeight: 600, color: "#9CA3AF", textAlign: "center" }}>
+                {w}
+              </Typography>
+            ))}
+          </Box>
+
+          {weeks.map((week, wi) => (
+            <Box key={wi} sx={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: "6px", mb: "6px" }}>
+              {week.map((d, di) => {
+                if (!d) return <Box key={di} />;
+                const isPast = d.isBefore(today, "day");
+                const isSelected = selectedDate && d.isSame(selectedDate, "day");
+                const isToday = d.isSame(today, "day");
+                return (
+                  <Box
+                    key={di}
+                    onClick={() => handlePickDate(d)}
+                    sx={{
+                      height: 34,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "8px",
+                      fontSize: 13,
+                      fontWeight: isSelected ? 700 : 500,
+                      cursor: isPast ? "default" : "pointer",
+                      color: isPast ? "#D1D5DB" : isSelected ? "#fff" : "#111827",
+                      backgroundColor: isSelected ? "#1976D2" : "transparent",
+                      border: isToday && !isSelected ? "1.5px solid #1976D2" : "1.5px solid transparent",
+                      "&:hover": !isPast && !isSelected ? { backgroundColor: "#F3F4F6" } : {},
+                      transition: "background-color 0.15s, color 0.15s",
+                    }}
+                  >
+                    {d.date()}
+                  </Box>
+                );
+              })}
+            </Box>
+          ))}
+        </Box>
+
+        {/* RIGHT: available slots */}
+        <Box sx={{ flex: 1, px: 3, py: 2.5, display: "flex", flexDirection: "column", minWidth: 0 }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 700, color: "#111827", mb: 1 }}>
+            Available Slots — {selectedDate ? selectedDate.format("DD MMM YYYY") : "—"}
+          </Typography>
+
+          <Chip
+            label="Asia/Kolkata"
+            size="small"
+            sx={{
+              alignSelf: "flex-start",
+              mb: 1.5,
+              bgcolor: "#E8F1FD",
+              color: "#1976D2",
+              fontSize: 12,
+              fontWeight: 600,
+              height: 24,
+            }}
+          />
+
+          <Box sx={{ flex: 1, overflowY: "auto", pr: 0.5, display: "flex", flexDirection: "column", gap: "10px" }}>
+            {loading ? (
+              <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
+                <CircularProgress size={26} sx={{ color: "#1976D2" }} />
+              </Box>
+            ) : errorMsg ? (
+              <Typography sx={{ fontSize: 13, color: "#DC2626", py: 2 }}>{errorMsg}</Typography>
+            ) : slots.length === 0 ? (
+              <Typography sx={{ fontSize: 13, color: "#9CA3AF", py: 2 }}>
+                No slots available for this date.
+              </Typography>
+            ) : (
+              slots.map((s) => {
+                const isSelected = selectedSlot === s;
+                return (
+                  <Box
+                    key={s}
+                    onClick={() => setSelectedSlot(s)}
+                    sx={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "10px",
+                      py: 1.3,
+                      fontSize: 14,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      userSelect: "none",
+                      color: isSelected ? "#fff" : "#111827",
+                      backgroundColor: isSelected ? "#1976D2" : "#fff",
+                      border: `1.5px solid ${isSelected ? "#1976D2" : C.border}`,
+                      "&:hover": !isSelected ? { borderColor: "#1976D2", backgroundColor: "#F5F9FF" } : {},
+                      transition: "background-color 0.15s, border-color 0.15s",
+                    }}
+                  >
+                    {s}
+                  </Box>
+                );
+              })
+            )}
+          </Box>
+        </Box>
+      </Box>
+
+      {/* Footer */}
+      <Box
+        sx={{
+          px: 3,
+          py: 2,
+          borderTop: `1px solid ${C.border}`,
+          display: "flex",
+          flexDirection: { xs: "column", sm: "row" },
+          alignItems: { xs: "stretch", sm: "center" },
+          justifyContent: "flex-end",
+          gap: 1.5,
+          bgcolor: "#FAFAFA",
+        }}
+      >
+        {/* <Box>
+          <Typography sx={{ fontSize: 11, color: "#9CA3AF", mb: 0.4 }}>Display Timezone</Typography>
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              border: `1px solid ${C.border}`,
+              borderRadius: "8px",
+              px: 1.5,
+              py: 0.8,
+              bgcolor: "#fff",
+            }}
+          >
+            <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>
+              Asia/Kolkata — India Standard Time (IST)
+            </Typography>
+          </Box>
+        </Box> */}
+        <Stack direction="row" spacing={1}>
+          <Button
+            variant="outlined"
+            onClick={onClose}
+            sx={{ textTransform: "none", borderRadius: "8px", color: "#111827", borderColor: "#E5E7EB" }}
+          >
+            ← Back
+          </Button>
+          <Button
+            variant="contained"
+            disabled={!selectedSlot}
+            onClick={handleConfirm}
+            sx={{
+              textTransform: "none",
+              borderRadius: "8px",
+              boxShadow: "none",
+              backgroundColor: "#1976D2",
+              "&:hover": { backgroundColor: "#1259A8", boxShadow: "none" },
+            }}
+          >
+            Continue →
+          </Button>
+        </Stack>
+      </Box>
+    </Dialog>
+  );
+}
+
+/* ═══════════════════════════════════════════════
    SCHEDULE INTERVIEW MODAL
 ═══════════════════════════════════════════════ */
 const INTERVIEW_TYPES = ["Technical", "HR", "Managerial", "Telephonic", "Final Round"];
@@ -866,6 +1228,7 @@ function ScheduleInterviewModal({
   candidate,
   // interviewerOptions = [],
   skillOptions = [],
+  allSkillOptions = [],
   onSchedule,
   loading,
   orgId
@@ -883,10 +1246,10 @@ function ScheduleInterviewModal({
   });
   const [interviewerOptions, setInterviewerOptions] = useState([]);
   const [panelOptions, setPanelOptions] = useState([]);
+  const [slotModalOpen, setSlotModalOpen] = useState(false);
   const [getEmployeesByRole, { data: interviewersData, isLoading }] =
     useLazyGetEmployeesByRoleQuery();
   console.log("interviewersData", interviewersData)
-  const [slotDialogOpen, setSlotDialogOpen] = useState(false);
   useEffect(() => {
     if (!open || !orgId) return;
 
@@ -927,6 +1290,8 @@ function ScheduleInterviewModal({
 
   const isValid = form.round.trim() && form.type && form.interviewer && form.dateTime;
 
+  const interviewerId = form.interviewer?.id ?? form.interviewer ?? null;
+
   const handleSubmit = () => {
     if (!isValid) return;
     onSchedule({
@@ -944,345 +1309,588 @@ function ScheduleInterviewModal({
   };
 
   return (
-    <Dialog
-      open={open}
-      onClose={loading ? undefined : onClose}
-      maxWidth="sm"
-      fullWidth
-      PaperProps={{ sx: { borderRadius: "16px", overflow: "hidden" } }}
-    >
-      {/* Header */}
-      <Box sx={{ px: 3, pt: 2.5, pb: 2, borderBottom: `1px solid ${C.border}` }}>
-        <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-          <Box>
-            <Typography sx={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
-              Schedule Interview
-            </Typography>
-            <Typography sx={{ fontSize: 13, color: "#9CA3AF", mt: 0.25 }}>
-              Reserve an interview slot by choosing your preferred schedule.
-            </Typography>
+    <>
+      <Dialog
+        open={open}
+        onClose={loading ? undefined : onClose}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: "16px", overflow: "hidden" } }}
+      >
+        {/* Header */}
+        <Box sx={{ px: 3, pt: 2.5, pb: 2, borderBottom: `1px solid ${C.border}` }}>
+          <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+            <Box>
+              <Typography sx={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
+                Schedule Interview
+              </Typography>
+              <Typography sx={{ fontSize: 13, color: "#9CA3AF", mt: 0.25 }}>
+                Reserve an interview slot by choosing your preferred schedule.
+              </Typography>
+            </Box>
+            <IconButton
+              size="small"
+              onClick={onClose}
+              disabled={loading}
+              sx={{ width: 30, height: 30, borderRadius: "8px", backgroundColor: "#F3F4F6" }}
+            >
+              <CloseIcon sx={{ fontSize: 15 }} />
+            </IconButton>
           </Box>
-          <IconButton
-            size="small"
-            onClick={onClose}
-            disabled={loading}
-            sx={{ width: 30, height: 30, borderRadius: "8px", backgroundColor: "#F3F4F6" }}
-          >
-            <CloseIcon sx={{ fontSize: 15 }} />
-          </IconButton>
         </Box>
-      </Box>
 
-      <DialogContent sx={{ px: 3, py: 2.5, maxHeight: "70vh" }}>
-        <Grid container spacing={2}>
-          {/* Interview Round */}
-          <Grid item size={{ xs: 12, sm: 6 }}>
-            <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
-              Interview Round <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
-            </Typography>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="e.g. Technical Round 1"
-              value={form.round}
-              onChange={(e) => setField("round")(e.target.value)}
-              sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
-            />
-          </Grid>
+        <DialogContent sx={{ px: 3, py: 2.5, maxHeight: "70vh" }}>
+          <Grid container spacing={2}>
+            {/* Interview Round */}
+            <Grid item size={{ xs: 12, sm: 6 }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+                Interview Round <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
+              </Typography>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="e.g. Technical Round 1"
+                value={form.round}
+                onChange={(e) => setField("round")(e.target.value)}
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
+              />
+            </Grid>
 
-          {/* Interview Type */}
-          <Grid item size={{ xs: 12, sm: 6 }}>
-            <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
-              Interview Type <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
-            </Typography>
-            <FormControl fullWidth size="small">
-              <Select
-                displayEmpty
-                value={form.type}
-                onChange={(e) => setField("type")(e.target.value)}
-                sx={{ borderRadius: "8px" }}
-                renderValue={(v) => v || <span style={{ color: "#9CA3AF" }}>Select type</span>}
-              >
-                {INTERVIEW_TYPES.map((t) => (
-                  <MenuItem key={t} value={t}>{t}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
+            {/* Interview Type */}
+            <Grid item size={{ xs: 12, sm: 6 }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+                Interview Type <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
+              </Typography>
+              <FormControl fullWidth size="small">
+                <Select
+                  displayEmpty
+                  value={form.type}
+                  onChange={(e) => setField("type")(e.target.value)}
+                  sx={{ borderRadius: "8px" }}
+                  renderValue={(v) => v || <span style={{ color: "#9CA3AF" }}>Select type</span>}
+                >
+                  {INTERVIEW_TYPES.map((t) => (
+                    <MenuItem key={t} value={t}>{t}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
 
-          {/* Interviewer */}
-          <Grid item size={{ xs: 12, sm: 6 }}>
-            <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
-              Interviewer <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
-            </Typography>
-            <Autocomplete
-              size="small"
-              options={interviewerOptions}
-              value={form.interviewer}
-              onChange={async (_, val) => {
-                setField("interviewer")(val);
+            {/* Interviewer */}
+            <Grid item size={{ xs: 12, sm: 6 }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+                Interviewer <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
+              </Typography>
+              <Autocomplete
+                size="small"
+                options={interviewerOptions}
+                value={form.interviewer}
+                onChange={async (_, val) => {
+                  setField("interviewer")(val);
 
-                if (!val) return;
+                  if (!val) return;
 
-                const res = await getEmployeesByRole({
-                  organisationId: orgId,
-                  employeeExcludeIds: val.id,
-                }).unwrap();
+                  const res = await getEmployeesByRole({
+                    organisationId: orgId,
+                    employeeExcludeIds: val.id,
+                  }).unwrap();
 
-                setPanelOptions(
-                  res.data.map((u) => ({
-                    id: u.id,
-                    name: u.name,
-                    role: u.role,
-                    designation: u.designation,
-                  }))
-                );
-              }}
-              getOptionLabel={(option) => option.name || ""}
-              isOptionEqualToValue={(option, value) => option.id === value?.id}
-              renderOption={(props, option) => {
-                const initials = option.name
-                  ?.split(" ")
-                  .map((n) => n[0])
-                  .join("")
-                  .slice(0, 2)
-                  .toUpperCase();
+                  setPanelOptions(
+                    res.data.map((u) => ({
+                      id: u.id,
+                      name: u.name,
+                      role: u.role,
+                      designation: u.designation,
+                    }))
+                  );
+                }}
+                getOptionLabel={(option) => option.name || ""}
+                isOptionEqualToValue={(option, value) => option.id === value?.id}
+                renderOption={(props, option, { selected }) => {
+                  const isAllSelected =
+                    form.skills.length === allSkillOptions.length;
 
-                return (
-                  <Box
-                    component="li"
-                    {...props}
-                    key={option.id}
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1.5,
-                      py: 1,
-                    }}
-                  >
-                    <Avatar
-                      sx={{
-                        width: 34,
-                        height: 34,
-                        bgcolor: "#FF5F1F",
-                        fontSize: 13,
-                        fontWeight: 700,
+                  if (option.type === "select_all") {
+                    return (
+                      <li {...props}>
+                        <Checkbox
+                          checked={isAllSelected}
+                          indeterminate={
+                            form.skills.length > 0 &&
+                            form.skills.length < allSkillOptions.length
+                          }
+                          size="small"
+                        />
+                        <Typography fontWeight={700}>Select All</Typography>
+                      </li>
+                    );
+                  }
+
+                  return (
+                    <li
+                      {...props}
+                      style={{
+                        ...props.style,
+                        paddingTop: 2,
+                        paddingBottom: 2,
+                        minHeight: 36,   // ↓ Reduce from default 48px
                       }}
                     >
-                      {initials}
-                    </Avatar>
-
-                    <Box>
-                      <Typography
+                      <Box
                         sx={{
-                          fontSize: 15,
-                          fontWeight: 500,
-                          color: "#1F2937",
-                          lineHeight: 1.2,
+                          width: "100%",
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          py: 0.25,       // ↓ Less vertical padding
                         }}
                       >
-                        {option.name}
-                      </Typography>
+                        <Box
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                          }}
+                        >
+                          <Checkbox
+                            checked={selected}
+                            size="small"
+                            sx={{ p: 0.5 }}   // ↓ Smaller checkbox padding
+                          />
 
-                      <Typography
-                        sx={{
-                          fontSize: 13,
-                          color: "#9CA3AF",
-                        }}
-                      >
-                        ({option.role})
-                      </Typography>
-                    </Box>
-                  </Box>
-                );
-              }}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  placeholder="Select interviewer"
-                  sx={{
-                    "& .MuiOutlinedInput-root": {
-                      borderRadius: "8px",
-                    },
-                  }}
-                />
-              )}
-            />
-          </Grid>
+                          <Typography fontSize={14}>
+                            {option.label}
+                          </Typography>
+                        </Box>
 
-          {/* Panel Members */}
-          <Grid item size={{ xs: 12, sm: 6 }} >
-            <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
-              Panel Members <Box component="span" sx={{ color: "#9CA3AF" }}>(optional)</Box>
-            </Typography>
-            <Autocomplete
-              multiple
-              size="small"
-              options={panelOptions}
-              getOptionLabel={(o) => o.name ?? o.label ?? ""}
-              value={form.panelMembers}
-              onChange={(_, val) => setField("panelMembers")(val)}
-              renderInput={(params) => (
-                <TextField
-                  {...params}
-                  placeholder="Add panel members"
-                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
-                />
-              )}
-            />
-          </Grid>
-
-          {/* Duration */}
-          <Grid item size={{ xs: 12, sm: 6 }}>
-            <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
-              Duration
-            </Typography>
-            <FormControl fullWidth size="small">
-              <Select
-                displayEmpty
-                value={form.duration}
-                onChange={(e) => setField("duration")(e.target.value)}
-                sx={{ borderRadius: "8px" }}
-                renderValue={(v) => v || <span style={{ color: "#9CA3AF" }}>Select duration</span>}
-              >
-                {DURATIONS.map((d) => (
-                  <MenuItem key={d} value={d}>{d}</MenuItem>
-                ))}
-              </Select>
-            </FormControl>
-          </Grid>
-
-          {/* Select Day & Time */}
-          <Grid item size={{ xs: 12, sm: 6 }}>
-            <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
-              Select Day & Time
-            </Typography>
-            <TextField
-              fullWidth
-              size="small"
-              type="datetime-local"
-              value={form.dateTime}
-              onChange={(e) => setField("dateTime")(e.target.value)}
-              sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
-            />
-          </Grid>
-
-          {/* Platform */}
-          <Grid item size={{ xs: 12 }}>
-            <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 1 }}>
-              Platform
-            </Typography>
-            <Grid container spacing={1}>
-              {PLATFORMS.map((p) => (
-                <Grid item size={{ xs: 6, sm: 3 }} key={p.key}>
-                  <Box
-                    onClick={() => setField("platform")(p.key)}
+                        {option.type !== "custom" && (
+                          <Chip
+                            size="small"
+                            label={
+                              option.type === "mandatory"
+                                ? "Must"
+                                : option.type === "primary"
+                                  ? "Primary"
+                                  : "Secondary"
+                            }
+                            color={
+                              option.type === "mandatory"
+                                ? "error"
+                                : option.type === "primary"
+                                  ? "primary"
+                                  : "success"
+                            }
+                            variant="outlined"
+                            sx={{ height: 24 }}
+                          />
+                        )}
+                      </Box>
+                    </li>
+                  );
+                }}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Select interviewer"
                     sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 1,
-                      justifyContent: "center",
-                      border: `1.5px solid ${form.platform === p.key ? C.accent : C.border}`,
-                      backgroundColor: form.platform === p.key ? C.accentSoft : "#fff",
-                      borderRadius: "8px",
-                      py: 1,
-                      cursor: "pointer",
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: form.platform === p.key ? C.accent : "#374151",
-                      userSelect: "none",
+                      "& .MuiOutlinedInput-root": {
+                        borderRadius: "8px",
+                      },
                     }}
-                  >
-                    <span>{p.icon}</span> {p.label}
-                  </Box>
-                </Grid>
-              ))}
+                  />
+                )}
+              />
             </Grid>
-          </Grid>
 
-          {/* Meeting URL */}
-          <Grid item size={{ xs: 12, }}>
-            <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
-              Meeting URL
-            </Typography>
-            <TextField
-              fullWidth
-              size="small"
-              placeholder="https://meet.google.com/abc-def-ghi"
-              value={form.meetingUrl}
-              onChange={(e) => setField("meetingUrl")(e.target.value)}
-              sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
-            />
-          </Grid>
+            {/* Panel Members */}
+            <Grid item size={{ xs: 12, sm: 6 }} >
+              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+                Panel Members <Box component="span" sx={{ color: "#9CA3AF" }}>(optional)</Box>
+              </Typography>
+              <Autocomplete
+                multiple
+                size="small"
+                options={panelOptions}
+                getOptionLabel={(o) => o.name ?? o.label ?? ""}
+                value={form.panelMembers}
+                onChange={(_, val) => setField("panelMembers")(val)}
+                renderInput={(params) => (
+                  <TextField
+                    {...params}
+                    placeholder="Add panel members"
+                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
+                  />
+                )}
+              />
+            </Grid>
 
-          {/* Skills to Evaluate */}
-          <Grid item size={{ xs: 12 }}>
-            <Box sx={{ border: `1px solid ${C.border}`, borderRadius: "10px", overflow: "hidden" }}>
+            {/* Duration */}
+            <Grid item size={{ xs: 12, sm: 6 }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+                Duration
+              </Typography>
+              <FormControl fullWidth size="small">
+                <Select
+                  displayEmpty
+                  value={form.duration}
+                  onChange={(e) => {
+                    setField("duration")(e.target.value);
+                    // Duration changed → any previously chosen slot may no longer
+                    // be valid, so clear it and let the person re-pick.
+                    setField("dateTime")("");
+                  }}
+                  sx={{ borderRadius: "8px" }}
+                  renderValue={(v) => v || <span style={{ color: "#9CA3AF" }}>Select duration</span>}
+                >
+                  {DURATIONS.map((d) => (
+                    <MenuItem key={d} value={d}>{d}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+
+            {/* Select Day & Time — opens calendar + live availability modal */}
+            <Grid item size={{ xs: 12, sm: 6 }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+                Select Day & Time <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
+              </Typography>
               <Box
+                onClick={() => setSlotModalOpen(true)}
                 sx={{
-                  px: 2,
-                  py: 1.2,
-                  backgroundColor: "#F9FAFB",
                   display: "flex",
                   alignItems: "center",
+                  justifyContent: "space-between",
                   gap: 1,
-                  borderBottom: `1px solid ${C.border}`,
+                  border: `1px solid ${C.border}`,
+                  borderRadius: "8px",
+                  px: 1.5,
+                  py: "8.5px",
+                  cursor: "pointer",
+                  backgroundColor: "#fff",
+                  "&:hover": { borderColor: C.accent },
                 }}
               >
-                <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>
-                  ⭐ Skills to Evaluate
+                <Typography
+                  sx={{
+                    fontSize: 13.5,
+                    color: form.dateTime ? "#111827" : "#9CA3AF",
+                    fontWeight: form.dateTime ? 600 : 400,
+                    whiteSpace: "nowrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                  }}
+                >
+                  {form.dateTime && dayjs(form.dateTime).isValid()
+                    ? dayjs(form.dateTime).format("ddd, DD MMM YYYY · HH:mm")
+                    : "Select a slot"}
                 </Typography>
+                <CalendarMonthOutlinedIcon sx={{ fontSize: 16, color: "#9CA3AF", flexShrink: 0 }} />
               </Box>
-              <Box sx={{ p: 1.5 }}>
-                <Autocomplete
-                  multiple
-                  freeSolo
-                  size="small"
-                  options={skillOptions}
-                  value={form.skills}
-                  onChange={(_, val) => setField("skills")(val)}
-                  renderInput={(params) => (
-                    <TextField
-                      {...params}
-                      placeholder="Search or add skills"
-                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
-                    />
-                  )}
-                />
-              </Box>
-            </Box>
-          </Grid>
-        </Grid>
-      </DialogContent>
+            </Grid>
 
-      <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${C.border}`, gap: 1 }}>
-        <Button
-          onClick={onClose}
-          variant="outlined"
-          disabled={loading}
-          sx={{ textTransform: "none", borderRadius: "8px", color: "#111827", borderColor: "#E5E7EB" }}
-        >
-          Cancel
-        </Button>
-        <Button
-          onClick={handleSubmit}
-          variant="contained"
-          disabled={!isValid || loading}
-          sx={{
-            textTransform: "none",
-            borderRadius: "8px",
-            boxShadow: "none",
-            background: "#FF5F1F",
-            "&:hover": {
+            {/* Platform */}
+            <Grid item size={{ xs: 12 }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 1 }}>
+                Platform
+              </Typography>
+              <Grid container spacing={1}>
+                {PLATFORMS.map((p) => (
+                  <Grid item size={{ xs: 6, sm: 3 }} key={p.key}>
+                    <Box
+                      onClick={() => setField("platform")(p.key)}
+                      sx={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: 1,
+                        justifyContent: "center",
+                        border: `1.5px solid ${form.platform === p.key ? C.accent : C.border}`,
+                        backgroundColor: form.platform === p.key ? C.accentSoft : "#fff",
+                        borderRadius: "8px",
+                        py: 1,
+                        cursor: "pointer",
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: form.platform === p.key ? C.accent : "#374151",
+                        userSelect: "none",
+                      }}
+                    >
+                      <span>{p.icon}</span> {p.label}
+                    </Box>
+                  </Grid>
+                ))}
+              </Grid>
+            </Grid>
+
+            {/* Meeting URL */}
+            <Grid item size={{ xs: 12, }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+                Meeting URL
+              </Typography>
+              <TextField
+                fullWidth
+                size="small"
+                placeholder="https://meet.google.com/abc-def-ghi"
+                value={form.meetingUrl}
+                onChange={(e) => setField("meetingUrl")(e.target.value)}
+                sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
+              />
+            </Grid>
+
+            {/* Skills to Evaluate */}
+            <Grid item size={{ xs: 12 }}>
+              <Box sx={{ border: `1px solid ${C.border}`, borderRadius: "10px", overflow: "hidden" }}>
+                <Box
+                  sx={{
+                    px: 2,
+                    py: 1.2,
+                    backgroundColor: "#F9FAFB",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    borderBottom: `1px solid ${C.border}`,
+                  }}
+                >
+                  <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>
+                    ⭐ Skills to Evaluate
+                  </Typography>
+                </Box>
+                <Box sx={{ p: 1.5 }}>
+                  <Autocomplete
+                    multiple
+                    freeSolo
+                    disableCloseOnSelect
+                    size="small"
+                    options={[
+                      { label: "Select All", type: "select_all" },
+                      ...allSkillOptions,
+                    ]}
+                    value={form.skills}
+                    isOptionEqualToValue={(option, value) =>
+                      option.label === value.label && option.type === value.type
+                    }
+                    getOptionLabel={(option) =>
+                      typeof option === "string" ? option : option.label
+                    }
+                    groupBy={(option) => {
+                      switch (option.type) {
+                        case "custom":
+                          return "CUSTOM";
+                        case "mandatory":
+                          return "MANDATORY";
+                        case "primary":
+                          return "PRIMARY";
+                        case "secondary":
+                          return "SECONDARY";
+                        default:
+                          return "";
+                      }
+                    }}
+                    onChange={(event, value, reason, details) => {
+                      const isAllSelected =
+                        form.skills.length === allSkillOptions.length;
+
+                      if (details?.option?.type === "select_all") {
+                        if (isAllSelected) {
+                          setField("skills")([]);
+                        } else {
+                          setField("skills")(allSkillOptions);
+                        }
+                        return;
+                      }
+
+                      setField("skills")(
+                        value.filter((v) => v.type !== "select_all")
+                      );
+                    }}
+                    renderGroup={(params) => {
+                      if (!params.group) {
+                        return <li key={params.key}>{params.children}</li>;
+                      }
+
+                      return (
+                        <li key={params.key}>
+                          <Box
+                            sx={{
+                              px: 2,
+                              py: 1,
+                              fontWeight: 700,
+                              fontSize: 13,
+                              color:
+                                params.group === "MANDATORY"
+                                  ? "#E53935"
+                                  : params.group === "PRIMARY"
+                                    ? "#1976D2"
+                                    : params.group === "SECONDARY"
+                                      ? "#00A76F"
+                                      : "#7C3AED",
+                              textTransform: "uppercase",
+                            }}
+                          >
+                            {params.group}
+                          </Box>
+
+                          <ul style={{ margin: 0, padding: 0 }}>
+                            {params.children}
+                          </ul>
+                        </li>
+                      );
+                    }}
+                    renderOption={(props, option, { selected }) => {
+                      const isAllSelected =
+                        form.skills.length === allSkillOptions.length;
+
+                      if (option.type === "select_all") {
+                        return (
+                          <li {...props}>
+                            <Checkbox
+                              checked={isAllSelected}
+                              indeterminate={
+                                form.skills.length > 0 &&
+                                form.skills.length < allSkillOptions.length
+                              }
+                            />
+
+                            <Typography fontWeight={700}>
+                              Select All
+                            </Typography>
+                          </li>
+                        );
+                      }
+
+                      return (
+                        <li {...props}>
+                          <Box
+                            sx={{
+                              width: "100%",
+                              display: "flex",
+                              justifyContent: "space-between",
+                              alignItems: "center",
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 1,
+                              }}
+                            >
+                              <Checkbox checked={selected} />
+
+                              <Typography>{option.label}</Typography>
+                            </Box>
+
+                            {option.type !== "custom" && (
+                              <Chip
+                                size="small"
+                                label={
+                                  option.type === "mandatory"
+                                    ? "Must"
+                                    : option.type === "primary"
+                                      ? "Primary"
+                                      : "Secondary"
+                                }
+                                color={
+                                  option.type === "mandatory"
+                                    ? "error"
+                                    : option.type === "primary"
+                                      ? "primary"
+                                      : "success"
+                                }
+                                variant="outlined"
+                              />
+                            )}
+                          </Box>
+                        </li>
+                      );
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        placeholder="Type skill + Enter to add"
+                        onKeyDown={(e) => {
+                          if (e.key !== "Enter") return;
+
+                          const value = e.target.value.trim();
+
+                          if (!value) return;
+
+                          e.preventDefault();
+
+                          const exists = allSkillOptions.some(
+                            (s) =>
+                              s.label.toLowerCase() === value.toLowerCase()
+                          );
+
+                          if (exists) return;
+
+                          const newSkill = {
+                            label: value,
+                            type: "custom",
+                          };
+
+                          setCustomSkills((prev) => [...prev, newSkill]);
+
+                          setForm((prev) => ({
+                            ...prev,
+                            skills: [...prev.skills, newSkill],
+                          }));
+                        }}
+                        sx={{
+                          "& .MuiOutlinedInput-root": {
+                            borderRadius: "8px",
+                          },
+                        }}
+                      />
+                    )}
+                  />
+                </Box>
+              </Box>
+            </Grid>
+          </Grid>
+        </DialogContent>
+
+        <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${C.border}`, gap: 1 }}>
+          <Button
+            onClick={onClose}
+            variant="outlined"
+            disabled={loading}
+            sx={{ textTransform: "none", borderRadius: "8px", color: "#111827", borderColor: "#E5E7EB" }}
+          >
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            variant="contained"
+            disabled={!isValid || loading}
+            sx={{
+              textTransform: "none",
+              borderRadius: "8px",
               boxShadow: "none",
-              background: "linear-gradient(90deg, #0C9090 0%, #0596B0 100%)",
-            },
-          }}
-        >
-          {loading ? <CircularProgress size={18} sx={{ color: "#fff" }} /> : "Schedule Interview →"}
-        </Button>
-      </DialogActions>
-    </Dialog>
+              background: "#FF5F1F",
+              "&:hover": {
+                boxShadow: "none",
+                background: "linear-gradient(90deg, #0C9090 0%, #0596B0 100%)",
+              },
+            }}
+          >
+            {loading ? <CircularProgress size={18} sx={{ color: "#fff" }} /> : "Schedule Interview →"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Calendar + live availability picker */}
+      <SelectSlotModal
+        open={slotModalOpen}
+        onClose={() => setSlotModalOpen(false)}
+        employeeIds={interviewerId ? [interviewerId] : []}
+        durationLabel={form.duration}
+        initialDateTime={form.dateTime}
+        onConfirm={(combinedDayjs) => {
+          setField("dateTime")(combinedDayjs.format("YYYY-MM-DDTHH:mm"));
+          setSlotModalOpen(false);
+        }}
+      />
+    </>
   );
 }
 
@@ -3764,6 +4372,30 @@ export default function CandidateDetail() {
       status: data?.data?.status,
     }
     : null;
+  console.log("enriched", enriched)
+  const [customSkills, setCustomSkills] = useState([]);
+  const skillOptions = [
+    ...(enriched?.matched_mandatory_skills ?? []).map((s) => ({
+      label: s,
+      type: "mandatory",
+    })),
+    ...(enriched?.matched_primary_skills ?? []).map((s) => ({
+      label: s,
+      type: "primary",
+    })),
+    ...(enriched?.matched_secondary_skills ?? []).map((s) => ({
+      label: s,
+      type: "secondary",
+    })),
+  ]; const allSkillOptions = useMemo(() => {
+    const map = new Map();
+
+    [...customSkills, ...skillOptions].forEach((skill) => {
+      map.set(skill.label.toLowerCase(), skill);
+    });
+
+    return [...map.values()];
+  }, [customSkills, skillOptions]);
   const [interviewModalOpen, setInterviewModalOpen] = useState(false);
 
   const [selectedInterview, setSelectedInterview] = useState(null);
@@ -4395,10 +5027,7 @@ export default function CandidateDetail() {
         open={scheduleModalOpen}
         candidate={enriched}
         // interviewerOptions={[]}
-        skillOptions={(enriched.skill_info?.[0]?.key_skills ?? "")
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean)}
+        allSkillOptions={allSkillOptions}
         onClose={() => !schedulingInterview && setScheduleModalOpen(false)}
         onSchedule={handleScheduleInterview}
         loading={schedulingInterview}
