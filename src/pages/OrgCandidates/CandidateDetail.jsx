@@ -3,11 +3,15 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import dayjs from "dayjs";
+import utc from "dayjs/plugin/utc";
+
+dayjs.extend(utc);
 import {
   Box,
   Typography,
   CircularProgress,
   Alert,
+  Snackbar,
   Tabs,
   Tab,
   Grid,
@@ -30,8 +34,13 @@ import {
   FormControl,
   Autocomplete,
   Checkbox,
+  Menu,
+  ListItemIcon,
+  ListItemText,
+  Rating,
 } from "@mui/material";
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
+import ArrowDropDownIcon from "@mui/icons-material/ArrowDropDown";
 import TrendingUpIcon from "@mui/icons-material/TrendingUp";
 import CalendarMonthOutlinedIcon from "@mui/icons-material/CalendarMonthOutlined";
 import InsertDriveFileOutlinedIcon from "@mui/icons-material/InsertDriveFileOutlined";
@@ -49,6 +58,14 @@ import PersonAddAltOutlinedIcon from "@mui/icons-material/PersonAddAltOutlined";
 // import CheckCircleOutlineIcon from "@mui/icons-material/CheckCircleOutline";
 import BlockOutlinedIcon from "@mui/icons-material/BlockOutlined";
 import VideocamOutlinedIcon from "@mui/icons-material/VideocamOutlined";
+import LocalOfferOutlinedIcon from "@mui/icons-material/LocalOfferOutlined";
+import UndoOutlinedIcon from "@mui/icons-material/UndoOutlined";
+import ThumbUpAltOutlinedIcon from "@mui/icons-material/ThumbUpAltOutlined";
+import ThumbDownAltOutlinedIcon from "@mui/icons-material/ThumbDownAltOutlined";
+import EventRepeatOutlinedIcon from "@mui/icons-material/EventRepeatOutlined";
+import NotInterestedOutlinedIcon from "@mui/icons-material/NotInterestedOutlined";
+import RemoveCircleOutlinedIcon from "@mui/icons-material/RemoveCircleOutlined";
+import CancelOutlinedIcon from "@mui/icons-material/CancelOutlined";
 
 import {
   setDynamicLabels,
@@ -60,12 +77,14 @@ import {
   useLazyGetResumeViewQuery,
   useGetInterviewDetailsQuery,
   useLazyGetInterviewDetailsQuery,
-  // NOTE: adjust these hook names to match whatever you generated
-  // when you added the RTK query endpoints.
-  // useUpdateCandidateStatusV1Mutation,
-  useScheduleInterviewMutation,
+  useScheduleInterviewInCandidatesMutation,
   useUpdateCandidateStatusMutation,
   useLazyGetEmployeesByRoleQuery,
+  useRescheduleInterviewMutation,
+  useUpdateInterviewRoundStatusMutation,
+  useUpdateInterviewResultMutation,
+  useLazyGetInterviewFullDetailsQuery,
+  useLazyGetInterviewFeedbackQuery,
 } from "../../redux/services/requisition/requisition";
 import {
   PersonOutlineOutlined,
@@ -84,6 +103,7 @@ import LocationOnOutlinedIcon from "@mui/icons-material/LocationOnOutlined";
 import PublicOutlinedIcon from "@mui/icons-material/PublicOutlined";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import VisibilityIcon from "@mui/icons-material/Visibility";
+import { toast } from "react-toastify";
 
 /* ═══════════════════════════════════════════════
    CONSTANTS
@@ -97,6 +117,8 @@ const STAGE_CONFIG = [
   { key: "hired", label: "Hired" },
 ];
 
+// Maps a granular lifecycle value (the `type` on a simple timeline entry,
+// or `candidate.current_stage`) to one of the STAGE_CONFIG group keys.
 const STAGE_GROUP = {
   matched: "matched",
   shortlisted: "shortlisted",
@@ -111,6 +133,7 @@ const STAGE_GROUP = {
   offer_accepted: "offer",
   offer_declined: "offer",
   hired: "hired",
+  // rejected: "Rejected",
 };
 
 const SUB_LABEL = {
@@ -123,6 +146,7 @@ const SUB_LABEL = {
   offer_revoked: "revoked",
   offer_accepted: "accepted",
   offer_declined: "declined",
+  rejected: "Rejected",
 };
 const BADGE_COLOR = {
   interview_scheduled: "scheduled",
@@ -177,11 +201,62 @@ const TAB_SX = {
   "& .MuiTabs-indicator": { backgroundColor: C.accent, height: 2, bottom: 0 },
 };
 
+const INTERVIEW_STATUS_OPTIONS = [
+  {
+    value: "completed",
+    label: "Completed",
+    icon: CheckCircleOutlineOutlined,
+    color: "#16A34A",
+    requiresPast: true,
+  },
+  {
+    value: "no_show",
+    label: "No Show",
+    icon: NotInterestedOutlinedIcon,
+    color: "#F59E0B",
+    requiresPast: true,
+  },
+  {
+    value: "not_conducted",
+    label: "Not Conducted",
+    icon: RemoveCircleOutlinedIcon,
+    color: "#6B7280",
+    requiresPast: true,
+  },
+  {
+    value: "cancelled",
+    label: "Cancelled",
+    icon: CancelOutlinedIcon,
+    color: "#DC2626",
+    requiresPast: false,
+  },
+];
+const OPEN_INTERVIEW_STAGES = ["interview_scheduled", "scheduled"];
+
+// ── Pass / Fail options for a round that has already been marked "completed" ──
+const INTERVIEW_RESULT_OPTIONS = [
+  {
+    value: "pass",
+    label: "Pass",
+    icon: CheckCircleOutlineOutlined,
+    color: "#16A34A",
+  },
+  {
+    value: "fail",
+    label: "Fail",
+    icon: CancelOutlinedIcon,
+    color: "#DC2626",
+  },
+];
+
 /* ═══════════════════════════════════════════════
    HELPERS
 ═══════════════════════════════════════════════ */
 function fmtDateIST(iso) {
-  return new Date(iso).toLocaleString("en-IN", {
+  if (!iso) return "—";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("en-IN", {
     timeZone: "Asia/Kolkata",
     weekday: "short",
     month: "short",
@@ -192,16 +267,17 @@ function fmtDateIST(iso) {
     hour12: true,
   });
 }
-
-function groupState(groupKey, entries, currentStage) {
-  const groupEntries = entries.filter(
-    (e) => STAGE_GROUP[e.stage?.toLowerCase()] === groupKey,
-  );
+function getEntryGroup(entry) {
+  const lookupKey = entry.stage?.toLowerCase().startsWith("interview_")
+    ? "interview_scheduled"
+    : entry.type?.toLowerCase();
+  return STAGE_GROUP[lookupKey] ?? null;
+}
+function groupState(groupKey, grouped, currentStage, hasRejected) {
+  const groupEntries = grouped[groupKey] ?? [];
   if (!groupEntries.length) return "pending";
 
-  const hasFailed = groupEntries.some((e) =>
-    ["offer_revoked", "interview_failed"].includes(e.stage),
-  );
+  const hasFailed = groupEntries.some((e) => e.type === "offer_revoked");
   if (hasFailed) return "failed";
 
   const groupKeys = STAGE_CONFIG.map((s) => s.key);
@@ -209,21 +285,37 @@ function groupState(groupKey, entries, currentStage) {
   const curIdx = groupKeys.indexOf(curGroup);
   const thisIdx = groupKeys.indexOf(groupKey);
 
+  const groupsWithEntries = groupKeys.filter((gk) => grouped[gk]?.length);
+  const lastGroupWithEntries = groupsWithEntries[groupsWithEntries.length - 1];
+  const lastIdx = groupKeys.indexOf(lastGroupWithEntries);
+
+  if (hasRejected && thisIdx === lastIdx) return "failed";
+
   if (curIdx !== -1) {
     if (thisIdx < curIdx) return "completed";
     if (thisIdx === curIdx) return "current";
     return "pending";
   }
 
-  const groupsWithEntries = groupKeys.filter((gk) =>
-    entries.some((e) => STAGE_GROUP[e.stage?.toLowerCase()] === gk),
-  );
-  const lastGroupWithEntries = groupsWithEntries[groupsWithEntries.length - 1];
-  const lastIdx = groupKeys.indexOf(lastGroupWithEntries);
-
   if (thisIdx < lastIdx) return "completed";
   if (thisIdx === lastIdx) return "current";
   return "pending";
+}
+
+function normalizeInterviewStatus(rawStatus) {
+  if (!rawStatus) return "scheduled";
+  const key = rawStatus.trim().toLowerCase().replace(/\s+/g, "_");
+  return key === "rescheduled" ? "scheduled" : key;
+}
+
+// Normalizes whatever the backend sends for a round's outcome ("pass",
+// "Pass", "PASSED", etc.) down to "pass" | "fail" | null.
+function normalizeInterviewResult(rawResult) {
+  if (!rawResult) return null;
+  const key = rawResult.trim().toLowerCase();
+  if (key.startsWith("pass")) return "pass";
+  if (key.startsWith("fail")) return "fail";
+  return null;
 }
 
 /* ═══════════════════════════════════════════════
@@ -320,392 +412,552 @@ function PlatformIcon({ platform, size = 20 }) {
 /* ═══════════════════════════════════════════════
    INTERVIEW DETAILS MODAL — redesigned
 ═══════════════════════════════════════════════ */
-function InterviewDetailsModal({ open, onClose, selectedInterview, isFetching }) {
+function formatInterviewDateTime(date, startTime, endTime, duration) {
+  if (!date) return { dateLabel: "—", timeLabel: "—" };
+  const d = dayjs(date);
+  const dateLabel = d.isValid() ? d.format("dddd, MMMM D, YYYY") : "—";
+  const start = startTime ? startTime.slice(0, 5) : "—";
+  const end = endTime ? endTime.slice(0, 5) : "—";
+  const timeLabel = `${start} → ${end}${duration ? ` (${duration} mins)` : ""}`;
+  return { dateLabel, timeLabel };
+}
+
+const SKILL_GROUP_STYLE = {
+  mandatory: { label: "MANDATORY SKILLS", color: "#E53935", bg: "#FEECEC" },
+  primary: { label: "PRIMARY SKILLS", color: "#1976D2", bg: "#E8F1FD" },
+  secondary: { label: "SECONDARY SKILLS", color: "#00A76F", bg: "#E6F7F1" },
+  edc_tools: { label: "EDC TOOLS", color: "#7C3AED", bg: "#F1EBFE" },
+  custom: { label: "CUSTOM SKILLS", color: "#7C3AED", bg: "#F1EBFE" },
+};
+
+function DetailRow({ icon, iconBg, title, children }) {
+  return (
+    <Box sx={{ display: "flex", gap: 1.5, px: 2.5, py: 2, borderBottom: `1px solid ${C.border}` }}>
+      <Box
+        sx={{
+          width: 32, height: 32, borderRadius: "8px", flexShrink: 0,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          bgcolor: iconBg,
+        }}
+      >
+        {icon}
+      </Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography sx={{ fontSize: 15, fontWeight: 700, color: "#111827", mb: 0.3 }}>
+          {title}
+        </Typography>
+        {children}
+      </Box>
+    </Box>
+  );
+}
+
+function InterviewDetailsModal({ open, onClose, selectedInterview, isFetching, onEdit }) {
+  const d = selectedInterview;
+  const isCompleted = (d?.status ?? "").toLowerCase() === "completed";
+
+  const { dateLabel, timeLabel } = d
+    ? formatInterviewDateTime(d.date, d.start_time, d.end_time, d.duration)
+    : { dateLabel: "—", timeLabel: "—" };
+
+  const skillGroups = Object.entries(d?.template?.skills ?? {}).filter(
+    ([, labels]) => Array.isArray(labels) && labels.length > 0,
+  );
+
   return (
     <Dialog
       open={open}
       onClose={onClose}
       maxWidth={false}
       PaperProps={{
-        sx: {
-          width: 480,
-          maxWidth: "95vw",
-          minWidth: 0,
-          borderRadius: "20px",
-          overflow: "hidden",
-          boxShadow: "0 20px 50px rgba(0,0,0,0.12)",
-        },
+        sx: { width: 480, maxWidth: "95vw", borderRadius: "16px", overflow: "hidden" },
       }}
     >
-      {selectedInterview && (
-        <>
-          {/* HEADER */}
-          <Box
-            sx={{
-              px: 2.5,
-              pt: 2.5,
-              pb: 2,
-              bgcolor: "background.paper",
-              position: "relative",
-            }}
-          >
-            <Stack
-              direction="row"
-              alignItems="center"
-              justifyContent="space-between"
-              mb={1.5}
-            >
-              <Typography sx={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
-                Interview Details
-              </Typography>
-              <Chip
-                label={selectedInterview.status}
-                size="small"
-                sx={{
-                  bgcolor:
-                    selectedInterview.status === "Cancelled" ? "#FEF2F2" : "#ECFDF5",
-                  color:
-                    selectedInterview.status === "Cancelled" ? "#991B1B" : "#065F46",
-                  border: `1px solid ${selectedInterview.status === "Cancelled" ? "#FECACA" : "#A7F3D0"
-                    }`,
-                  borderRadius: "20px",
-                  fontSize: 12,
-                  fontWeight: 600,
-                  height: 26,
-                }}
-              />
-            </Stack>
+      {/* HEADER */}
+      <Box sx={{ bgcolor: "#FF5722", px: 3, py: 2.5, textAlign: "center" }}>
+        <Typography sx={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>
+          Interview Details
+        </Typography>
+      </Box>
 
-            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              <Chip
-                icon={<CalendarMonthOutlinedIcon sx={{ fontSize: 13 }} />}
-                label={selectedInterview.interview_step_name ?? "Round-1"}
-                size="small"
-                sx={{
-                  bgcolor: "#FFF7ED",
-                  color: "#B45309",
-                  border: "1px solid #FED7AA",
-                  borderRadius: "20px",
-                  fontSize: 12,
-                  fontWeight: 500,
-                  height: 26,
-                  "& .MuiChip-icon": { color: "#B45309", ml: "8px" },
-                }}
-              />
-              <Chip
-                icon={<PhoneOutlined sx={{ fontSize: 13 }} />}
-                label={selectedInterview.interview_step_type ?? "Telephonic"}
-                size="small"
-                sx={{
-                  bgcolor: "#ECFDF5",
-                  color: "#065F46",
-                  border: "1px solid #A7F3D0",
-                  borderRadius: "20px",
-                  fontSize: 12,
-                  fontWeight: 500,
-                  height: 26,
-                  "& .MuiChip-icon": { color: "#065F46", ml: "8px" },
-                }}
-              />
-            </Stack>
+      <DialogContent sx={{ p: 0, maxHeight: "65vh", overflowY: "auto" }}>
+        {isFetching || !d ? (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+            <CircularProgress />
           </Box>
-
-          {/* CANDIDATE ROW */}
-          <Box sx={{ px: 2.5, pb: 2 }}>
-            <Stack
-              direction="row"
-              spacing={1.2}
-              alignItems="center"
-              sx={{
-                p: 1.2,
-                borderRadius: "14px",
-                bgcolor: "#F9FAFB",
-                border: "1px solid #F0F1F3",
-              }}
+        ) : (
+          <>
+            <DetailRow
+              icon={<CalendarMonthOutlinedIcon sx={{ fontSize: 18, color: "#00B4D8" }} />}
+              iconBg="#E0F7FA"
+              title="Interview Name"
             >
-              <Avatar
-                sx={{
-                  width: 40,
-                  height: 40,
-                  bgcolor: "#E6F1FB",
-                  color: "#185FA5",
-                  fontSize: 15,
-                  fontWeight: 700,
-                }}
+              <Typography sx={{ fontSize: 14, color: "#4B5563" }}>
+                {d.interview_step_name}
+                {d.interview_step_type ? ` — ${d.interview_step_type.toLowerCase()}` : ""}
+              </Typography>
+            </DetailRow>
+
+            <DetailRow
+              icon={<PersonOutlineOutlined sx={{ fontSize: 18, color: "#2563EB" }} />}
+              iconBg="#E8F1FD"
+              title="Candidate"
+            >
+              <Typography sx={{ fontSize: 14, color: "#111827" }}>
+                {d.matched_candidate?.fullname}
+              </Typography>
+              <Typography sx={{ fontSize: 13, color: "#9CA3AF" }}>
+                {d.matched_candidate?.email}
+              </Typography>
+            </DetailRow>
+
+            {d.primary_interviewer_org_emp?.interviewer_full_name && (
+              <DetailRow
+                icon={<PersonOutlineOutlined sx={{ fontSize: 18, color: "#16A34A" }} />}
+                iconBg="#EAF8EE"
+                title="Primary Interviewer"
               >
-                {selectedInterview.candidate_name?.charAt(0)}
-              </Avatar>
-              <Box sx={{ minWidth: 0 }}>
-                <Typography
+                <Typography sx={{ fontSize: 14, color: "#111827" }}>
+                  {d.primary_interviewer_org_emp.interviewer_full_name}
+                </Typography>
+                <Typography sx={{ fontSize: 13, color: "#9CA3AF" }}>
+                  {d.primary_interviewer_org_emp.email}
+                </Typography>
+              </DetailRow>
+            )}
+
+            {(d.panel_members_org_emp_ids ?? []).length > 0 && (
+              <DetailRow
+                icon={<PersonOutlineOutlined sx={{ fontSize: 18, color: "#6B7280" }} />}
+                iconBg="#F3F4F6"
+                title="Panel Members"
+              >
+                {d.panel_members_org_emp_ids.map((p) => (
+                  <Typography key={p.primary_interviewer_org_emp} sx={{ fontSize: 14, color: "#111827" }}>
+                    {p.interviewer_full_name}{" "}
+                    <Box component="span" sx={{ fontSize: 13, color: "#9CA3AF" }}>
+                      ({p.email})
+                    </Box>
+                  </Typography>
+                ))}
+              </DetailRow>
+            )}
+
+            <DetailRow
+              icon={<AccessTimeOutlined sx={{ fontSize: 18, color: "#2563EB" }} />}
+              iconBg="#E8F1FD"
+              title="Date & Time"
+            >
+              <Typography sx={{ fontSize: 14, color: "#4B5563" }}>{dateLabel}</Typography>
+              <Typography sx={{ fontSize: 14, color: "#4B5563" }}>{timeLabel}</Typography>
+            </DetailRow>
+
+            <DetailRow
+              icon={<VideocamOutlinedIcon sx={{ fontSize: 18, color: "#DC2626" }} />}
+              iconBg="#FEECEC"
+              title="Meeting Link"
+            >
+              {d.meeting_url ? (
+                <Button
+                  component="a"
+                  // href={d.meeting_url}
+                  target="_blank"
+                  size="small"
+                  variant="outlined"
+                  startIcon={<VideocamOutlinedIcon sx={{ fontSize: 15 }} />}
                   sx={{
-                    fontSize: 14,
-                    fontWeight: 600,
-                    color: "#111827",
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
+                    mt: 0.5, textTransform: "none", borderRadius: "8px",
+                    fontSize: 13, fontWeight: 600,
                   }}
                 >
-                  {selectedInterview.candidate_name}
-                </Typography>
-                <Typography sx={{ fontSize: 12, color: "#6B7280" }}>
-                  {selectedInterview.candidate_experience}
-                </Typography>
-              </Box>
-            </Stack>
-          </Box>
+                  Join Meeting
+                </Button>
+              ) : (
+                <Typography sx={{ fontSize: 13, color: "#9CA3AF" }}>No link provided</Typography>
+              )}
+            </DetailRow>
 
-          <Divider />
-
-          <DialogContent
-            sx={{
-              p: 0,
-              bgcolor: "#fff",
-              width: 480,
-              maxWidth: "95vw",
-              overflowX: "hidden",
-              overflowY: "auto",
-            }}
-          >
-            {isFetching ? (
-              <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
-                <CircularProgress />
-              </Box>
-            ) : (
-              <>
-                {/* DATE / TIME / PLATFORM CARD */}
-                <Box sx={{ px: 2.5, py: 2 }}>
-                  <Box
-                    sx={{
-                      borderRadius: "14px",
-                      border: "1px solid #E5E7EB",
-                      overflow: "hidden",
-                    }}
-                  >
-                    <Stack direction="row" divider={<Divider orientation="vertical" flexItem />}>
-                      <Box sx={{ flex: 1, px: 1.8, py: 1.4 }}>
-                        <Stack direction="row" spacing={0.8} alignItems="center" mb={0.4}>
-                          <CalendarMonthOutlinedIcon sx={{ fontSize: 14, color: "#6B7280" }} />
-                          <Typography sx={{ fontSize: 11, color: "#6B7280", fontWeight: 500 }}>
-                            Date
-                          </Typography>
-                        </Stack>
-                        <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>
-                          {selectedInterview.date}
-                        </Typography>
-                      </Box>
-
-                      <Box sx={{ flex: 1, px: 1.8, py: 1.4 }}>
-                        <Stack direction="row" spacing={0.8} alignItems="center" mb={0.4}>
-                          <AccessTimeOutlined sx={{ fontSize: 14, color: "#6B7280" }} />
-                          <Typography sx={{ fontSize: 11, color: "#6B7280", fontWeight: 500 }}>
-                            Time
-                          </Typography>
-                        </Stack>
-                        <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>
-                          {selectedInterview.start_time}–{selectedInterview.end_time}
-                        </Typography>
-                        <Typography sx={{ fontSize: 11, color: "#9CA3AF" }}>
-                          {selectedInterview.duration} min
-                        </Typography>
-                      </Box>
-                    </Stack>
-
-                    <Divider />
-
-                    {/* PLATFORM ROW WITH REAL LOGO */}
-                    <Box sx={{ px: 1.8, py: 1.4 }}>
-                      <Stack direction="row" spacing={1.2} alignItems="center">
-                        <PlatformIcon platform={selectedInterview.platform} size={26} />
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>
-                            {selectedInterview.platform}
-                          </Typography>
-                          {selectedInterview.meeting_url && (
-                            <Typography
-                              sx={{
-                                fontSize: 11,
-                                color: "#9CA3AF",
-                                whiteSpace: "nowrap",
-                                overflow: "hidden",
-                                textOverflow: "ellipsis",
-                              }}
-                            >
-                              Online meeting link
-                            </Typography>
-                          )}
-                        </Box>
-                        {selectedInterview.meeting_url && (
-                          <Button
-                            component="a"
-                            href={selectedInterview.meeting_url}
-                            target="_blank"
+            {skillGroups.length > 0 && (
+              <DetailRow
+                icon={<CheckCircleOutlineOutlined sx={{ fontSize: 18, color: "#16A34A" }} />}
+                iconBg="#EAF8EE"
+                title="Skills to Evaluate"
+              >
+                {skillGroups.map(([bucket, labels]) => {
+                  const style = SKILL_GROUP_STYLE[bucket] ?? SKILL_GROUP_STYLE.custom;
+                  return (
+                    <Box key={bucket} sx={{ mt: 1 }}>
+                      <Typography
+                        sx={{ fontSize: 11, fontWeight: 700, color: style.color, mb: 0.5 }}
+                      >
+                        • {style.label}
+                      </Typography>
+                      <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75 }}>
+                        {labels.map((label) => (
+                          <Chip
+                            key={label}
+                            label={label}
                             size="small"
-                            variant="contained"
                             sx={{
-                              textTransform: "none",
-                              borderRadius: "8px",
-                              fontSize: 12.5,
-                              fontWeight: 600,
-                              bgcolor: "#185FA5",
-                              px: 1.6,
-                              py: 0.6,
-                              boxShadow: "none",
-                              flexShrink: 0,
-                              "&:hover": { bgcolor: "#134C86", boxShadow: "none" },
+                              height: 26, fontSize: 12, fontWeight: 500,
+                              bgcolor: style.bg, color: style.color,
+                              border: `1px solid ${style.color}33`,
                             }}
-                          >
-                            Join
-                          </Button>
-                        )}
-                      </Stack>
+                          />
+                        ))}
+                      </Box>
                     </Box>
-                  </Box>
-                </Box>
-
-                <Divider />
-
-                {/* PRIMARY INTERVIEWER */}
-                <Box sx={{ px: 2.5, py: 2 }}>
-                  <Stack direction="row" spacing={0.8} alignItems="center" mb={1.2}>
-                    <PersonOutlineOutlined sx={{ fontSize: 16, color: "#6B7280" }} />
-                    <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>
-                      Interviewer
-                    </Typography>
-                  </Stack>
-                  <Stack spacing={1} sx={{ ml: 0.2 }}>
-                    {selectedInterview.primary_interviewer?.name && (
-                      <Stack
-                        direction="row"
-                        alignItems="center"
-                        justifyContent="space-between"
-                        sx={{
-                          p: 1.2,
-                          borderRadius: "12px",
-                          bgcolor: "#F9FAFB",
-                          border: "1px solid #F0F1F3",
-                        }}
-                      >
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Avatar sx={{ width: 28, height: 28, fontSize: 12, bgcolor: "#E6F1FB", color: "#185FA5" }}>
-                            {selectedInterview.primary_interviewer.name.charAt(0)}
-                          </Avatar>
-                          <Typography sx={{ fontSize: 13, color: "#111827", fontWeight: 500 }}>
-                            {selectedInterview.primary_interviewer.name}
-                          </Typography>
-                        </Stack>
-                        <Typography sx={{ fontSize: 11, color: "#6B7280", fontWeight: 500 }}>
-                          Primary
-                        </Typography>
-                      </Stack>
-                    )}
-                    {selectedInterview.created_by?.name && (
-                      <Stack
-                        direction="row"
-                        alignItems="center"
-                        justifyContent="space-between"
-                        sx={{
-                          p: 1.2,
-                          borderRadius: "12px",
-                          bgcolor: "#F9FAFB",
-                          border: "1px solid #F0F1F3",
-                        }}
-                      >
-                        <Stack direction="row" spacing={1} alignItems="center">
-                          <Avatar sx={{ width: 28, height: 28, fontSize: 12, bgcolor: "#F3F4F6", color: "#6B7280" }}>
-                            {selectedInterview.created_by.name.charAt(0)}
-                          </Avatar>
-                          <Typography sx={{ fontSize: 13, color: "#111827", fontWeight: 500 }}>
-                            {selectedInterview.created_by.name}
-                          </Typography>
-                        </Stack>
-                        <Typography sx={{ fontSize: 11, color: "#6B7280", fontWeight: 500 }}>
-                          Created by
-                        </Typography>
-                      </Stack>
-                    )}
-                  </Stack>
-                </Box>
-              </>
+                  );
+                })}
+              </DetailRow>
             )}
-          </DialogContent>
+          </>
+        )}
+      </DialogContent>
 
-          {/* FOOTER */}
-          <DialogActions
+      <DialogActions sx={{ px: 2.5, py: 2, borderTop: `1px solid ${C.border}`, gap: 1 }}>
+        {!isCompleted && (
+          <Button
+            variant="contained"
+            startIcon={<EditOutlinedIcon sx={{ fontSize: 16 }} />}
+            onClick={() => onEdit?.(d.interview_id)}
             sx={{
-              px: 2.5,
-              py: 1.8,
-              borderTop: "1px solid #E5E7EB",
-              bgcolor: "#fff",
-              gap: 1,
+              flex: 1, textTransform: "none", borderRadius: "10px",
+              fontWeight: 600, bgcolor: "#FF5722", boxShadow: "none",
+              "&:hover": { bgcolor: "#FF5722", boxShadow: "none" },
             }}
           >
-            <Button
-              variant="outlined"
-              onClick={onClose}
-              sx={{
-                flex: 1,
-                textTransform: "none",
-                borderRadius: "10px",
-                fontWeight: 500,
-                fontSize: 14,
-                color: "#111827",
-                borderColor: "#E5E7EB",
-              }}
-            >
-              Close
-            </Button>
-          </DialogActions>
-        </>
+            Edit Interview
+          </Button>
+        )}
+        <Button
+          variant="outlined"
+          onClick={onClose}
+          sx={{
+            flex: isCompleted ? 1 : "0 0 auto", textTransform: "none",
+            borderRadius: "10px", fontWeight: 500, color: "#111827",
+            borderColor: "#E5E7EB", px: 3,
+          }}
+        >
+          Close
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+}
+/* ═══════════════════════════════════════════════
+   INTERVIEW FEEDBACK MODAL — view-only, per-interviewer
+   Feedback API returns dynamically-keyed interviewer ids
+   (e.g. "interviewer_id- 1") and nested feedback arrays.
+   Interviewer names + skill buckets aren't in that payload,
+   so we cross-reference them from the full interview details
+   object (primary_interviewer_org_emp / panel_members_org_emp_ids
+   / template.skills) that's fetched alongside it.
+═══════════════════════════════════════════════ */
+
+const AVATAR_COLORS = ["#2563EB", "#7C3AED", "#16A34A", "#F97316", "#DB2777", "#0891B2"];
+
+function extractInterviewerId(item) {
+  const key = Object.keys(item).find((k) => k.startsWith("interviewer_id"));
+  return key ? item[key] : null;
+}
+
+// Tries every id field shape we've seen on interviewer/panel objects.
+function matchesInterviewerId(candidate, id) {
+  if (!candidate || !id) return false;
+  return (
+    candidate.id === id ||
+    candidate.org_employee_id === id ||
+    candidate.employee_id === id ||
+    candidate.primary_interviewer_org_emp === id
+  );
+}
+
+function resolveInterviewerName(id, interview, fallbackIndex) {
+  if (!interview) return `Interviewer ${fallbackIndex + 1}`;
+
+  if (
+    matchesInterviewerId(interview.primary_interviewer_org_emp, id) ||
+    interview.org_employee_id === id
+  ) {
+    return interview.primary_interviewer_org_emp?.interviewer_full_name
+      ?? `Interviewer ${fallbackIndex + 1}`;
+  }
+
+  const panelMatch = (interview.panel_members_org_emp_ids ?? []).find((p) =>
+    matchesInterviewerId(p, id),
+  );
+  if (panelMatch) return panelMatch.interviewer_full_name ?? `Interviewer ${fallbackIndex + 1}`;
+
+  return `Interviewer ${fallbackIndex + 1}`;
+}
+
+// Builds { "technical specification documents": "mandatory", ... } from
+// interview.template.skills so feedback rows can show the right badge.
+function buildSkillBucketMap(templateSkills) {
+  const map = {};
+  Object.entries(templateSkills ?? {}).forEach(([bucket, labels]) => {
+    (labels ?? []).forEach((label) => {
+      map[label.trim().toLowerCase()] = bucket;
+    });
+  });
+  return map;
+}
+
+function FeedbackRatingBadge({ rating }) {
+  const color = rating >= 4 ? "#16A34A" : rating >= 3 ? "#F97316" : "#DC2626";
+  const bg = rating >= 4 ? "#EAF8EE" : rating >= 3 ? "#FFF3E8" : "#FEECEC";
+  return (
+    <Box
+      sx={{
+        px: 1.25, py: "3px", borderRadius: "999px",
+        bgcolor: bg, color, fontSize: 12, fontWeight: 700, flexShrink: 0,
+      }}
+    >
+      {rating}/5
+    </Box>
+  );
+}
+
+function InterviewFeedbackModal({ open, onClose, interview, feedbackItems, isFetching }) {
+  const [selectedIdx, setSelectedIdx] = useState(0);
+
+  useEffect(() => {
+    if (open) setSelectedIdx(0);
+  }, [open]);
+
+  const skillBucketMap = useMemo(
+    () => buildSkillBucketMap(interview?.template?.skills),
+    [interview],
+  );
+
+  const panelists = useMemo(() => {
+    return (feedbackItems ?? []).map((item, i) => {
+      const interviewerId = extractInterviewerId(item);
+      const name = resolveInterviewerName(interviewerId, interview, i);
+      const ratings = (item.feedback ?? []).flat().filter(Boolean);
+      return {
+        interviewerId,
+        name,
+        ratings,
+        comments: item.feedback_comments ?? "",
+        done: ratings.length > 0,
+      };
+    });
+  }, [feedbackItems, interview]);
+
+  const current = panelists[selectedIdx];
+  const loading = isFetching || !feedbackItems;
+
+  return (
+    <Dialog
+      open={open}
+      onClose={onClose}
+      maxWidth={false}
+      PaperProps={{ sx: { width: 560, maxWidth: "95vw", borderRadius: "16px", overflow: "hidden" } }}
+    >
+      {/* Header */}
+      <Box sx={{ px: 3, pt: 2.5, pb: 2, position: "relative" }}>
+        <Typography sx={{ fontSize: 11, fontWeight: 700, color: "#6366F1", letterSpacing: "0.08em" }}>
+          EVALUATION PANEL
+        </Typography>
+        <Typography sx={{ fontSize: 22, fontWeight: 800, color: "#111827", mt: "2px" }}>
+          Interview Feedback
+        </Typography>
+        <IconButton
+          size="small"
+          onClick={onClose}
+          sx={{
+            position: "absolute", top: 18, right: 18,
+            width: 34, height: 34, borderRadius: "50%", backgroundColor: "#EEF2FF",
+          }}
+        >
+          <CloseIcon sx={{ fontSize: 16, color: "#4B5563" }} />
+        </IconButton>
+      </Box>
+
+      {/* Interviewer tabs */}
+      {!loading && panelists.length > 0 && (
+        <Box sx={{ px: 3, display: "flex", gap: 3, borderBottom: `1px solid ${C.border}`, overflowX: "auto" }}>
+          {panelists.map((p, i) => {
+            const isSelected = i === selectedIdx;
+            const color = AVATAR_COLORS[i % AVATAR_COLORS.length];
+            return (
+              <Box
+                key={p.interviewerId ?? i}
+                onClick={() => setSelectedIdx(i)}
+                sx={{
+                  display: "flex", alignItems: "center", gap: 1, pb: 1.5,
+                  cursor: "pointer", flexShrink: 0,
+                  borderBottom: isSelected ? `2.5px solid #2563EB` : "2.5px solid transparent",
+                }}
+              >
+                <Avatar sx={{ width: 26, height: 26, fontSize: 12, fontWeight: 700, bgcolor: isSelected ? color : "#E5E7EB", color: isSelected ? "#fff" : "#6B7280" }}>
+                  {p.name?.[0]?.toUpperCase() ?? "?"}
+                </Avatar>
+                <Typography sx={{ fontSize: 14, fontWeight: 600, color: isSelected ? "#2563EB" : "#9CA3AF" }}>
+                  {p.name}
+                </Typography>
+                {p.done && (
+                  <Chip
+                    label="✓ Done"
+                    size="small"
+                    sx={{ height: 20, fontSize: 11, fontWeight: 700, bgcolor: "#EAF8EE", color: "#16A34A" }}
+                  />
+                )}
+              </Box>
+            );
+          })}
+        </Box>
       )}
+
+      <DialogContent sx={{ p: 0, maxHeight: "65vh", overflowY: "auto" }}>
+        {loading ? (
+          <Box sx={{ display: "flex", justifyContent: "center", py: 6 }}>
+            <CircularProgress />
+          </Box>
+        ) : panelists.length === 0 ? (
+          <Typography sx={{ fontSize: 14, color: "#9CA3AF", textAlign: "center", py: 6 }}>
+            No feedback submitted yet.
+          </Typography>
+        ) : (
+          <Box sx={{ px: 3, py: 2.5 }}>
+            {/* Selected interviewer row */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2.5 }}>
+              <Avatar sx={{ width: 44, height: 44, fontSize: 16, fontWeight: 700, bgcolor: AVATAR_COLORS[selectedIdx % AVATAR_COLORS.length] }}>
+                {current?.name?.[0]?.toUpperCase() ?? "?"}
+              </Avatar>
+              <Typography sx={{ fontSize: 17, fontWeight: 700, color: "#111827" }}>
+                {current?.name}
+              </Typography>
+            </Box>
+
+            {/* Skill ratings */}
+            <Box sx={{ display: "flex", flexDirection: "column", gap: 1.5, mb: 2.5 }}>
+              {(current?.ratings ?? []).map((r, i) => {
+                const bucket = skillBucketMap[r.skill?.trim().toLowerCase()];
+                const bucketStyle = bucket ? SKILL_GROUP_STYLE[bucket] : null;
+                return (
+                  <Box
+                    key={`${r.skill}-${i}`}
+                    sx={{ border: `1px solid ${C.border}`, borderRadius: "12px", p: 1.75 }}
+                  >
+                    <Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 1, mb: 0.75 }}>
+                      <Box sx={{ display: "flex", alignItems: "center", gap: 1, minWidth: 0 }}>
+                        <Typography sx={{ fontSize: 14, fontWeight: 700, color: "#111827" }}>
+                          {r.skill}
+                        </Typography>
+                        {bucketStyle && (
+                          <Chip
+                            label={bucketStyle.label}
+                            size="small"
+                            sx={{
+                              height: 20, fontSize: 10, fontWeight: 700,
+                              bgcolor: bucketStyle.bg, color: bucketStyle.color,
+                            }}
+                          />
+                        )}
+                      </Box>
+                      <FeedbackRatingBadge rating={r.rating} />
+                    </Box>
+                    <Rating value={r.rating} precision={0.5} readOnly size="small" />
+                    {r.feedback && (
+                      <Typography sx={{ fontSize: 12.5, color: "#6B7280", mt: 0.75 }}>
+                        {r.feedback}
+                      </Typography>
+                    )}
+                  </Box>
+                );
+              })}
+            </Box>
+
+            {/* Overall comment */}
+            <Box>
+              <Typography sx={{ fontSize: 11, fontWeight: 700, color: "#2563EB", letterSpacing: "0.06em", mb: 1 }}>
+                OVERALL COMMENT
+              </Typography>
+              <Box
+                sx={{
+                  border: `1px solid ${C.border}`, borderRadius: "12px",
+                  borderLeft: "3px solid #2563EB", p: 1.75, backgroundColor: "#F8FAFF",
+                }}
+              >
+                <Typography
+                  sx={{
+                    fontSize: 13.5,
+                    color: current?.comments ? "#374151" : "#9CA3AF",
+                    fontStyle: current?.comments ? "normal" : "italic",
+                  }}
+                >
+                  {current?.comments || "No overall comment provided."}
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        )}
+      </DialogContent>
+
+      <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${C.border}` }}>
+        <Button
+          onClick={onClose}
+          variant="outlined"
+          sx={{ textTransform: "none", borderRadius: "10px", color: "#111827", borderColor: "#E5E7EB", px: 3 }}
+        >
+          Close
+        </Button>
+      </DialogActions>
     </Dialog>
   );
 }
 
-/* ═══════════════════════════════════════════════
-   CANDIDATE ACTION BUTTONS
-   matched      -> Shortlist / Reject
-   shortlisted  -> Interview / Reject
-   anything else (hired/offer/rejected/...) -> nothing
-═══════════════════════════════════════════════ */
-function CandidateActionButtons({ status, onShortlist, onReject, onInterview }) {
+const INTERVIEW_STAGE_STATUSES = [
+  "shortlisted",
+  "interview_scheduled",
+  "interview_completed",
+  "interviewing",
+];
+
+function CandidateActionButtons({
+  status,
+  onShortlist,
+  onReject,
+  onInterview,
+  onSelect,
+  onReleaseOffer,
+  onRevokeOffer,
+  onOfferAccepted,
+  onOfferRejected,
+}) {
   const normalized = (status ?? "").toLowerCase().trim();
 
+  // ── Shortlisted / interviewing stage: Interview, Select (blue), Reject ──
+  // Shortlisted -> only Interview + Reject
   if (normalized === "shortlisted") {
     return (
       <Stack direction="row" spacing={1}>
         <Button
           variant="contained"
           size="small"
-          startIcon={<PersonAddAltOutlinedIcon sx={{ fontSize: 16 }} />}
+          startIcon={<PersonAddAltOutlinedIcon />}
           onClick={onInterview}
           sx={{
             textTransform: "none",
-            fontWeight: 600,
-            fontSize: 13,
             borderRadius: "8px",
             backgroundColor: "#16A34A",
-            boxShadow: "none",
-            px: 2,
-            "&:hover": { backgroundColor: "#15803D", boxShadow: "none" },
           }}
         >
           Interview
         </Button>
+
         <Button
           variant="contained"
           size="small"
-          startIcon={<BlockOutlinedIcon sx={{ fontSize: 16 }} />}
+          startIcon={<BlockOutlinedIcon />}
           onClick={onReject}
           sx={{
             textTransform: "none",
-            fontWeight: 600,
-            fontSize: 13,
             borderRadius: "8px",
             backgroundColor: "#EF4444",
-            boxShadow: "none",
-            px: 2,
-            "&:hover": { backgroundColor: "#DC2626", boxShadow: "none" },
           }}
         >
           Reject
@@ -714,6 +966,62 @@ function CandidateActionButtons({ status, onShortlist, onReject, onInterview }) 
     );
   }
 
+  // After interview is scheduled/completed -> Interview + Select + Reject
+  if (
+    [
+      "interview_scheduled",
+      "interview_completed",
+      "interviewing",
+    ].includes(normalized)
+  ) {
+    return (
+      <Stack direction="row" spacing={1}>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<PersonAddAltOutlinedIcon />}
+          onClick={onInterview}
+          sx={{
+            textTransform: "none",
+            borderRadius: "8px",
+            backgroundColor: "#16A34A",
+          }}
+        >
+          Interview
+        </Button>
+
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<CheckCircleOutlineOutlined />}
+          onClick={onSelect}
+          sx={{
+            textTransform: "none",
+            borderRadius: "8px",
+            backgroundColor: "#2563EB",
+          }}
+        >
+          Select
+        </Button>
+
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<BlockOutlinedIcon />}
+          onClick={onReject}
+          sx={{
+            textTransform: "none",
+            borderRadius: "8px",
+            backgroundColor: "#EF4444",
+          }}
+        >
+          Reject
+        </Button>
+      </Stack>
+    );
+  }
+
+  // ── Matched: Shortlist / Reject ──
   if (normalized === "matched") {
     return (
       <Stack direction="row" spacing={1}>
@@ -757,21 +1065,152 @@ function CandidateActionButtons({ status, onShortlist, onReject, onInterview }) 
     );
   }
 
+  // ── Selected: Release Offer ──
+  if (normalized === "selected") {
+    return (
+      <Stack direction="row" spacing={1}>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<LocalOfferOutlinedIcon sx={{ fontSize: 16 }} />}
+          onClick={onReleaseOffer}
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: 13,
+            borderRadius: "8px",
+            backgroundColor: "#2563EB",
+            boxShadow: "none",
+            px: 2,
+            "&:hover": { backgroundColor: "#1D4ED8", boxShadow: "none" },
+          }}
+        >
+          Release Offer
+        </Button>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<BlockOutlinedIcon sx={{ fontSize: 16 }} />}
+          onClick={onReject}
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: 13,
+            borderRadius: "8px",
+            backgroundColor: "#EF4444",
+            boxShadow: "none",
+            px: 2,
+            "&:hover": { backgroundColor: "#DC2626", boxShadow: "none" },
+          }}
+        >
+          Reject
+        </Button>
+      </Stack>
+    );
+  }
+
+  // ── Offer Released: Revoke Offer (orange) / Offer Accepted (green) / Offer Rejected (red) ──
+  if (normalized === "offer_released") {
+    return (
+      <Stack direction="row" spacing={1}>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<UndoOutlinedIcon sx={{ fontSize: 16 }} />}
+          onClick={onRevokeOffer}
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: 13,
+            borderRadius: "8px",
+            backgroundColor: "#F97316",
+            boxShadow: "none",
+            px: 2,
+            "&:hover": { backgroundColor: "#EA580C", boxShadow: "none" },
+          }}
+        >
+          Revoke Offer
+        </Button>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<ThumbUpAltOutlinedIcon sx={{ fontSize: 16 }} />}
+          onClick={onOfferAccepted}
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: 13,
+            borderRadius: "8px",
+            backgroundColor: "#16A34A",
+            boxShadow: "none",
+            px: 2,
+            "&:hover": { backgroundColor: "#15803D", boxShadow: "none" },
+          }}
+        >
+          Offer Accepted
+        </Button>
+        <Button
+          variant="contained"
+          size="small"
+          startIcon={<ThumbDownAltOutlinedIcon sx={{ fontSize: 16 }} />}
+          onClick={onOfferRejected}
+          sx={{
+            textTransform: "none",
+            fontWeight: 600,
+            fontSize: 13,
+            borderRadius: "8px",
+            backgroundColor: "#EF4444",
+            boxShadow: "none",
+            px: 2,
+            "&:hover": { backgroundColor: "#DC2626", boxShadow: "none" },
+          }}
+        >
+          Offer Rejected
+        </Button>
+      </Stack>
+    );
+  }
+
   return null;
 }
 
-/* ═══════════════════════════════════════════════
-   STATUS CONFIRM MODAL (Shortlist / Reject)
-═══════════════════════════════════════════════ */
 const STATUS_DISPLAY = {
   shortlisted: { label: "Shortlisted", color: "#16A34A" },
   rejected: { label: "Rejected", color: "#DC2626" },
+  selected: { label: "Selected", color: "#2563EB" },
+  offer_released: { label: "Offer Released", color: "#2563EB" },
+  offer_revoked: { label: "Offer Revoked", color: "#F97316" },
+  offer_accepted: { label: "Offer Accepted", color: "#16A34A" },
+  offer_rejected: { label: "Offer Rejected", color: "#DC2626" },
+  // Interview round outcomes (Update Status dropdown on a scheduled round)
+  completed: { label: "Completed", color: "#16A34A" },
+  no_show: { label: "No Show", color: "#F59E0B" },
+  not_conducted: { label: "Not Conducted", color: "#6B7280" },
+  cancelled: { label: "Cancelled", color: "#DC2626" },
+};
+
+// Confirm-button colors, keyed by the same `action` value passed to
+// StatusConfirmModal / updateCandidateStatus's `new_status`.
+const CONFIRM_BTN_COLORS = {
+  shortlisted: { bg: "#2563EB", hover: "#1D4ED8" },
+  rejected: { bg: "#DC2626", hover: "#B91C1C" },
+  selected: { bg: "#2563EB", hover: "#1D4ED8" },
+  offer_released: { bg: "#2563EB", hover: "#1D4ED8" },
+  offer_revoked: { bg: "#F97316", hover: "#EA580C" },
+  offer_accepted: { bg: "#16A34A", hover: "#15803D" },
+  offer_rejected: { bg: "#DC2626", hover: "#B91C1C" },
+  completed: { bg: "#16A34A", hover: "#15803D" },
+  no_show: { bg: "#F59E0B", hover: "#D97706" },
+  not_conducted: { bg: "#6B7280", hover: "#4B5563" },
+  cancelled: { bg: "#DC2626", hover: "#B91C1C" },
 };
 
 function StatusConfirmModal({ open, onClose, action, onConfirm, loading }) {
   const [comment, setComment] = useState("");
   const display = STATUS_DISPLAY[action] ?? { label: action, color: "#111827" };
   const isReject = action === "rejected";
+  const btnColors =
+    CONFIRM_BTN_COLORS[action] ?? { bg: "#2563EB", hover: "#1D4ED8" };
 
   useEffect(() => {
     if (open) setComment("");
@@ -836,9 +1275,9 @@ function StatusConfirmModal({ open, onClose, action, onConfirm, loading }) {
             fontSize: 14,
             boxShadow: "none",
             px: 3,
-            backgroundColor: isReject ? "#DC2626" : "#2563EB",
+            backgroundColor: btnColors.bg,
             "&:hover": {
-              backgroundColor: isReject ? "#B91C1C" : "#1D4ED8",
+              backgroundColor: btnColors.hover,
               boxShadow: "none",
             },
           }}
@@ -850,10 +1289,182 @@ function StatusConfirmModal({ open, onClose, action, onConfirm, loading }) {
   );
 }
 
+function getInterviewEndTime(interviewTimeISO, durationMinutes) {
+  if (!interviewTimeISO) return null;
+
+  const start = dayjs.utc(interviewTimeISO);
+
+  if (!start.isValid()) return null;
+
+  return start.add(Number(durationMinutes || 30), "minute");
+}
+function hasInterviewTimePassed(interviewEndTime) {
+  if (!interviewEndTime) return false;
+
+  return dayjs.utc().isAfter(interviewEndTime);
+}
+function InterviewStatusMenu({ interviewEndTime, currentStatus, onSelect, disabled }) {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
+  const timePassed = hasInterviewTimePassed(interviewEndTime);
+  const handleOpen = (e) => setAnchorEl(e.currentTarget);
+  const handleClose = () => setAnchorEl(null);
+  const handlePick = (value) => {
+    handleClose();
+    onSelect(value);
+  };
+
+  return (
+    <>
+      <Button
+        onClick={handleOpen}
+        disabled={disabled}
+        variant="outlined"
+        size="small"
+        endIcon={<ArrowDropDownIcon />}
+        sx={{
+          textTransform: "none",
+          fontSize: "12px",
+          fontWeight: 500,
+          borderRadius: "5px",
+          borderColor: "#16A34A",
+          color: "#16A34A",
+          px: 2,
+          py: 0,
+          height: "30px",
+          "&:hover": { borderColor: "#15803D", backgroundColor: "#F0FDF4" },
+        }}
+      >
+        Update Status
+      </Button>
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        PaperProps={{
+          sx: {
+            mt: 0.5,
+            borderRadius: "12px",
+            minWidth: 200,
+            boxShadow: "0 12px 32px rgba(0,0,0,0.12)",
+          },
+        }}
+      >
+        {INTERVIEW_STATUS_OPTIONS.map((opt) => {
+          const isDisabled =
+            opt.value === currentStatus || (opt.requiresPast && !timePassed);
+          const Icon = opt.icon;
+          return (
+            <MenuItem
+              key={opt.value}
+              disabled={isDisabled}
+              onClick={() => handlePick(opt.value)}
+              sx={{ py: 1, px: 1.8 }}
+            >
+              <ListItemIcon sx={{ minWidth: 32 }}>
+                <Icon sx={{ fontSize: 18, color: isDisabled ? "#D1D5DB" : opt.color }} />
+              </ListItemIcon>
+              <ListItemText
+                primary={opt.label}
+                primaryTypographyProps={{
+                  fontSize: 13.5,
+                  fontWeight: 500,
+                  color: isDisabled ? "#B0B0BC" : "#111827",
+                }}
+              />
+            </MenuItem>
+          );
+        })}
+      </Menu>
+    </>
+  );
+}
+
 /* ═══════════════════════════════════════════════
-   SELECT DATE & TIME MODAL — calendar + live availability slots
-   (dayjs-driven, calls the availability API per selected date)
+   INTERVIEW RESULT MENU — Pass / Fail dropdown
+   Shown once a round's status has been set to "completed".
+   Fires onSelect("pass" | "fail"), which the parent wires to
+   useUpdateInterviewResultMutation (PUT /acc/interviews/{id}/status_v1).
 ═══════════════════════════════════════════════ */
+function InterviewResultMenu({ currentResult, onSelect, disabled }) {
+  const [anchorEl, setAnchorEl] = useState(null);
+  const open = Boolean(anchorEl);
+  const handleOpen = (e) => setAnchorEl(e.currentTarget);
+  const handleClose = () => setAnchorEl(null);
+  const handlePick = (value) => {
+    handleClose();
+    onSelect(value);
+  };
+
+  return (
+    <>
+      <Button
+        onClick={handleOpen}
+        disabled={disabled}
+        variant="outlined"
+        size="small"
+        endIcon={<ArrowDropDownIcon />}
+        sx={{
+          textTransform: "none",
+          fontSize: "12px",
+          fontWeight: 500,
+          borderRadius: "5px",
+          borderColor: "#F97316",
+          color: "#F97316",
+          px: 2,
+          py: 0,
+          height: "30px",
+          "&:hover": { borderColor: "#EA580C", backgroundColor: "#FFF7ED" },
+        }}
+      >
+        Update Result
+      </Button>
+      <Menu
+        anchorEl={anchorEl}
+        open={open}
+        onClose={handleClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
+        transformOrigin={{ vertical: "top", horizontal: "right" }}
+        PaperProps={{
+          sx: {
+            mt: 0.5,
+            borderRadius: "12px",
+            minWidth: 160,
+            boxShadow: "0 12px 32px rgba(0,0,0,0.12)",
+          },
+        }}
+      >
+        {INTERVIEW_RESULT_OPTIONS.map((opt) => {
+          const isDisabled = opt.value === currentResult;
+          const Icon = opt.icon;
+          return (
+            <MenuItem
+              key={opt.value}
+              disabled={isDisabled}
+              onClick={() => handlePick(opt.value)}
+              sx={{ py: 1, px: 1.8 }}
+            >
+              <ListItemIcon sx={{ minWidth: 32 }}>
+                <Icon sx={{ fontSize: 18, color: isDisabled ? "#D1D5DB" : opt.color }} />
+              </ListItemIcon>
+              <ListItemText
+                primary={opt.label}
+                primaryTypographyProps={{
+                  fontSize: 13.5,
+                  fontWeight: 500,
+                  color: isDisabled ? "#B0B0BC" : "#111827",
+                }}
+              />
+            </MenuItem>
+          );
+        })}
+      </Menu>
+    </>
+  );
+}
+
 const WEEKDAY_LABELS = ["Mo", "Tu", "We", "Th", "Fr", "Sa", "Su"];
 const AVAILABILITY_BASE_URL =
   "https://dev-backend.invotrx.com/acc/employees/availability/slots/by-date";
@@ -876,6 +1487,29 @@ function buildCalendarWeeks(monthStart) {
 function parseDurationMinutes(durationLabel) {
   const match = String(durationLabel ?? "").match(/\d+/);
   return match ? parseInt(match[0], 10) : 30;
+}
+
+// Extracts an "HH:mm" fragment from a variety of time-string shapes the
+// backend might send back for a scheduled interview, e.g.
+// "14:00:00.000Z", "14:00:00", "14:00". Returns null if nothing matches.
+function extractHHmm(timeStr) {
+  if (!timeStr) return null;
+  const match = String(timeStr).match(/^(\d{2}):(\d{2})/);
+  return match ? `${match[1]}:${match[2]}` : null;
+}
+
+// Rebuilds the flat `skills` array (used by the Skills-to-Evaluate
+// Autocomplete) from the bucketed `template.skills` shape the API stores
+// on an existing interview (used to prefill the Reschedule modal).
+function skillsFromTemplate(templateSkills) {
+  if (!templateSkills) return [];
+  const out = [];
+  Object.entries(templateSkills).forEach(([bucket, labels]) => {
+    (labels || []).forEach((label) => {
+      out.push({ label, type: bucket === "custom" ? "custom" : bucket });
+    });
+  });
+  return out;
 }
 
 function SelectSlotModal({
@@ -1163,25 +1797,6 @@ function SelectSlotModal({
           bgcolor: "#FAFAFA",
         }}
       >
-        {/* <Box>
-          <Typography sx={{ fontSize: 11, color: "#9CA3AF", mb: 0.4 }}>Display Timezone</Typography>
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              border: `1px solid ${C.border}`,
-              borderRadius: "8px",
-              px: 1.5,
-              py: 0.8,
-              bgcolor: "#fff",
-            }}
-          >
-            <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>
-              Asia/Kolkata — India Standard Time (IST)
-            </Typography>
-          </Box>
-        </Box> */}
         <Stack direction="row" spacing={1}>
           <Button
             variant="outlined"
@@ -1211,10 +1826,10 @@ function SelectSlotModal({
 }
 
 /* ═══════════════════════════════════════════════
-   SCHEDULE INTERVIEW MODAL
+   SCHEDULE / RESCHEDULE INTERVIEW MODAL
 ═══════════════════════════════════════════════ */
 const INTERVIEW_TYPES = ["Technical", "HR", "Managerial", "Telephonic", "Final Round"];
-const DURATIONS = ["15 mins", "30 mins", "45 mins", "60 mins", "90 mins"];
+const DURATIONS = ["10 mins", "15 mins", "30 mins", "45 mins", "60 mins", "90 mins"];
 const PLATFORMS = [
   { key: "google_meet", label: "Google Meet", icon: "📅" },
   { key: "zoom", label: "Zoom", icon: "🎥" },
@@ -1222,34 +1837,60 @@ const PLATFORMS = [
   { key: "other", label: "Other", icon: "🔗" },
 ];
 
+const EMPTY_SCHEDULE_FORM = {
+  round: "",
+  type: "",
+  interviewer: null,
+  panelMembers: [],
+  duration: "10 mins",
+  dateTime: "",
+  platform: "google_meet",
+  meetingUrl: "",
+  skills: [],
+};
+
 function ScheduleInterviewModal({
   open,
   onClose,
   candidate,
-  // interviewerOptions = [],
   skillOptions = [],
   allSkillOptions = [],
   onSchedule,
   loading,
-  orgId
+  orgId,
+  matched_candidate_id,
+  // ── Reschedule mode ──
+  // When `isReschedule` is true this same modal is reused to move an
+  // existing interview round to a new slot / interviewer / platform.
+  // `initialData` seeds the form instead of starting blank, and
+  // `interviewId` is threaded straight through to onSchedule's payload.
+  //
+  // `initialData` can arrive in two phases:
+  //   1. { interviewId, loading: true }              — fetch in flight
+  //   2. { interviewId, loading: false, ...fields }   — fully hydrated,
+  //      using the SAME shape returned by GET /acc/interviews/{id}
+  //      (the exact values that were saved when the interview was
+  //      originally scheduled), so the form is faithfully pre-filled
+  //      with what's currently on record for this round.
+  isReschedule = false,
+  interviewId = null,
+  initialData = null,
 }) {
-  const [form, setForm] = useState({
-    round: "",
-    type: "",
-    interviewer: null,
-    panelMembers: [],
-    duration: "",
-    dateTime: "",
-    platform: "google_meet",
-    meetingUrl: "",
-    skills: [],
-  });
+  const [form, setForm] = useState(EMPTY_SCHEDULE_FORM);
+  const [customSkills, setCustomSkills] = useState([]);
   const [interviewerOptions, setInterviewerOptions] = useState([]);
   const [panelOptions, setPanelOptions] = useState([]);
   const [slotModalOpen, setSlotModalOpen] = useState(false);
+  const [prefillLoading, setPrefillLoading] = useState(false);
   const [getEmployeesByRole, { data: interviewersData, isLoading }] =
     useLazyGetEmployeesByRoleQuery();
-  console.log("interviewersData", interviewersData)
+
+  // True while we're still waiting on the initial GET /acc/interviews/{id}
+  // fetch that hydrates `initialData` for a reschedule. Distinct from
+  // `prefillLoading` (which only covers the panel-options refresh) and
+  // from `loading` (which covers the final submit).
+  const isFetchingInitialData = isReschedule && !!initialData?.loading;
+
   useEffect(() => {
     if (!open || !orgId) return;
 
@@ -1271,20 +1912,88 @@ function ScheduleInterviewModal({
   }, [open, orgId]);
 
   useEffect(() => {
-    if (open) {
+    if (!open) return;
+
+    if (isReschedule) {
+      if (!initialData || initialData.loading) return; // wait for fetch to finish
+      // Also wait for the employee list to load — we need it to resolve
+      // names for interviewer/panel members when initialData only has IDs
+      // (e.g. the local-schedule-payload fallback path).
+      if (!interviewerOptions.length) return;
+
+      const primaryInterviewerId =
+        initialData.primary_interviewer?.id ?? initialData.org_employee_id ?? null;
+
+      const primaryInterviewerName =
+        initialData.primary_interviewer?.name ??
+        interviewerOptions.find((u) => u.id === primaryInterviewerId)?.name ??
+        "";
+
+      // Normalize panel IDs across every shape we might receive:
+      //  - GET /interviews/{id} response: panel_members: [{id, name}, ...]
+      //  - local schedule-payload fallback: list_org_employee_id: ["id1", "id2"]
+      const panelIds = initialData.panel_members
+        ? initialData.panel_members.map((p) => p.id ?? p.org_employee_id)
+        : initialData.list_org_employee
+          ? initialData.list_org_employee.map((p) => p.id ?? p.org_employee_id)
+          : initialData.list_org_employee_id ?? [];
+
+      const panelMembers = panelIds
+        .filter((id) => id && id !== primaryInterviewerId)
+        .map((id) => ({
+          id,
+          name: interviewerOptions.find((u) => u.id === id)?.name ?? "",
+        }));
+
+      const hhmm = extractHHmm(initialData.start_time);
+      const combinedDateTime =
+        initialData.date && hhmm
+          ? dayjs(`${initialData.date} ${hhmm}`, "YYYY-MM-DD HH:mm")
+          : null;
+
       setForm({
-        round: "",
-        type: "",
-        interviewer: null,
-        panelMembers: [],
-        duration: "",
-        dateTime: "",
-        platform: "google_meet",
-        meetingUrl: "",
-        skills: [],
+        round: initialData.interview_step_name ?? initialData.round ?? "",
+        type: initialData.interview_step_type ?? initialData.type ?? "",
+        interviewer: primaryInterviewerId
+          ? { id: primaryInterviewerId, name: primaryInterviewerName }
+          : null,
+        panelMembers,
+        duration: initialData.duration ? `${initialData.duration} mins` : "",
+        dateTime:
+          combinedDateTime && combinedDateTime.isValid()
+            ? combinedDateTime.format("YYYY-MM-DDTHH:mm")
+            : "",
+        platform: initialData.platform ?? "google_meet",
+        meetingUrl: initialData.meeting_url ?? "",
+        skills: skillsFromTemplate(initialData.template?.skills),
       });
+
+      // Prime the panel-members pool by excluding the seeded primary
+      // interviewer, mirroring what happens when a person picks an
+      // interviewer manually in the "new schedule" flow.
+      if (primaryInterviewerId && orgId) {
+        setPrefillLoading(true);
+        getEmployeesByRole({
+          organisationId: orgId,
+          employeeExcludeIds: primaryInterviewerId,
+        })
+          .unwrap()
+          .then((res) => {
+            setPanelOptions(
+              res.data.map((u) => ({
+                id: u.id,
+                name: u.name,
+                role: u.role,
+                designation: u.designation,
+              })),
+            );
+          })
+          .finally(() => setPrefillLoading(false));
+      }
+    } else {
+      setForm(EMPTY_SCHEDULE_FORM);
     }
-  }, [open]);
+  }, [open, isReschedule, initialData, orgId, interviewerOptions]);
 
   const setField = (key) => (value) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -1294,18 +2003,51 @@ function ScheduleInterviewModal({
 
   const handleSubmit = () => {
     if (!isValid) return;
-    onSchedule({
-      candidate_id: candidate?.id,
-      round_name: form.round,
-      interview_type: form.type,
-      interviewer_id: form.interviewer?.id ?? form.interviewer,
-      panel_member_ids: form.panelMembers.map((p) => p.id ?? p),
-      duration: form.duration,
-      scheduled_at: form.dateTime,
+
+    const durationMinutes = parseDurationMinutes(form.duration);
+    const start = dayjs(form.dateTime);
+    const end = start.add(durationMinutes, "minute");
+
+    const skillsByType = form.skills.reduce(
+      (acc, s) => {
+        const bucket =
+          s.type === "mandatory"
+            ? "mandatory"
+            : s.type === "primary"
+              ? "primary"
+              : s.type === "secondary"
+                ? "secondary"
+                : "custom"; // freeSolo/typed skills fall here
+        acc[bucket].push(s.label);
+        return acc;
+      },
+      { primary: [], secondary: [], mandatory: [], edc_tools: [], custom: [] }
+    );
+    const basePayload = {
+      org_employee_id: form.interviewer?.id,
+      list_org_employee_id: form.panelMembers.map((p) => p.id),
+      interview_step_name: form.round,
+      interview_step_type: form.type,
+      is_final: false,
+
+      date: start.utc().format("YYYY-MM-DD"),
+      start_time: start.utc().format("HH:mm:ss"),
+      end_time: end.utc().format("HH:mm:ss"),
+
+      duration: durationMinutes,
+      template: {
+        rating_scale: 5,
+        skills: skillsByType,
+      },
       platform: form.platform,
       meeting_url: form.meetingUrl,
-      skills_to_evaluate: form.skills.map((s) => s.label ?? s),
-    });
+    };
+
+    if (isReschedule) {
+      onSchedule({ interviewId, matched_candidate_id, ...basePayload });
+    } else {
+      onSchedule({ matched_candidate_id, ...basePayload });
+    }
   };
 
   return (
@@ -1322,10 +2064,12 @@ function ScheduleInterviewModal({
           <Box sx={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
             <Box>
               <Typography sx={{ fontSize: 18, fontWeight: 700, color: "#111827" }}>
-                Schedule Interview
+                {isReschedule ? "Reschedule Interview" : "Schedule Interview"}
               </Typography>
               <Typography sx={{ fontSize: 13, color: "#9CA3AF", mt: 0.25 }}>
-                Reserve an interview slot by choosing your preferred schedule.
+                {isReschedule
+                  ? "Update the slot, interviewer, or platform for this round."
+                  : "Reserve an interview slot by choosing your preferred schedule."}
               </Typography>
             </Box>
             <IconButton
@@ -1340,513 +2084,465 @@ function ScheduleInterviewModal({
         </Box>
 
         <DialogContent sx={{ px: 3, py: 2.5, maxHeight: "70vh" }}>
-          <Grid container spacing={2}>
-            {/* Interview Round */}
-            <Grid item size={{ xs: 12, sm: 6 }}>
-              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
-                Interview Round <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="e.g. Technical Round 1"
-                value={form.round}
-                onChange={(e) => setField("round")(e.target.value)}
-                sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
-              />
-            </Grid>
+          {isFetchingInitialData || (isReschedule && prefillLoading) ? (
+            <Box sx={{ display: "flex", justifyContent: "center", py: 5 }}>
+              <CircularProgress size={26} sx={{ color: C.accent }} />
+            </Box>
+          ) : (
+            <Grid container spacing={2}>
+              {/* Interview Round */}
+              <Grid item size={{ xs: 12, sm: 6 }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+                  Interview Round <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
+                </Typography>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="e.g. Technical Round 1"
+                  value={form.round}
+                  onChange={(e) => setField("round")(e.target.value)}
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
+                />
+              </Grid>
 
-            {/* Interview Type */}
-            <Grid item size={{ xs: 12, sm: 6 }}>
-              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
-                Interview Type <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
-              </Typography>
-              <FormControl fullWidth size="small">
-                <Select
-                  displayEmpty
-                  value={form.type}
-                  onChange={(e) => setField("type")(e.target.value)}
-                  sx={{ borderRadius: "8px" }}
-                  renderValue={(v) => v || <span style={{ color: "#9CA3AF" }}>Select type</span>}
-                >
-                  {INTERVIEW_TYPES.map((t) => (
-                    <MenuItem key={t} value={t}>{t}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
+              {/* Interview Type */}
+              <Grid item size={{ xs: 12, sm: 6 }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+                  Interview Type <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
+                </Typography>
+                <FormControl fullWidth size="small">
+                  <Select
+                    displayEmpty
+                    value={form.type}
+                    onChange={(e) => setField("type")(e.target.value)}
+                    sx={{ borderRadius: "8px" }}
+                    renderValue={(v) => v || <span style={{ color: "#9CA3AF" }}>Select type</span>}
+                  >
+                    {INTERVIEW_TYPES.map((t) => (
+                      <MenuItem key={t} value={t}>{t}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
 
-            {/* Interviewer */}
-            <Grid item size={{ xs: 12, sm: 6 }}>
-              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
-                Interviewer <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
-              </Typography>
-              <Autocomplete
-                size="small"
-                options={interviewerOptions}
-                value={form.interviewer}
-                onChange={async (_, val) => {
-                  setField("interviewer")(val);
+              {/* Interviewer */}
+              <Grid item size={{ xs: 12, sm: 6 }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+                  Interviewer <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
+                </Typography>
+                <Autocomplete
+                  size="small"
+                  options={interviewerOptions}
+                  value={form.interviewer}
+                  onChange={async (_, val) => {
+                    setField("interviewer")(val);
 
-                  if (!val) return;
+                    if (!val) return;
 
-                  const res = await getEmployeesByRole({
-                    organisationId: orgId,
-                    employeeExcludeIds: val.id,
-                  }).unwrap();
+                    const res = await getEmployeesByRole({
+                      organisationId: orgId,
+                      employeeExcludeIds: val.id,
+                    }).unwrap();
 
-                  setPanelOptions(
-                    res.data.map((u) => ({
-                      id: u.id,
-                      name: u.name,
-                      role: u.role,
-                      designation: u.designation,
-                    }))
-                  );
-                }}
-                getOptionLabel={(option) => option.name || ""}
-                isOptionEqualToValue={(option, value) => option.id === value?.id}
-                renderOption={(props, option, { selected }) => {
-                  const isAllSelected =
-                    form.skills.length === allSkillOptions.length;
-
-                  if (option.type === "select_all") {
-                    return (
-                      <li {...props}>
-                        <Checkbox
-                          checked={isAllSelected}
-                          indeterminate={
-                            form.skills.length > 0 &&
-                            form.skills.length < allSkillOptions.length
-                          }
-                          size="small"
-                        />
-                        <Typography fontWeight={700}>Select All</Typography>
-                      </li>
+                    setPanelOptions(
+                      res.data.map((u) => ({
+                        id: u.id,
+                        name: u.name,
+                        role: u.role,
+                        designation: u.designation,
+                      }))
                     );
-                  }
+                  }}
+                  getOptionLabel={(option) => option.name || ""}
+                  isOptionEqualToValue={(option, value) => option.id === value?.id}
+                  renderOption={(props, option) => {
+                    const initials = option.name
+                      .split(" ")
+                      .map((w) => w[0])
+                      .slice(0, 2)
+                      .join("")
+                      .toUpperCase();
 
-                  return (
-                    <li
-                      {...props}
-                      style={{
-                        ...props.style,
-                        paddingTop: 2,
-                        paddingBottom: 2,
-                        minHeight: 36,   // ↓ Reduce from default 48px
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          width: "100%",
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          py: 0.25,       // ↓ Less vertical padding
+                    return (
+                      <li
+                        {...props}
+                        style={{
+                          ...props.style,
+                          paddingTop: 8,
+                          paddingBottom: 8,
                         }}
                       >
                         <Box
                           sx={{
                             display: "flex",
                             alignItems: "center",
-                            gap: 1,
+                            gap: 1.5,
                           }}
                         >
-                          <Checkbox
-                            checked={selected}
-                            size="small"
-                            sx={{ p: 0.5 }}   // ↓ Smaller checkbox padding
-                          />
-
-                          <Typography fontSize={14}>
-                            {option.label}
-                          </Typography>
-                        </Box>
-
-                        {option.type !== "custom" && (
-                          <Chip
-                            size="small"
-                            label={
-                              option.type === "mandatory"
-                                ? "Must"
-                                : option.type === "primary"
-                                  ? "Primary"
-                                  : "Secondary"
-                            }
-                            color={
-                              option.type === "mandatory"
-                                ? "error"
-                                : option.type === "primary"
-                                  ? "primary"
-                                  : "success"
-                            }
-                            variant="outlined"
-                            sx={{ height: 24 }}
-                          />
-                        )}
-                      </Box>
-                    </li>
-                  );
-                }}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    placeholder="Select interviewer"
-                    sx={{
-                      "& .MuiOutlinedInput-root": {
-                        borderRadius: "8px",
-                      },
-                    }}
-                  />
-                )}
-              />
-            </Grid>
-
-            {/* Panel Members */}
-            <Grid item size={{ xs: 12, sm: 6 }} >
-              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
-                Panel Members <Box component="span" sx={{ color: "#9CA3AF" }}>(optional)</Box>
-              </Typography>
-              <Autocomplete
-                multiple
-                size="small"
-                options={panelOptions}
-                getOptionLabel={(o) => o.name ?? o.label ?? ""}
-                value={form.panelMembers}
-                onChange={(_, val) => setField("panelMembers")(val)}
-                renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    placeholder="Add panel members"
-                    sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
-                  />
-                )}
-              />
-            </Grid>
-
-            {/* Duration */}
-            <Grid item size={{ xs: 12, sm: 6 }}>
-              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
-                Duration
-              </Typography>
-              <FormControl fullWidth size="small">
-                <Select
-                  displayEmpty
-                  value={form.duration}
-                  onChange={(e) => {
-                    setField("duration")(e.target.value);
-                    // Duration changed → any previously chosen slot may no longer
-                    // be valid, so clear it and let the person re-pick.
-                    setField("dateTime")("");
-                  }}
-                  sx={{ borderRadius: "8px" }}
-                  renderValue={(v) => v || <span style={{ color: "#9CA3AF" }}>Select duration</span>}
-                >
-                  {DURATIONS.map((d) => (
-                    <MenuItem key={d} value={d}>{d}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            {/* Select Day & Time — opens calendar + live availability modal */}
-            <Grid item size={{ xs: 12, sm: 6 }}>
-              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
-                Select Day & Time <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
-              </Typography>
-              <Box
-                onClick={() => setSlotModalOpen(true)}
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "space-between",
-                  gap: 1,
-                  border: `1px solid ${C.border}`,
-                  borderRadius: "8px",
-                  px: 1.5,
-                  py: "8.5px",
-                  cursor: "pointer",
-                  backgroundColor: "#fff",
-                  "&:hover": { borderColor: C.accent },
-                }}
-              >
-                <Typography
-                  sx={{
-                    fontSize: 13.5,
-                    color: form.dateTime ? "#111827" : "#9CA3AF",
-                    fontWeight: form.dateTime ? 600 : 400,
-                    whiteSpace: "nowrap",
-                    overflow: "hidden",
-                    textOverflow: "ellipsis",
-                  }}
-                >
-                  {form.dateTime && dayjs(form.dateTime).isValid()
-                    ? dayjs(form.dateTime).format("ddd, DD MMM YYYY · HH:mm")
-                    : "Select a slot"}
-                </Typography>
-                <CalendarMonthOutlinedIcon sx={{ fontSize: 16, color: "#9CA3AF", flexShrink: 0 }} />
-              </Box>
-            </Grid>
-
-            {/* Platform */}
-            <Grid item size={{ xs: 12 }}>
-              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 1 }}>
-                Platform
-              </Typography>
-              <Grid container spacing={1}>
-                {PLATFORMS.map((p) => (
-                  <Grid item size={{ xs: 6, sm: 3 }} key={p.key}>
-                    <Box
-                      onClick={() => setField("platform")(p.key)}
-                      sx={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 1,
-                        justifyContent: "center",
-                        border: `1.5px solid ${form.platform === p.key ? C.accent : C.border}`,
-                        backgroundColor: form.platform === p.key ? C.accentSoft : "#fff",
-                        borderRadius: "8px",
-                        py: 1,
-                        cursor: "pointer",
-                        fontSize: 13,
-                        fontWeight: 600,
-                        color: form.platform === p.key ? C.accent : "#374151",
-                        userSelect: "none",
-                      }}
-                    >
-                      <span>{p.icon}</span> {p.label}
-                    </Box>
-                  </Grid>
-                ))}
-              </Grid>
-            </Grid>
-
-            {/* Meeting URL */}
-            <Grid item size={{ xs: 12, }}>
-              <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
-                Meeting URL
-              </Typography>
-              <TextField
-                fullWidth
-                size="small"
-                placeholder="https://meet.google.com/abc-def-ghi"
-                value={form.meetingUrl}
-                onChange={(e) => setField("meetingUrl")(e.target.value)}
-                sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
-              />
-            </Grid>
-
-            {/* Skills to Evaluate */}
-            <Grid item size={{ xs: 12 }}>
-              <Box sx={{ border: `1px solid ${C.border}`, borderRadius: "10px", overflow: "hidden" }}>
-                <Box
-                  sx={{
-                    px: 2,
-                    py: 1.2,
-                    backgroundColor: "#F9FAFB",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 1,
-                    borderBottom: `1px solid ${C.border}`,
-                  }}
-                >
-                  <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>
-                    ⭐ Skills to Evaluate
-                  </Typography>
-                </Box>
-                <Box sx={{ p: 1.5 }}>
-                  <Autocomplete
-                    multiple
-                    freeSolo
-                    disableCloseOnSelect
-                    size="small"
-                    options={[
-                      { label: "Select All", type: "select_all" },
-                      ...allSkillOptions,
-                    ]}
-                    value={form.skills}
-                    isOptionEqualToValue={(option, value) =>
-                      option.label === value.label && option.type === value.type
-                    }
-                    getOptionLabel={(option) =>
-                      typeof option === "string" ? option : option.label
-                    }
-                    groupBy={(option) => {
-                      switch (option.type) {
-                        case "custom":
-                          return "CUSTOM";
-                        case "mandatory":
-                          return "MANDATORY";
-                        case "primary":
-                          return "PRIMARY";
-                        case "secondary":
-                          return "SECONDARY";
-                        default:
-                          return "";
-                      }
-                    }}
-                    onChange={(event, value, reason, details) => {
-                      const isAllSelected =
-                        form.skills.length === allSkillOptions.length;
-
-                      if (details?.option?.type === "select_all") {
-                        if (isAllSelected) {
-                          setField("skills")([]);
-                        } else {
-                          setField("skills")(allSkillOptions);
-                        }
-                        return;
-                      }
-
-                      setField("skills")(
-                        value.filter((v) => v.type !== "select_all")
-                      );
-                    }}
-                    renderGroup={(params) => {
-                      if (!params.group) {
-                        return <li key={params.key}>{params.children}</li>;
-                      }
-
-                      return (
-                        <li key={params.key}>
-                          <Box
+                          <Avatar
                             sx={{
-                              px: 2,
-                              py: 1,
-                              fontWeight: 700,
+                              width: 32,
+                              height: 32,
                               fontSize: 13,
-                              color:
-                                params.group === "MANDATORY"
-                                  ? "#E53935"
-                                  : params.group === "PRIMARY"
-                                    ? "#1976D2"
-                                    : params.group === "SECONDARY"
-                                      ? "#00A76F"
-                                      : "#7C3AED",
-                              textTransform: "uppercase",
+                              fontWeight: 600,
+                              bgcolor: "#FF5722",
                             }}
                           >
-                            {params.group}
-                          </Box>
+                            {initials}
+                          </Avatar>
 
-                          <ul style={{ margin: 0, padding: 0 }}>
-                            {params.children}
-                          </ul>
-                        </li>
-                      );
-                    }}
-                    renderOption={(props, option, { selected }) => {
-                      const isAllSelected =
-                        form.skills.length === allSkillOptions.length;
-
-                      if (option.type === "select_all") {
-                        return (
-                          <li {...props}>
-                            <Checkbox
-                              checked={isAllSelected}
-                              indeterminate={
-                                form.skills.length > 0 &&
-                                form.skills.length < allSkillOptions.length
-                              }
-                            />
-
-                            <Typography fontWeight={700}>
-                              Select All
+                          <Box sx={{ display: "flex", flexDirection: "column" }}>
+                            <Typography sx={{ fontSize: 13, fontWeight: 600, color: "#111827" }}>
+                              {option.name}
                             </Typography>
+                            <Typography sx={{ fontSize: 12, color: "text.secondary", lineHeight: 1.4 }}>
+                              {option.role}
+                            </Typography>
+                          </Box>
+                        </Box>
+                      </li>
+                    );
+                  }}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Select interviewer"
+                      sx={{
+                        "& .MuiOutlinedInput-root": {
+                          borderRadius: "8px",
+                        },
+                      }}
+                    />
+                  )}
+                />
+              </Grid>
+
+              {/* Panel Members */}
+              <Grid item size={{ xs: 12, sm: 6 }} >
+                <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+                  Panel Members <Box component="span" sx={{ color: "#9CA3AF" }}>(optional)</Box>
+                </Typography>
+                <Autocomplete
+                  multiple
+                  size="small"
+                  options={panelOptions}
+                  getOptionLabel={(o) => o.name ?? o.label ?? ""}
+                  isOptionEqualToValue={(option, value) => option.id === value?.id}
+                  value={form.panelMembers}
+                  onChange={(_, val) => setField("panelMembers")(val)}
+                  renderInput={(params) => (
+                    <TextField
+                      {...params}
+                      placeholder="Add panel members"
+                      sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
+                    />
+                  )}
+                />
+              </Grid>
+
+              {/* Duration */}
+              <Grid item size={{ xs: 12, sm: 6 }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+                  Duration
+                </Typography>
+                <FormControl fullWidth size="small">
+                  <Select
+                    displayEmpty
+                    value={form.duration}
+                    onChange={(e) => {
+                      setField("duration")(e.target.value);
+                      // Duration changed → any previously chosen slot may no longer
+                      // be valid, so clear it and let the person re-pick.
+                      setField("dateTime")("");
+                    }}
+                    sx={{ borderRadius: "8px" }}
+                    renderValue={(v) => v || <span style={{ color: "#9CA3AF" }}>Select duration</span>}
+                  >
+                    {DURATIONS.map((d) => (
+                      <MenuItem key={d} value={d}>{d}</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              {/* Select Day & Time — opens calendar + live availability modal */}
+              <Grid item size={{ xs: 12, sm: 6 }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+                  Select Day & Time <Box component="span" sx={{ color: "#EF4444" }}>*</Box>
+                </Typography>
+                <Box
+                  onClick={() => setSlotModalOpen(true)}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 1,
+                    border: `1px solid ${C.border}`,
+                    borderRadius: "8px",
+                    px: 1.5,
+                    py: "8.5px",
+                    cursor: "pointer",
+                    backgroundColor: "#fff",
+                    "&:hover": { borderColor: C.accent },
+                  }}
+                >
+                  <Typography
+                    sx={{
+                      fontSize: 13.5,
+                      color: form.dateTime ? "#111827" : "#9CA3AF",
+                      fontWeight: form.dateTime ? 600 : 400,
+                      whiteSpace: "nowrap",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                    }}
+                  >
+                    {form.dateTime && dayjs(form.dateTime).isValid()
+                      ? dayjs(form.dateTime).format("ddd, DD MMM YYYY · HH:mm")
+                      : "Select a slot"}
+                  </Typography>
+                  <CalendarMonthOutlinedIcon sx={{ fontSize: 16, color: "#9CA3AF", flexShrink: 0 }} />
+                </Box>
+              </Grid>
+
+              {/* Platform */}
+              <Grid item size={{ xs: 12 }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 1 }}>
+                  Platform
+                </Typography>
+                <Grid container spacing={1}>
+                  {PLATFORMS.map((p) => (
+                    <Grid item size={{ xs: 6, sm: 3 }} key={p.key}>
+                      <Box
+                        onClick={() => setField("platform")(p.key)}
+                        sx={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 1,
+                          justifyContent: "center",
+                          border: `1.5px solid ${form.platform === p.key ? C.accent : C.border}`,
+                          backgroundColor: form.platform === p.key ? C.accentSoft : "#fff",
+                          borderRadius: "8px",
+                          py: 1,
+                          cursor: "pointer",
+                          fontSize: 13,
+                          fontWeight: 600,
+                          color: form.platform === p.key ? C.accent : "#374151",
+                          userSelect: "none",
+                        }}
+                      >
+                        <span>{p.icon}</span> {p.label}
+                      </Box>
+                    </Grid>
+                  ))}
+                </Grid>
+              </Grid>
+
+              {/* Meeting URL */}
+              <Grid item size={{ xs: 12, }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 600, color: "#374151", mb: 0.5 }}>
+                  Meeting URL
+                </Typography>
+                <TextField
+                  fullWidth
+                  size="small"
+                  placeholder="https://meet.google.com/abc-def-ghi"
+                  value={form.meetingUrl}
+                  onChange={(e) => setField("meetingUrl")(e.target.value)}
+                  sx={{ "& .MuiOutlinedInput-root": { borderRadius: "8px" } }}
+                />
+              </Grid>
+
+              {/* Skills to Evaluate */}
+              <Grid item size={{ xs: 12 }}>
+                <Box sx={{ border: `1px solid ${C.border}`, borderRadius: "10px", overflow: "hidden" }}>
+                  <Box
+                    sx={{
+                      px: 2,
+                      py: 1.2,
+                      backgroundColor: "#F9FAFB",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 1,
+                      borderBottom: `1px solid ${C.border}`,
+                    }}
+                  >
+                    <Typography sx={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>
+                      ⭐ Skills to Evaluate
+                    </Typography>
+                  </Box>
+                  <Box sx={{ p: 1.5 }}>
+                    <Autocomplete
+                      multiple
+                      freeSolo
+                      disableCloseOnSelect
+                      size="small"
+                      options={[
+                        { label: "Select All", type: "select_all" },
+                        ...allSkillOptions,
+                      ]}
+                      value={form.skills}
+                      isOptionEqualToValue={(option, value) =>
+                        option.label === value.label && option.type === value.type
+                      }
+                      getOptionLabel={(option) =>
+                        typeof option === "string" ? option : option.label
+                      }
+                      groupBy={(option) => {
+                        switch (option.type) {
+                          case "custom":
+                            return "CUSTOM";
+                          case "mandatory":
+                            return "MANDATORY";
+                          case "primary":
+                            return "PRIMARY";
+                          case "secondary":
+                            return "SECONDARY";
+                          default:
+                            return "";
+                        }
+                      }}
+                      onChange={(event, value, reason, details) => {
+                        const isAllSelected =
+                          form.skills.length === allSkillOptions.length;
+
+                        if (details?.option?.type === "select_all") {
+                          if (isAllSelected) {
+                            setField("skills")([]);
+                          } else {
+                            setField("skills")(allSkillOptions);
+                          }
+                          return;
+                        }
+
+                        setField("skills")(
+                          value.filter((v) => v.type !== "select_all")
+                        );
+                      }}
+                      renderGroup={(params) => {
+                        if (!params.group) {
+                          return <li key={params.key}>{params.children}</li>;
+                        }
+
+                        return (
+                          <li key={params.key}>
+                            <Box
+                              sx={{
+                                px: 2,
+                                py: 1,
+                                fontWeight: 700,
+                                fontSize: 13,
+                                color:
+                                  params.group === "MANDATORY"
+                                    ? "#E53935"
+                                    : params.group === "PRIMARY"
+                                      ? "#1976D2"
+                                      : params.group === "SECONDARY"
+                                        ? "#00A76F"
+                                        : "#7C3AED",
+                                textTransform: "uppercase",
+                              }}
+                            >
+                              {params.group}
+                            </Box>
+
+                            <ul style={{ margin: 0, padding: 0 }}>
+                              {params.children}
+                            </ul>
                           </li>
                         );
-                      }
+                      }}
+                      renderOption={(props, option, { selected }) => {
+                        const isAllSelected =
+                          form.skills.length === allSkillOptions.length;
 
-                      return (
-                        <li {...props}>
-                          <Box
-                            sx={{
-                              width: "100%",
-                              display: "flex",
-                              justifyContent: "space-between",
-                              alignItems: "center",
+                        if (option.type === "select_all") {
+                          return (
+                            <li {...props} style={{ minHeight: "auto", padding: "4px 12px" }}>
+                              <Checkbox
+                                size="small"
+                                sx={{ p: 0.5 }}
+                                checked={isAllSelected}
+                                indeterminate={
+                                  form.skills.length > 0 &&
+                                  form.skills.length < allSkillOptions.length
+                                }
+                              />
+
+                              <Typography fontWeight={700} fontSize={13}>
+                                Select All
+                              </Typography>
+                            </li>
+                          );
+                        }
+
+                        return (
+                          <li
+                            {...props}
+                            style={{
+                              ...props.style,
+                              minHeight: "auto",
+                              padding: "4px 12px",
                             }}
                           >
                             <Box
                               sx={{
                                 display: "flex",
                                 alignItems: "center",
-                                gap: 1,
+                                gap: 0.5,
                               }}
                             >
-                              <Checkbox checked={selected} />
+                              <Checkbox checked={selected} size="small" sx={{ p: 0.5 }} />
 
-                              <Typography>{option.label}</Typography>
+                              <Typography sx={{ fontSize: 12 }}>{option.label}</Typography>
                             </Box>
+                          </li>
+                        );
+                      }}
+                      renderInput={(params) => (
+                        <TextField
+                          {...params}
+                          placeholder="Type skill + Enter to add"
+                          onKeyDown={(e) => {
+                            if (e.key !== "Enter") return;
 
-                            {option.type !== "custom" && (
-                              <Chip
-                                size="small"
-                                label={
-                                  option.type === "mandatory"
-                                    ? "Must"
-                                    : option.type === "primary"
-                                      ? "Primary"
-                                      : "Secondary"
-                                }
-                                color={
-                                  option.type === "mandatory"
-                                    ? "error"
-                                    : option.type === "primary"
-                                      ? "primary"
-                                      : "success"
-                                }
-                                variant="outlined"
-                              />
-                            )}
-                          </Box>
-                        </li>
-                      );
-                    }}
-                    renderInput={(params) => (
-                      <TextField
-                        {...params}
-                        placeholder="Type skill + Enter to add"
-                        onKeyDown={(e) => {
-                          if (e.key !== "Enter") return;
+                            const value = e.target.value.trim();
 
-                          const value = e.target.value.trim();
+                            if (!value) return;
 
-                          if (!value) return;
+                            e.preventDefault();
 
-                          e.preventDefault();
+                            const exists = allSkillOptions.some(
+                              (s) =>
+                                s.label.toLowerCase() === value.toLowerCase()
+                            );
 
-                          const exists = allSkillOptions.some(
-                            (s) =>
-                              s.label.toLowerCase() === value.toLowerCase()
-                          );
+                            if (exists) return;
 
-                          if (exists) return;
+                            const newSkill = {
+                              label: value,
+                              type: "custom",
+                            };
 
-                          const newSkill = {
-                            label: value,
-                            type: "custom",
-                          };
+                            setCustomSkills((prev) => [...prev, newSkill]);
 
-                          setCustomSkills((prev) => [...prev, newSkill]);
-
-                          setForm((prev) => ({
-                            ...prev,
-                            skills: [...prev.skills, newSkill],
-                          }));
-                        }}
-                        sx={{
-                          "& .MuiOutlinedInput-root": {
-                            borderRadius: "8px",
-                          },
-                        }}
-                      />
-                    )}
-                  />
+                            setForm((prev) => ({
+                              ...prev,
+                              skills: [...prev.skills, newSkill],
+                            }));
+                          }}
+                          sx={{
+                            "& .MuiOutlinedInput-root": {
+                              borderRadius: "8px",
+                            },
+                          }}
+                        />
+                      )}
+                    />
+                  </Box>
                 </Box>
-              </Box>
+              </Grid>
             </Grid>
-          </Grid>
+          )}
         </DialogContent>
 
         <DialogActions sx={{ px: 3, py: 2, borderTop: `1px solid ${C.border}`, gap: 1 }}>
@@ -1861,7 +2557,7 @@ function ScheduleInterviewModal({
           <Button
             onClick={handleSubmit}
             variant="contained"
-            disabled={!isValid || loading}
+            disabled={!isValid || loading || isFetchingInitialData}
             sx={{
               textTransform: "none",
               borderRadius: "8px",
@@ -1873,7 +2569,13 @@ function ScheduleInterviewModal({
               },
             }}
           >
-            {loading ? <CircularProgress size={18} sx={{ color: "#fff" }} /> : "Schedule Interview →"}
+            {loading ? (
+              <CircularProgress size={18} sx={{ color: "#fff" }} />
+            ) : isReschedule ? (
+              "Reschedule Interview →"
+            ) : (
+              "Schedule Interview →"
+            )}
           </Button>
         </DialogActions>
       </Dialog>
@@ -2023,7 +2725,7 @@ function StatusBadge({ label, color = "orange" }) {
     },
   };
 
-  const s = styles[color];
+  const s = styles[color] ?? styles.scheduled;
 
   return (
     <Box
@@ -2036,6 +2738,12 @@ function StatusBadge({ label, color = "orange" }) {
         color: s.color,
         fontSize: 12,
         fontWeight: 600,
+
+        display: "inline-flex",
+        alignItems: "center",
+        justifyContent: "center",
+        width: "fit-content",
+        alignSelf: "flex-start",   // <-- important
       }}
     >
       {label}
@@ -2603,7 +3311,6 @@ function ExperienceList({ candidate }) {
                 width: "100%",
                 border: emp.is_current ? "1px solid #FFD6C7" : "1px solid #E8E8EC",
                 borderRadius: "14px",
-                // backgroundColor: "#FFFAF7",
                 backgroundColor: emp.is_current ? "#FFFAF7" : "#fff",
                 p: "16px",
                 mb: 3,
@@ -3230,8 +3937,6 @@ function SkillNotesAccordion({ skillNotes = {}, scoreIntel = [] }) {
                 sx={{
                   p: 0,
                   borderRadius: 2,
-
-                  // mb: 2,
                 }}
               >
                 <Typography
@@ -3822,10 +4527,17 @@ function SkillsTab({ candidate }) {
   );
 }
 
-/* ═══════════════════════════════════════════════
-   TIMELINE TAB
-═══════════════════════════════════════════════ */
-function TimelineTab({ candidate, onInterviewClick }) {
+function TimelineTab({
+  candidate,
+  onInterviewClick,
+  onUpdateInterviewStatus,
+  onRescheduleInterview,
+  onUpdateInterviewResult,
+  onViewFeedback,
+  interviewStatusOverrides = {},
+  interviewResultOverrides = {},
+  interviewTimeOverrides = {},
+}) {
   const currentStage = candidate.current_stage ?? "";
   const location = useLocation();
   const { candidateId } = useParams();
@@ -3839,14 +4551,57 @@ function TimelineTab({ candidate, onInterviewClick }) {
     },
   );
 
-  const entries = data?.data ?? [];
+  const entries = data?.timeline ?? [];
+
   const grouped = {};
-  entries.forEach((e) => {
-    const g = STAGE_GROUP[e.stage?.toLowerCase()];
+  entries.forEach((entry) => {
+    const g = getEntryGroup(entry);
     if (!g) return;
     if (!grouped[g]) grouped[g] = [];
-    grouped[g].push(e);
+    grouped[g].push(entry);
   });
+  const rejectedEntry = entries.find((e) => e.type === "rejected");
+  if (rejectedEntry) {
+    const groupKeys = STAGE_CONFIG.map((s) => s.key);
+    const groupsWithEntries = groupKeys.filter((gk) => grouped[gk]?.length);
+    const lastGroupWithEntries = groupsWithEntries[groupsWithEntries.length - 1];
+    if (lastGroupWithEntries) {
+      grouped[lastGroupWithEntries] = [
+        ...(grouped[lastGroupWithEntries] ?? []),
+        rejectedEntry,
+      ];
+    }
+  }
+
+  const hasRejected = entries.some((e) => e.type === "rejected");
+
+  // Badges for lifecycle (non-interview) entries, keyed by `entry.type`.
+  const LIFECYCLE_BADGE_COLOR = {
+    ...BADGE_COLOR,
+    offer_released: "scheduled",
+    offer_accepted: "completed",
+    offer_declined: "failed",
+    offer_revoked: "failed",
+    rejected: "failed",
+  };
+
+  // Badges/labels for a single interview round's *effective* status
+  // (derived from its latest event, or a locally-applied Update Status
+  // override), keyed the same way as INTERVIEW_STATUS_OPTIONS values.
+  const ROUND_STATUS_LABEL = {
+    scheduled: "Scheduled",
+    completed: "Completed",
+    no_show: "No Show",
+    not_conducted: "Not Conducted",
+    cancelled: "Cancelled",
+  };
+  const ROUND_BADGE_COLOR = {
+    scheduled: "scheduled",
+    completed: "completed",
+    no_show: "failed",
+    not_conducted: "failed",
+    cancelled: "failed",
+  };
 
   const visibleStages = STAGE_CONFIG.filter((stage) => !!grouped[stage.key]);
 
@@ -3891,33 +4646,24 @@ function TimelineTab({ candidate, onInterviewClick }) {
           {visibleStages.map((stage, i) => {
             const stageEntries = grouped[stage.key] ?? [];
             const isLast = i === visibleStages.length - 1;
-            const state = groupState(stage.key, entries, currentStage);
-            const firstEntry = stageEntries[0];
+            const state = groupState(stage.key, grouped, currentStage, hasRejected);
 
-            const subEntries = Object.values(
-              stageEntries.reduce((acc, item) => {
-                // Ignore entries that are not interview sub stages
-                if (!SUB_LABEL[item.stage]) return acc;
+            // Interview rounds only ever live in the "interviewing" group.
+            const interviewRounds = stageEntries
+              .filter((e) => e.stage?.toLowerCase().startsWith("interview_"))
+              .sort((a, b) => (a.step_number ?? 0) - (b.step_number ?? 0));
+            const hasSubEntries = interviewRounds.length > 0;
 
-                const step = item.step_number;
-                if (!step) return acc;
-
-                // Keep only the latest event for each round
-                if (
-                  !acc[step] ||
-                  new Date(item.created_at) > new Date(acc[step].created_at)
-                ) {
-                  acc[step] = item;
-                }
-
-                return acc;
-              }, {})
-            ).sort((a, b) => a.step_number - b.step_number);
-            const hasSubEntries = subEntries.length > 0;
-
-            const interviewEntry = stageEntries.filter(
-              (entry) => entry.interview_id,
+            // Simple lifecycle entries for this group (matched / shortlisted /
+            // selected / offer / hired) — everything that isn't a round.
+            const lifecycleEntries = stageEntries.filter(
+              (e) => !e.stage?.toLowerCase().startsWith("interview_") && e.type !== "rejected",
             );
+
+            // Rejected is rendered separately, after interview rounds, since it
+            // represents the terminal action taken *after* the rounds happened.
+            const rejectedEntries = stageEntries.filter((e) => e.type === "rejected");
+
             return (
               <Box
                 sx={{
@@ -3929,7 +4675,6 @@ function TimelineTab({ candidate, onInterviewClick }) {
                 key={stage.key}
               >
                 <Box
-                  key={stage.key}
                   sx={{ display: "flex", gap: "16px", width: "100%" }}
                 >
                   <Box
@@ -3953,7 +4698,6 @@ function TimelineTab({ candidate, onInterviewClick }) {
                       pb: isLast ? 0 : "12px",
                       width: "100%",
                       pt: "4px",
-                      width: "100%",
                     }}
                   >
                     <Box
@@ -3975,19 +4719,28 @@ function TimelineTab({ candidate, onInterviewClick }) {
                         {stage.label}
                       </Typography>
                     </Box>
-                    {stage.key !== "interviewing" && (
-                      <>
-                        <Box sx={{ display: "flex", alignItems: "center" }}>
+
+                    {/* Simple lifecycle entries (matched / shortlisted / selected / offer / hired) */}
+                    {lifecycleEntries.map((entry, ei) => (
+                      <Box key={entry.timestamp ?? ei} sx={{ mt: 1 }}>
+                        {SUB_LABEL[entry.type] && (
+                          <StatusBadge
+                            label={SUB_LABEL[entry.type]}
+                            color={LIFECYCLE_BADGE_COLOR[entry.type]}
+                          />
+                        )}
+
+                        <Box sx={{ display: "flex", alignItems: "center", mt: 0.5 }}>
                           <Typography
                             sx={{
                               fontSize: 11,
-                              fontWeight: 500,
                               color: "#9CA3AF",
                               minWidth: 24,
                             }}
                           >
                             IST :
                           </Typography>
+
                           <Typography
                             sx={{
                               fontSize: 12,
@@ -3996,22 +4749,22 @@ function TimelineTab({ candidate, onInterviewClick }) {
                               color: "#4B5563",
                             }}
                           >
-                            {fmtDateIST(firstEntry.created_at)}
+                            {fmtDateIST(entry.timestamp)}
                           </Typography>
                         </Box>
 
-                        {firstEntry.triggered_by && (
+                        {entry.by?.name && (
                           <Box sx={{ display: "flex", alignItems: "center" }}>
                             <Typography
                               sx={{
                                 fontSize: 11,
-                                fontWeight: 500,
                                 color: "#9CA3AF",
                                 minWidth: 24,
                               }}
                             >
                               By :
                             </Typography>
+
                             <Typography
                               sx={{
                                 fontSize: 12,
@@ -4020,12 +4773,21 @@ function TimelineTab({ candidate, onInterviewClick }) {
                                 color: "#4B5563",
                               }}
                             >
-                              {firstEntry.triggered_by}
+                              {entry.by.name}
                             </Typography>
                           </Box>
                         )}
-                      </>
-                    )}
+
+                        {entry.comments && (
+                          <Typography
+                            sx={{ fontSize: 12, color: "#6B7280", mt: 0.3 }}
+                          >
+                            "{entry.comments}"
+                          </Typography>
+                        )}
+                      </Box>
+                    ))}
+
                     {hasSubEntries && (
                       <Box
                         sx={{
@@ -4036,22 +4798,58 @@ function TimelineTab({ candidate, onInterviewClick }) {
                           width: "100%",
                         }}
                       >
-                        {subEntries.map((sub, si) => {
-                          const subState =
-                            sub.stage === "offer_revoked" ||
-                              sub.stage === "interview_failed"
-                              ? "failed"
-                              : "completed";
-                          const isLastInterviewEntry =
-                            sub.interview_id &&
-                            si ===
-                            subEntries
-                              .map((e, index) => ({ ...e, index }))
-                              .filter((e) => e.interview_id)
-                              .slice(-1)[0]?.index;
+                        {interviewRounds.map((round, si) => {
+                          const roundEvents = round.events ?? [];
+
+                          const latestEvent = [...roundEvents].sort(
+                            (a, b) =>
+                              new Date(b.timestamp) - new Date(a.timestamp),
+                          )[0];
+                          const scheduledEvent =
+                            roundEvents.find(
+                              (e) => e.event === "interview_scheduled",
+                            ) ?? roundEvents[0];
+
+                          const effectiveStatus =
+                            interviewStatusOverrides[round.interview_id] ??
+                            normalizeInterviewStatus(latestEvent?.status);
+
+                          const isOpenRound = OPEN_INTERVIEW_STAGES.includes(
+                            effectiveStatus,
+                          );
+                          const isCompletedRound = effectiveStatus === "completed";
+                          const effectiveResult =
+                            interviewResultOverrides[round.interview_id] ??
+                            normalizeInterviewResult(
+                              latestEvent?.result ?? round.result,
+                            );
+                          const hasFinalResult =
+                            effectiveResult === "pass" || effectiveResult === "fail";
+
+                          const roundBadgeLabel =
+                            isCompletedRound && effectiveResult
+                              ? `Completed (${effectiveResult.toUpperCase()})`
+                              : ROUND_STATUS_LABEL[effectiveStatus] ?? effectiveStatus;
+
+                          const roundBadgeColor =
+                            isCompletedRound && effectiveResult
+                              ? effectiveResult === "pass"
+                                ? "completed"
+                                : "failed"
+                              : ROUND_BADGE_COLOR[effectiveStatus] ?? "scheduled";
+
+                          const timeOverride = interviewTimeOverrides[round.interview_id];
+                          const effectiveInterviewTime = timeOverride?.interview_time ?? round.interview_time;
+                          const effectiveDurationMinutes = timeOverride?.duration_minutes ?? round.duration_minutes;
+
+                          const interviewEndTimeForRound = getInterviewEndTime(
+                            effectiveInterviewTime,
+                            effectiveDurationMinutes,
+                          );
+
                           return (
                             <Box
-                              key={si}
+                              key={round.interview_id ?? si}
                               sx={{
                                 display: "flex",
                                 alignItems: "center",
@@ -4078,11 +4876,11 @@ function TimelineTab({ candidate, onInterviewClick }) {
                                         color: "#111827",
                                       }}
                                     >
-                                      {`Round-${sub.step_number}`}
+                                      {round.step_name ?? `Round-${round.step_number}`}
                                     </Typography>
                                     <StatusBadge
-                                      label={SUB_LABEL[sub.stage]}
-                                      color={BADGE_COLOR[sub.stage]}
+                                      label={roundBadgeLabel}
+                                      color={roundBadgeColor}
                                     />
                                   </Box>
                                   <Typography
@@ -4096,7 +4894,7 @@ function TimelineTab({ candidate, onInterviewClick }) {
                                   >
                                     IST:
                                     <Typography sx={{ ml: 1, fontSize: 12, color: "#4B5563", fontWeight: 600 }}>
-                                      {fmtDateIST(sub.created_at)}
+                                      {fmtDateIST(round.timestamp)}
                                     </Typography>
                                   </Typography>
                                   <Typography
@@ -4110,9 +4908,26 @@ function TimelineTab({ candidate, onInterviewClick }) {
                                   >
                                     Interview Time: IST:
                                     <Typography sx={{ ml: 1, fontSize: 12, color: "#4B5563", fontWeight: 600 }}>
-                                      {fmtDateIST(firstEntry.interview_time)}
+                                      {fmtDateIST(effectiveInterviewTime)}
                                     </Typography>
                                   </Typography>
+
+                                  {round.interviewer?.name && (
+                                    <Typography
+                                      sx={{
+                                        fontSize: 12,
+                                        color: "#6B7280",
+                                        mt: 0.3,
+                                        display: "flex",
+                                        alignItems: "center",
+                                      }}
+                                    >
+                                      Interviewer:
+                                      <Typography sx={{ ml: 1, fontSize: 12, color: "#4B5563", fontWeight: 600 }}>
+                                        {round.interviewer.name}
+                                      </Typography>
+                                    </Typography>
+                                  )}
 
                                   <Typography
                                     sx={{
@@ -4125,13 +4940,22 @@ function TimelineTab({ candidate, onInterviewClick }) {
                                   >
                                     By:
                                     <Typography sx={{ ml: 1, fontSize: 12, color: "#4B5563", fontWeight: 600 }}>
-                                      {firstEntry.triggered_by}
+                                      {scheduledEvent?.by?.name ?? "—"}
                                     </Typography>
                                   </Typography>
+
+                                  {latestEvent?.comments && (
+                                    <Typography
+                                      sx={{ fontSize: 12, color: "#6B7280", mt: 0.3 }}
+                                    >
+                                      "{latestEvent.comments}"
+                                    </Typography>
+                                  )}
                                 </Box>
                               </Box>
-                              <Box>
-                                {sub.interview_id && (
+
+                              {round.interview_id && (
+                                <Stack direction="row" spacing={1}>
                                   <Button
                                     startIcon={
                                       <VisibilityIcon
@@ -4140,7 +4964,7 @@ function TimelineTab({ candidate, onInterviewClick }) {
                                     }
                                     variant="outlined"
                                     onClick={() =>
-                                      onInterviewClick(sub.interview_id)
+                                      onInterviewClick(round.interview_id)
                                     }
                                     sx={{
                                       borderColor: "#1976d2",
@@ -4159,13 +4983,130 @@ function TimelineTab({ candidate, onInterviewClick }) {
                                   >
                                     View Details
                                   </Button>
-                                )}
-                              </Box>
+
+                                  {isCompletedRound && (
+                                    <>
+                                      <Button
+                                        startIcon={
+                                          <VisibilityIcon sx={{ fontSize: "13px !important" }} />
+                                        }
+                                        variant="outlined"
+                                        onClick={() => onViewFeedback(round.interview_id)}
+                                        sx={{
+                                          borderColor: "#16A34A",
+                                          color: "#16A34A",
+                                          textTransform: "none",
+                                          fontSize: "12px",
+                                          fontWeight: 500,
+                                          borderRadius: "5px",
+                                          px: 2,
+                                          py: 0,
+                                          height: "30px",
+                                        }}
+                                      >
+                                        View Feedback
+                                      </Button>
+
+                                      {!hasFinalResult && !hasRejected && (
+                                        <InterviewResultMenu
+                                          currentResult={effectiveResult}
+                                          onSelect={(result) =>
+                                            onUpdateInterviewResult(
+                                              round.interview_id,
+                                              result,
+                                            )
+                                          }
+                                        />
+                                      )}
+                                    </>
+                                  )}
+
+                                  {isOpenRound && (
+                                    <>
+                                      <Button
+                                        startIcon={
+                                          <EventRepeatOutlinedIcon
+                                            sx={{ fontSize: "13px !important" }}
+                                          />
+                                        }
+                                        variant="outlined"
+                                        onClick={() =>
+                                          onRescheduleInterview(round.interview_id)
+                                        }
+                                        sx={{
+                                          borderColor: "#F97316",
+                                          color: "#F97316",
+                                          textTransform: "none",
+                                          fontSize: "12px",
+                                          fontWeight: 500,
+                                          borderRadius: "5px",
+                                          px: 2,
+                                          py: 0,
+                                          height: "30px",
+                                          "& .MuiSvgIcon-root": {
+                                            fontSize: "13px",
+                                          },
+                                        }}
+                                      >
+                                        Reschedule
+                                      </Button>
+
+                                      <InterviewStatusMenu
+                                        interviewEndTime={interviewEndTimeForRound}
+                                        currentStatus={effectiveStatus}
+                                        onSelect={(action) =>
+                                          onUpdateInterviewStatus(
+                                            round.interview_id,
+                                            action,
+                                          )
+                                        }
+                                      />
+                                    </>
+                                  )}
+                                </Stack>
+                              )}
                             </Box>
                           );
                         })}
                       </Box>
                     )}
+                    {/* Rejected renders last — it's the terminal action, after any rounds */}
+                    {rejectedEntries.map((entry, ei) => (
+                      <Box key={entry.timestamp ?? `rejected-${ei}`} sx={{ mt: 1 }}>
+                        {SUB_LABEL[entry.type] && (
+                          <StatusBadge
+                            label={SUB_LABEL[entry.type]}
+                            color={LIFECYCLE_BADGE_COLOR[entry.type]}
+                          />
+                        )}
+
+                        <Box sx={{ display: "flex", alignItems: "center", mt: 0.5 }}>
+                          <Typography sx={{ fontSize: 11, color: "#9CA3AF", minWidth: 24 }}>
+                            IST :
+                          </Typography>
+                          <Typography sx={{ fontSize: 12, fontWeight: 600, ml: 1, color: "#4B5563" }}>
+                            {fmtDateIST(entry.timestamp)}
+                          </Typography>
+                        </Box>
+
+                        {entry.by?.name && (
+                          <Box sx={{ display: "flex", alignItems: "center" }}>
+                            <Typography sx={{ fontSize: 11, color: "#9CA3AF", minWidth: 24 }}>
+                              By :
+                            </Typography>
+                            <Typography sx={{ fontSize: 12, fontWeight: 600, ml: 1, color: "#4B5563" }}>
+                              {entry.by.name}
+                            </Typography>
+                          </Box>
+                        )}
+
+                        {entry.comments && (
+                          <Typography sx={{ fontSize: 12, color: "#6B7280", mt: 0.3 }}>
+                            "{entry.comments}"
+                          </Typography>
+                        )}
+                      </Box>
+                    ))}
                   </Box>
                 </Box>
               </Box>
@@ -4354,7 +5295,7 @@ export default function CandidateDetail() {
   const location = useLocation();
   const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState(0);
-  console.log("candidateId...", candidateId);
+
   const matched_candidate_id =
     location.state?.matched_candidate_id ?? candidateId;
   const { data, isLoading, isError, error } =
@@ -4372,7 +5313,7 @@ export default function CandidateDetail() {
       status: data?.data?.status,
     }
     : null;
-  console.log("enriched", enriched)
+
   const [customSkills, setCustomSkills] = useState([]);
   const skillOptions = [
     ...(enriched?.matched_mandatory_skills ?? []).map((s) => ({
@@ -4387,7 +5328,8 @@ export default function CandidateDetail() {
       label: s,
       type: "secondary",
     })),
-  ]; const allSkillOptions = useMemo(() => {
+  ];
+  const allSkillOptions = useMemo(() => {
     const map = new Map();
 
     [...customSkills, ...skillOptions].forEach((skill) => {
@@ -4396,60 +5338,346 @@ export default function CandidateDetail() {
 
     return [...map.values()];
   }, [customSkills, skillOptions]);
+
   const [interviewModalOpen, setInterviewModalOpen] = useState(false);
-
   const [selectedInterview, setSelectedInterview] = useState(null);
+  const [lastInterviewPayload, setLastInterviewPayload] = useState(null);
+  const [interviewTimeOverrides, setInterviewTimeOverrides] = useState({});
 
-  const [getInterviewDetails, { isFetching }] =
-    useLazyGetInterviewDetailsQuery();
+  const [getInterviewFullDetails, { isFetching }] =
+    useLazyGetInterviewFullDetailsQuery();
+
   const handleInterviewDetails = async (interviewId) => {
     try {
-      const response = await getInterviewDetails(interviewId).unwrap();
-
+      const response = await getInterviewFullDetails(interviewId).unwrap();
       setSelectedInterview(response.data);
-
       setInterviewModalOpen(true);
     } catch (error) {
       console.error(error);
+      setSnackbar({
+        open: true,
+        message: "Failed to load interview details",
+        severity: "error",
+      });
     }
   };
 
-  /* ── Shortlist / Reject flow ── */
+  const handleEditFromDetails = (interviewId) => {
+    setInterviewModalOpen(false);
+    handleRescheduleClick(interviewId);
+  };
+
+  /* ── Shortlist / Reject / Select / Offer flow ──
+     All of these reuse the same StatusConfirmModal + updateCandidateStatus
+     mutation. `statusModal.action` is always the exact `new_status` value
+     sent to the API. */
   const [statusModal, setStatusModal] = useState({ open: false, action: null });
   const [updateCandidateStatus, { isLoading: statusUpdating }] =
     useUpdateCandidateStatusMutation();
+  const [updateInterviewRoundStatus, { isLoading: updatingInterview }] =
+    useUpdateInterviewRoundStatusMutation();
+  const [updateInterviewResult, { isLoading: updatingInterviewResult }] =
+    useUpdateInterviewResultMutation();
+  const INTERVIEW_ACTIONS = [
+    "completed",
+    "no_show",
+    "not_conducted",
+    "cancelled",
+  ];
 
-  const handleConfirmStatus = async (comment) => {
-    if (!enriched?.id || !statusModal.action) return;
-    console.log("enriched", enriched)
+  const handleConfirmStatus = async (comments) => {
     try {
-      await updateCandidateStatus({
-        candidateId: candidateId,
-        newStatus: statusModal.action, // "shortlisted" | "rejected"
-        comment: comment || undefined,
-      }).unwrap();
+      const statusAction = statusModal.action;
 
-      setStatusModal({ open: false, action: null });
+      if (INTERVIEW_ACTIONS.includes(statusAction)) {
+        await updateInterviewRoundStatus({
+          interviewId: interviewStatusModal.interviewId,
+          status: statusAction,
+          // result: statusAction,
+          reason: comments,
+          candidateId: matched_candidate_id,
+        }).unwrap();
+      } else {
+        await updateCandidateStatus({
+          candidateId: matched_candidate_id,
+          newStatus: statusAction,
+          reason: comments,
+        }).unwrap();
+      }
+
+      // Close modal
+      setStatusModal({
+        open: false,
+        action: null,
+      });
+
+      // Clear interview modal state if applicable
+      setInterviewStatusModal({
+        open: false,
+        action: null,
+        interviewId: null,
+      });
+
+      setSnackbar({
+        open: true,
+        message: "Status updated successfully",
+        severity: "success",
+      });
+
     } catch (err) {
-      console.error("Status update failed:", err);
+      console.error(err);
+      setSnackbar({
+        open: true,
+        message: err?.data?.message || "Failed to update status",
+        severity: "error",
+      });
     }
   };
+
+  /* ── Interview round outcome flow (Update Status dropdown, Timeline tab) ──
+     Reuses the same StatusConfirmModal used above — `interviewStatusModal.action`
+     is one of: "completed" | "no_show" | "not_conducted" | "cancelled". */
+  const [interviewStatusModal, setInterviewStatusModal] = useState({
+    open: false,
+    action: null,
+    interviewId: null,
+  });
+  // Optimistic local overrides so the Timeline UI reflects the new outcome
+  // immediately, keyed by interview_id. Cleared automatically once the
+  // backend timeline query refetches with the real stage (RTK Query tag
+  // invalidation on the mutation should trigger that refetch).
+  const [interviewStatusOverrides, setInterviewStatusOverrides] = useState({});
+
+  // Once a round is "completed", a Pass/Fail result can be recorded
+  // against it via useUpdateInterviewResultMutation. Same optimistic-
+  // override pattern as interviewStatusOverrides above, keyed by
+  // interview_id, storing "pass" | "fail".
+  const [interviewResultOverrides, setInterviewResultOverrides] = useState({});
+
+  const handleOpenInterviewStatusModal = (interviewId, action) => {
+    setStatusModal({
+      open: true,
+      action,
+    });
+
+    setInterviewStatusModal({
+      open: true,
+      action,
+      interviewId,
+    });
+  };
+
+  const handleConfirmInterviewStatus = async (comment) => {
+    const { interviewId, action } = interviewStatusModal;
+    if (!interviewId || !action) return;
+    try {
+      await updateCandidateStatus({
+        candidateId: matched_candidate_id,
+        newStatus: action, // "completed" | "no_show" | "not_conducted" | "cancelled"
+        reason: comment || undefined,
+      }).unwrap();
+
+      setInterviewStatusOverrides((prev) => ({ ...prev, [interviewId]: action }));
+      setInterviewStatusModal({ open: false, action: null, interviewId: null });
+      setSnackbar({
+        open: true,
+        message: `Interview marked as ${STATUS_DISPLAY[action]?.label ?? action}`,
+        severity: "success",
+      });
+    } catch (err) {
+      console.error("Interview status update failed:", err);
+      setSnackbar({
+        open: true,
+        message: err?.data?.message || "Failed to update interview status",
+        severity: "error",
+      });
+    }
+  };
+
+  /* ── Interview result flow (Pass / Fail — Timeline tab, "completed" rounds) ──
+     Wired to PUT /acc/interviews/{interviewId}/status_v1?result=pass|fail
+     via useUpdateInterviewResultMutation. On success we optimistically
+     store the result locally so the round's badge flips to
+     "Completed (PASS)" / "Completed (FAIL)" immediately; the mutation's
+     invalidatesTags (CandidateTimeline / CandidateDetail) will refetch
+     the real data in the background. */
+  const handleUpdateInterviewResult = async (interviewId, result) => {
+    try {
+      await updateInterviewResult({ interviewId, result, candidateId: matched_candidate_id }).unwrap();
+
+      setInterviewResultOverrides((prev) => ({ ...prev, [interviewId]: result }));
+
+      setSnackbar({
+        open: true,
+        message: `Interview marked as ${result === "pass" ? "Passed" : "Failed"}`,
+        severity: "success",
+      });
+    } catch (err) {
+      console.error("Interview result update failed:", err);
+      setSnackbar({
+        open: true,
+        message: err?.data?.message || "Failed to update interview result",
+        severity: "error",
+      });
+    }
+  };
+
+  /* ── View Feedback flow ── */
+  const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+  const [feedbackInterview, setFeedbackInterview] = useState(null); // full interview details (names/skill buckets)
+  const [feedbackItems, setFeedbackItems] = useState(null); // raw feedback API `data` array
+  const [getInterviewFeedback, { isFetching: isFetchingFeedback }] =
+    useLazyGetInterviewFeedbackQuery();
+
+  const handleViewFeedback = async (interviewId) => {
+    setFeedbackModalOpen(true);
+    setFeedbackInterview(null);
+    setFeedbackItems(null);
+    try {
+      const [detailsRes, feedbackRes] = await Promise.all([
+        getInterviewFullDetails(interviewId).unwrap(),
+        getInterviewFeedback(interviewId).unwrap(),
+      ]);
+      setFeedbackInterview(detailsRes.data);
+      setFeedbackItems(feedbackRes.data ?? []);
+    } catch (err) {
+      console.error("Failed to load interview feedback:", err);
+      setFeedbackModalOpen(false);
+      setSnackbar({
+        open: true,
+        message: "Failed to load interview feedback",
+        severity: "error",
+      });
+    }
+  };
+  const [rescheduleModalOpen, setRescheduleModalOpen] = useState(false);
+  const [rescheduleTarget, setRescheduleTarget] = useState(null); // { interviewId, loading, ...savedInterviewFields }
+  const [rescheduleInterview, { isLoading: reschedulingInterview }] =
+    useRescheduleInterviewMutation();
+  const handleRescheduleClick = (interviewId) => {
+    const savedPayload = scheduledInterviewData[interviewId];
+
+    if (savedPayload) {
+      setRescheduleModalOpen(true);
+      setRescheduleTarget({ interviewId, loading: false, ...savedPayload });
+      return;
+    }
+
+    setRescheduleModalOpen(true);
+    setRescheduleTarget({ interviewId, loading: true });
+
+    getInterviewFullDetails(interviewId)
+      .unwrap()
+      .then((response) => {
+        setRescheduleTarget({ interviewId, loading: false, ...response.data });
+      })
+      .catch((err) => {
+        console.error("Failed to fetch interview details for reschedule:", err);
+        setRescheduleTarget({ interviewId, loading: false });
+        setSnackbar({
+          open: true,
+          message: "Couldn't load saved interview details — please re-enter them.",
+          severity: "info",
+        });
+      });
+  };
+  const handleConfirmReschedule = async ({ interviewId, ...payload }) => {
+    try {
+      await rescheduleInterview({
+        interviewId,
+        candidateId: matched_candidate_id,
+        body: payload,
+      }).unwrap();
+
+      setScheduledInterviewData((prev) => ({
+        ...prev,
+        [interviewId]: payload,
+      }));
+
+      // payload.date / payload.start_time are already UTC (see basePayload
+      // in ScheduleInterviewModal — start.utc().format(...)), so this
+      // composes a correct UTC ISO instant for the new slot.
+      setInterviewTimeOverrides((prev) => ({
+        ...prev,
+        [interviewId]: {
+          interview_time: `${payload.date}T${payload.start_time}Z`,
+          duration_minutes: payload.duration,
+        },
+      }));
+
+      setRescheduleModalOpen(false);
+      setRescheduleTarget(null);
+      setInterviewStatusOverrides((prev) => {
+        const next = { ...prev };
+        delete next[interviewId];
+        return next;
+      });
+      setInterviewResultOverrides((prev) => {
+        const next = { ...prev };
+        delete next[interviewId];
+        return next;
+      });
+      setSnackbar({ open: true, message: "Interview rescheduled successfully", severity: "success" });
+    } catch (err) {
+      console.error("Reschedule failed:", err);
+      setSnackbar({ open: true, message: err?.data?.message || "Failed to reschedule interview", severity: "error" });
+    }
+  };
+
+  /* ── Derived counts / conditional tabs (computed early so they can be
+     used both for the snackbar/tab-switch logic and the render below) ── */
+  const certCount = enriched?.certifications?.length ?? 0;
+  const hasSkillIntel =
+    (enriched?.score_intel ?? []).length > 0 ||
+    enriched?.skill_info?.[0]?.summary ||
+    Object.keys(enriched?.skill_notes ?? {}).length > 0;
+
+  const tabIndices = useMemo(() => {
+    let idx = 0;
+    const EXP = idx++;
+    const EDU = idx++;
+    const SKILLS = idx++;
+    const CERT = certCount > 0 ? idx++ : -1;
+    const INTEL = hasSkillIntel ? idx++ : -1;
+    const TIMELINE = idx++;
+    const INTERVIEWS = idx++;
+    const DOCUMENTS = idx++;
+    return { EXP, EDU, SKILLS, CERT, INTEL, TIMELINE, INTERVIEWS, DOCUMENTS };
+  }, [certCount, hasSkillIntel]);
+
+  /* ── Toast (Schedule Interview / Reschedule / Status update success/error) ── */
+  const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
 
   /* ── Schedule Interview flow ── */
   const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
   const [scheduleInterview, { isLoading: schedulingInterview }] =
-    useScheduleInterviewMutation();
-
+    useScheduleInterviewInCandidatesMutation();
+  const [scheduledInterviewData, setScheduledInterviewData] = useState({});
   const handleScheduleInterview = async (payload) => {
-    if (!enriched?.id) return;
     try {
-      await scheduleInterview({
-        candidate_id: enriched.id,
-        ...payload,
-      }).unwrap();
+      const response = await scheduleInterview(payload).unwrap();
+      const newInterviewId = response?.data?.interview_id ?? response?.interview_id;
+      if (newInterviewId) {
+        setScheduledInterviewData((prev) => ({
+          ...prev,
+          [newInterviewId]: payload,
+        }));
+      }
+
       setScheduleModalOpen(false);
+      setSnackbar({
+        open: true,
+        message: "Interview scheduled successfully",
+        severity: "success",
+      });
+      setActiveTab(tabIndices.TIMELINE);
     } catch (err) {
       console.error("Schedule interview failed:", err);
+      setSnackbar({
+        open: true,
+        message: err?.data?.message || "Failed to schedule interview",
+        severity: "error",
+      });
     }
   };
 
@@ -4461,6 +5689,7 @@ export default function CandidateDetail() {
     if (Object.keys(labels).length) dispatch(setDynamicLabels(labels));
     return () => dispatch(clearDynamicLabels());
   }, [enriched?.full_name, location.state?.orgName, location.state?.jobTitle]);
+
   const [getResumeView] = useLazyGetResumeViewQuery();
   const viewResume = async (candidateId) => {
     try {
@@ -4475,6 +5704,7 @@ export default function CandidateDetail() {
       console.error("Resume fetch failed:", error);
     }
   };
+
   useEffect(() => {
     if (candidate?.full_name) {
       dispatch(setDynamicLabels({ candidateId: candidate.full_name }));
@@ -4504,11 +5734,6 @@ export default function CandidateDetail() {
     .split(",")
     .map((s) => s.trim())
     .filter(Boolean).length;
-  const certCount = enriched.certifications?.length ?? 0;
-  const hasSkillIntel =
-    (enriched.score_intel ?? []).length > 0 ||
-    enriched.skill_info?.[0]?.summary ||
-    Object.keys(enriched.skill_notes ?? {}).length > 0;
 
   // ── Total experience string ──
   const totalExp =
@@ -4785,16 +6010,7 @@ export default function CandidateDetail() {
 
       {/* ── Tab content ── */}
       {(() => {
-        // Dynamic tab index mapping (certifications and skillintel are conditional)
-        let idx = 0;
-        const EXP = idx++;
-        const EDU = idx++;
-        const SKILLS = idx++;
-        const CERT = certCount > 0 ? idx++ : -1;
-        const INTEL = hasSkillIntel ? idx++ : -1;
-        const TIMELINE = idx++;
-        const INTERVIEWS = idx++;
-        const DOCUMENTS = idx++;
+        const { EXP, EDU, SKILLS, CERT, INTEL, TIMELINE, INTERVIEWS, DOCUMENTS } = tabIndices;
 
         return (
           <Box
@@ -4808,7 +6024,8 @@ export default function CandidateDetail() {
               gap: "20px",
             }}
           >
-            {/* Tabs row + action buttons (Shortlist/Reject or Interview/Reject) */}
+            {/* Tabs row + action buttons (Shortlist/Reject, Interview/Select/Reject,
+                Release Offer, or Revoke/Offer Accepted/Offer Rejected) */}
             <Box
               sx={{
                 display: "flex",
@@ -4965,7 +6182,8 @@ export default function CandidateDetail() {
               <Tab icon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 14 }} />} iconPosition="start" label="Documents" /> */}
               </Tabs>
 
-              {/* Shortlist/Reject OR Interview/Reject, driven by candidate status */}
+              {/* Shortlist/Reject, Interview/Select/Reject, Release Offer, or
+                  Revoke/Accepted/Rejected offer buttons — driven by candidate status */}
               <CandidateActionButtons
                 status={enriched.status}
                 onShortlist={() =>
@@ -4975,6 +6193,21 @@ export default function CandidateDetail() {
                   setStatusModal({ open: true, action: "rejected" })
                 }
                 onInterview={() => setScheduleModalOpen(true)}
+                onSelect={() =>
+                  setStatusModal({ open: true, action: "selected" })
+                }
+                onReleaseOffer={() =>
+                  setStatusModal({ open: true, action: "offer_released" })
+                }
+                onRevokeOffer={() =>
+                  setStatusModal({ open: true, action: "offer_revoked" })
+                }
+                onOfferAccepted={() =>
+                  setStatusModal({ open: true, action: "offer_accepted" })
+                }
+                onOfferRejected={() =>
+                  setStatusModal({ open: true, action: "offer_rejected" })
+                }
               />
             </Box>
 
@@ -4994,6 +6227,13 @@ export default function CandidateDetail() {
                 <TimelineTab
                   candidate={enriched}
                   onInterviewClick={handleInterviewDetails}
+                  onUpdateInterviewStatus={handleOpenInterviewStatusModal}
+                  onRescheduleInterview={handleRescheduleClick}
+                  onUpdateInterviewResult={handleUpdateInterviewResult}
+                  onViewFeedback={handleViewFeedback}
+                  interviewStatusOverrides={interviewStatusOverrides}
+                  interviewResultOverrides={interviewResultOverrides}
+                  interviewTimeOverrides={interviewTimeOverrides}
                 />
               )}
               {/* {activeTab === INTERVIEWS && <InterviewsTab candidate={enriched} />}
@@ -5009,9 +6249,16 @@ export default function CandidateDetail() {
         onClose={() => setInterviewModalOpen(false)}
         selectedInterview={selectedInterview}
         isFetching={isFetching}
+        onEdit={handleEditFromDetails}
       />
-
-      {/* ── Shortlist / Reject confirmation modal ── */}
+      <InterviewFeedbackModal
+        open={feedbackModalOpen}
+        onClose={() => setFeedbackModalOpen(false)}
+        interview={feedbackInterview}
+        feedbackItems={feedbackItems}
+        isFetching={isFetchingFeedback}
+      />
+      {/* ── Shortlist / Reject / Select / Offer confirmation modal (shared) ── */}
       <StatusConfirmModal
         open={statusModal.open}
         action={statusModal.action}
@@ -5022,17 +6269,56 @@ export default function CandidateDetail() {
         loading={statusUpdating}
       />
 
-      {/* ── Schedule Interview modal ── */}
+      {/* ── Schedule Interview modal (fresh schedule — always starts blank) ── */}
       <ScheduleInterviewModal
         open={scheduleModalOpen}
         candidate={enriched}
-        // interviewerOptions={[]}
         allSkillOptions={allSkillOptions}
         onClose={() => !schedulingInterview && setScheduleModalOpen(false)}
         onSchedule={handleScheduleInterview}
         loading={schedulingInterview}
         orgId={orgId}
+        matched_candidate_id={matched_candidate_id}
+        isReschedule={false}
       />
+
+      {/* ── Reschedule Interview modal (same UI, prefilled with the
+          interview's saved values, submits through rescheduleInterview
+          keyed by interviewId) ── */}
+      <ScheduleInterviewModal
+        open={rescheduleModalOpen}
+        candidate={enriched}
+        allSkillOptions={allSkillOptions}
+        onClose={() => {
+          if (reschedulingInterview) return;
+          setRescheduleModalOpen(false);
+          setRescheduleTarget(null);
+        }}
+        onSchedule={handleConfirmReschedule}
+        loading={reschedulingInterview}
+        orgId={orgId}
+        matched_candidate_id={matched_candidate_id}
+        isReschedule={true}
+        interviewId={rescheduleTarget?.interviewId}
+        initialData={rescheduleTarget}
+      />
+
+      {/* ── Snackbar (Schedule / Reschedule / Status update / Interview outcome) ── */}
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={3500}
+        onClose={() => setSnackbar((t) => ({ ...t, open: false }))}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+      >
+        <Alert
+          onClose={() => setSnackbar((t) => ({ ...t, open: false }))}
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{ borderRadius: "10px" }}
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
