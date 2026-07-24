@@ -1,5 +1,5 @@
 import { Bar } from "react-chartjs-2";
-import { Card, CardContent, Typography } from "@mui/material";
+import { Card, CardContent, Typography, Box } from "@mui/material";
 
 const data = {
   labels: [
@@ -22,12 +22,28 @@ const data = {
   ],
 };
 
+const options = {
+  maintainAspectRatio: false,
+  responsive: true,
+};
+
 export default function TalentQualityChart() {
   return (
-    <Card>
-      <CardContent>
-        <Typography fontWeight={600}>Talent Quality Chart</Typography>
-        <Bar data={data} />
+    <Card sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <CardContent
+        sx={{
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <Typography fontWeight={600} mb={1}>
+          Talent Quality Chart
+        </Typography>
+
+        <Box sx={{ flex: 1, minHeight: 0, position: "relative" }}>
+          <Bar data={data} options={options} />
+        </Box>
       </CardContent>
     </Card>
   );

@@ -13,18 +13,26 @@ const data = {
 };
 
 const options = {
-  maintainAspectRatio: false, // 🔑 allows height control
+  maintainAspectRatio: false,
+  responsive: true,
 };
 
 export default function ExperienceDonut() {
   return (
-    <Card>
-      <CardContent sx={{ pb: 1 }}> {/* reduce bottom padding */}
+    <Card sx={{ height: "100%", display: "flex", flexDirection: "column" }}>
+      <CardContent
+        sx={{
+          pb: 1,
+          flex: 1,
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
         <Typography fontWeight={600} mb={1}>
           Candidates Experience
         </Typography>
 
-        <Box height={183}> {/* 👈 control card height here */}
+        <Box sx={{ flex: 1, minHeight: 0, position: "relative" }}>
           <Doughnut data={data} options={options} />
         </Box>
       </CardContent>

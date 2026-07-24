@@ -414,10 +414,30 @@ function PlatformIcon({ platform, size = 20 }) {
 ═══════════════════════════════════════════════ */
 function formatInterviewDateTime(date, startTime, endTime, duration) {
   if (!date) return { dateLabel: "—", timeLabel: "—" };
-  const d = dayjs(date);
-  const dateLabel = d.isValid() ? d.format("dddd, MMMM D, YYYY") : "—";
-  const start = startTime ? startTime.slice(0, 5) : "—";
-  const end = endTime ? endTime.slice(0, 5) : "—";
+
+  const startHHmm = startTime ? startTime.slice(0, 5) : null;
+  const endHHmm = endTime ? endTime.slice(0, 5) : null;
+
+  // date + start_time/end_time are stored in UTC (see basePayload —
+  // start.utc().format(...)), so parse as UTC and convert to local before
+  // displaying — otherwise the raw UTC clock time renders as if it were
+  // already local (e.g. an 11:40 IST interview showed as "06:10").
+  const startLocal = startHHmm
+    ? dayjs.utc(`${date} ${startHHmm}`, "YYYY-MM-DD HH:mm").local()
+    : null;
+  const endLocal = endHHmm
+    ? dayjs.utc(`${date} ${endHHmm}`, "YYYY-MM-DD HH:mm").local()
+    : null;
+
+  const dateLabel =
+    startLocal && startLocal.isValid()
+      ? startLocal.format("dddd, MMMM D, YYYY")
+      : dayjs(date).isValid()
+        ? dayjs(date).format("dddd, MMMM D, YYYY")
+        : "—";
+
+  const start = startLocal && startLocal.isValid() ? startLocal.format("hh:mm A") : "—";
+  const end = endLocal && endLocal.isValid() ? endLocal.format("hh:mm A") : "—";
   const timeLabel = `${start} → ${end}${duration ? ` (${duration} mins)` : ""}`;
   return { dateLabel, timeLabel };
 }
@@ -468,16 +488,45 @@ function InterviewDetailsModal({ open, onClose, selectedInterview, isFetching, o
     <Dialog
       open={open}
       onClose={onClose}
-      maxWidth={false}
-      PaperProps={{
-        sx: { width: 480, maxWidth: "95vw", borderRadius: "16px", overflow: "hidden" },
-      }}
+      sx={{ "& .MuiDialog-paper": { width: { xs: "100%", sm: 580, md: 600, lg: 800 } } }}
     >
       {/* HEADER */}
-      <Box sx={{ bgcolor: "#FF5722", px: 3, py: 2.5, textAlign: "center" }}>
-        <Typography sx={{ fontSize: 20, fontWeight: 700, color: "#fff" }}>
+      <Box sx={{ bgcolor: "#fff", px: 3, py: 0, textAlign: "start", display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography sx={{ fontSize: 20, fontWeight: 700, color: "#00" }}>
           Interview Details
         </Typography>
+        <Box>
+          <DialogActions sx={{ px: 0, py: 2, borderTop: `1px solid ${C.border}`, gap: 0 }}>
+            {!isCompleted && (
+              <Button
+                variant="contained"
+                size="small"
+                startIcon={<EditOutlinedIcon sx={{ fontSize: 12 }} />}
+                onClick={() => onEdit?.(d.interview_id)}
+                sx={{
+                  flex: 1, textTransform: "none", borderRadius: "10px",
+                  fontSize: 12,
+                  fontWeight: 600, bgcolor: "#FF5722", boxShadow: "none",
+                  "&:hover": { bgcolor: "#FF5722", boxShadow: "none" },
+                }}
+              >
+                Edit Interview
+              </Button>
+            )}
+            <Button
+              variant="outlined"
+              onClick={onClose}
+              size="small"
+              sx={{
+                flex: isCompleted ? 1 : "0 0 auto", textTransform: "none",
+                borderRadius: "10px", fontWeight: 500, color: "#111827",
+                borderColor: "#E5E7EB", px: 3,
+              }}
+            >
+              Close
+            </Button>
+          </DialogActions>
+        </Box>
       </Box>
 
       <DialogContent sx={{ p: 0, maxHeight: "65vh", overflowY: "auto" }}>
@@ -615,33 +664,7 @@ function InterviewDetailsModal({ open, onClose, selectedInterview, isFetching, o
         )}
       </DialogContent>
 
-      <DialogActions sx={{ px: 2.5, py: 2, borderTop: `1px solid ${C.border}`, gap: 1 }}>
-        {!isCompleted && (
-          <Button
-            variant="contained"
-            startIcon={<EditOutlinedIcon sx={{ fontSize: 16 }} />}
-            onClick={() => onEdit?.(d.interview_id)}
-            sx={{
-              flex: 1, textTransform: "none", borderRadius: "10px",
-              fontWeight: 600, bgcolor: "#FF5722", boxShadow: "none",
-              "&:hover": { bgcolor: "#FF5722", boxShadow: "none" },
-            }}
-          >
-            Edit Interview
-          </Button>
-        )}
-        <Button
-          variant="outlined"
-          onClick={onClose}
-          sx={{
-            flex: isCompleted ? 1 : "0 0 auto", textTransform: "none",
-            borderRadius: "10px", fontWeight: 500, color: "#111827",
-            borderColor: "#E5E7EB", px: 3,
-          }}
-        >
-          Close
-        </Button>
-      </DialogActions>
+
     </Dialog>
   );
 }
@@ -754,7 +777,7 @@ function InterviewFeedbackModal({ open, onClose, interview, feedbackItems, isFet
       open={open}
       onClose={onClose}
       maxWidth={false}
-      PaperProps={{ sx: { width: 560, maxWidth: "95vw", borderRadius: "16px", overflow: "hidden" } }}
+      sx={{ "& .MuiDialog-paper": { width: { xs: "100%", sm: 580, md: 600, lg: 800 } } }}
     >
       {/* Header */}
       <Box sx={{ px: 3, pt: 2.5, pb: 2, position: "relative" }}>
@@ -1946,9 +1969,13 @@ function ScheduleInterviewModal({
         }));
 
       const hhmm = extractHHmm(initialData.start_time);
-      const combinedDateTime =
+      const combinedDateTimeUTC =
         initialData.date && hhmm
-          ? dayjs(`${initialData.date} ${hhmm}`, "YYYY-MM-DD HH:mm")
+          ? dayjs.utc(`${initialData.date} ${hhmm}`, "YYYY-MM-DD HH:mm")
+          : null;
+      const combinedDateTime =
+        combinedDateTimeUTC && combinedDateTimeUTC.isValid()
+          ? combinedDateTimeUTC.local()
           : null;
 
       setForm({

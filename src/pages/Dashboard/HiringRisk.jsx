@@ -7,14 +7,22 @@ import ShoppingCartOutlined from "@mui/icons-material/ShoppingCartOutlined";
 import CalendarMonthOutlined from "@mui/icons-material/CalendarMonthOutlined";
 
 const donutData = {
-  labels: ["3-5 Years", "6-10 Years", "10-12 Years"],
+  labels: ["Male", "Female"],
   datasets: [
     {
-      data: [12, 25, 22],
-      backgroundColor: ["#1E3A8A", "#F97316", "#FDBA74"],
+      data: [5.5, 3.5],
+      backgroundColor: ["#E8590C", "#0F9D8A"],
       borderWidth: 0,
     },
   ],
+};
+
+const donutOptions = {
+  maintainAspectRatio: false,
+  plugins: {
+    legend: { display: false },
+    tooltip: { enabled: true },
+  },
 };
 
 export default function HiringRisk() {
@@ -25,10 +33,13 @@ export default function HiringRisk() {
         border: "1px solid #E5E7EB",
         p: 2,
         height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
       }}
     >
       {/* Header */}
-      <Box display="flex" alignItems="center" gap={1} mb={2}>
+      <Box display="flex" alignItems="center" gap={1} mb={2} flexShrink={0}>
         <Box
           sx={{
             width: 28,
@@ -46,7 +57,7 @@ export default function HiringRisk() {
       </Box>
 
       {/* Risk Stats */}
-      <Box display="flex" gap={2} mb={2} alignItems="stretch">
+      <Box sx={{ display: "flex", gap: 2, mb: 2 }}>
         <RiskTile
           icon={<GroupsOutlined />}
           label="Notice-servers"
@@ -71,7 +82,7 @@ export default function HiringRisk() {
       </Box>
 
       {/* Gender Header */}
-      <Box display="flex" justifyContent="space-between" mb={1}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} flexShrink={0}>
         <Typography fontWeight={600} fontSize={14}>
           Male female ratio
         </Typography>
@@ -83,17 +94,13 @@ export default function HiringRisk() {
         />
       </Box>
 
-      {/* Gender Content */}
-      <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
-        <Box sx={{ height: 130, width: 130 }}>
-         <Doughnut
-  data={donutData}
-  options={{ maintainAspectRatio: false }}
-  redraw   // 🔥 THIS FIXES YOUR ERROR
-/>
+      {/* Gender Content — donut + stats sit together, not stretched across the card */}
+      <Box sx={{ display: "flex", alignItems: "center", gap: 4 }}>
+        <Box sx={{ width: 130, height: 130, flexShrink: 0 }}>
+          <Doughnut data={donutData} options={donutOptions} />
         </Box>
 
-        <Box display="flex" justifyContent="space-around" flex={1}>
+        <Box sx={{ display: "flex", gap: 4 }}>
           <GenderStat value="5.5K" label="Male" color="#E8590C" />
           <GenderStat value="3.5K" label="Female" color="#0F9D8A" />
         </Box>
@@ -106,24 +113,22 @@ function RiskTile({ icon, label, value, bg, color }) {
   return (
     <Box
       sx={{
-        flex: 1,              // 🔥 equal width, always side by side
-        minWidth: 0,          // 🔥 allows shrinking
-        minHeight: 110,
-
+        flex: 1,
+        minWidth: 0,
         border: "1px solid #E5E7EB",
         borderRadius: 2,
-        p: 2,
+        p: 1.5,
         textAlign: "center",
-
         display: "flex",
         flexDirection: "column",
         justifyContent: "space-between",
+        gap: 1,
       }}
     >
       <Box
         sx={{
-          width: 44,
-          height: 44,
+          width: 36,
+          height: 36,
           borderRadius: "50%",
           mx: "auto",
           bgcolor: bg,
@@ -148,7 +153,7 @@ function RiskTile({ icon, label, value, bg, color }) {
 
 function GenderStat({ value, label, color }) {
   return (
-    <Box textAlign="center">
+    <Box sx={{ display: "flex", flexDirection: "column", alignItems: "flex-start", gap: 0.5 }}>
       <Typography fontWeight={700} fontSize={18}>
         {value}
       </Typography>
@@ -159,7 +164,6 @@ function GenderStat({ value, label, color }) {
         size="small"
         label="↑ 25%"
         sx={{
-          mt: 0.5,
           bgcolor: `${color}22`,
           color,
           fontWeight: 600,

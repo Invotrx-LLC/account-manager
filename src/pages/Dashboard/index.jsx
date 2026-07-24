@@ -40,11 +40,11 @@ export default function AmDashboard() {
       <Grid container size={{ xs: 12, md: 12 }} sx={{mt:2}}>
         <KpiCards />
       </Grid>
-      <Grid container spacing={2} mt={2}>
-        <Grid item size={{ xs: 12, md: 8 }}>
+      <Grid container sx={{display:'flex',justifyContent:"space-between",gap:1,mt:2}}>
+        <Grid item size={{ xs: 12, md: 5.9 }}>
           <TalentQualityChart />
         </Grid>
-        <Grid item size={{ xs: 12, md: 4 }}>
+        <Grid item size={{ xs: 12, md: 6 }}>
           <HiringRisk />
         </Grid>
       </Grid>
