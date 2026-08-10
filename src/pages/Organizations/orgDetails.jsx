@@ -95,6 +95,7 @@ import ControlPointIcon from "@mui/icons-material/ControlPoint";
 import DescriptionOutlinedIcon from "@mui/icons-material/DescriptionOutlined";
 import CandidatePipelineFunnel from "./CandidatePipeline";
 import { toast } from "react-toastify";
+import OrganizationOverview from "../1dashboard1";
 
 const LABEL_SX = {
   fontSize: 10,
@@ -1253,7 +1254,8 @@ export default function OrgDetail() {
         <Tab label="Billing" />
       </Tabs>
 
-      {tab === 0 && <OrgOverviewTab org={org} orgId={orgId} />}
+      {/* {tab === 0 && <OrgOverviewTab org={org} orgId={orgId} />} */}
+      {tab === 0 && <OrganizationOverview orgId={orgId}/>}
       {tab === 1 && (
         <OrgRequisitionsTab
           orgId={orgId}

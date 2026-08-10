@@ -22,6 +22,7 @@ import CandidateDetail from "./pages/OrgCandidates/CandidateDetail";
 import AmOrganizations from "./pages/Organizations";
 import OrgDetail from "./pages/Organizations/orgDetails";
 import AmDashboard from "./pages/Dashboard";
+// import AmDashboard from "./pages/1dashboard1/index";
 import AccountManagement from "./pages/AccountManagement/AccountManagement";
 import VerifySignupOTP from "./pages/SignUp/verifySignup";
 import CandidatesPage from "./pages/Candidates/Candidate";
